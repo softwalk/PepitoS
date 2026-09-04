@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.core.db import get_db
 from app.core.deps import CurrentUser, client_ip, require
@@ -12,6 +12,7 @@ from app.core.errors import ApiError
 from app.core.security import hash_password
 from app.core.timeutil import iso, local_dt, utcnow
 from app.models.catalog import Presentation, PriceItem, PriceVersion
+from app.models.ops import Shift
 from app.models.org import Assignment, Cart, Device, Point, User, Zone
 from app.schemas.backoffice import (
     AssignmentIn,
@@ -63,7 +64,14 @@ def ser_cart(c: Cart) -> dict:
 
 
 def ser_assignment(a: Assignment) -> dict:
-    return {"id": _u(a.id), "operator_id": _u(a.operator_id), "point_id": _u(a.point_id), "cart_id": _u(a.cart_id), "shift_date": a.shift_date.isoformat(), "planned_start": iso(a.planned_start), "planned_end": iso(a.planned_end), "status": a.status}
+    # Último turno de la asignación (para "Continuar turno" desde el backoffice).
+    sess = object_session(a)
+    last = sess.query(Shift).filter(Shift.assignment_id == a.id).order_by(Shift.opened_at.desc()).first() if sess is not None else None
+    return {
+        "id": _u(a.id), "operator_id": _u(a.operator_id), "point_id": _u(a.point_id), "cart_id": _u(a.cart_id), "shift_date": a.shift_date.isoformat(),
+        "planned_start": iso(a.planned_start), "planned_end": iso(a.planned_end), "status": a.status,
+        "shift_id": _u(last.id) if last else None, "shift_status": last.status if last else None,
+    }
 
 
 def ser_presentation(p: Presentation) -> dict:

@@ -27,7 +27,7 @@ ruta crítica; el módulo `ai/` solo clasifica texto de casos "otro" con reglas 
 | `supervisor` | Su zona (`zone_id`) | + cases.read/update, audits.create, cash_count.surprise, sale.cancel, shift.transfer |
 | `ops` | Toda la red | + control_tower.read, rules.read/update, inventory.*, maintenance.*, people.read |
 | `finance` | Toda la red | + reconciliation.read, approvals.decide(payment), reports.read |
-| `admin` | Todo | + admin.* (usuarios, puntos, carritos, precios, dispositivos, revocación), rules.run |
+| `admin` | Todo | + admin.* (usuarios, puntos, carritos, precios, dispositivos, revocación), rules.run, shift.reopen |
 
 Reglas: mínimo privilegio; toda ruta declara permisos requeridos; `403` con `FORBIDDEN` si falta.
 Datos de operador filtrados por `shift.operator_id == user.id`; supervisor por `point.zone_id == user.zone_id`.
@@ -64,6 +64,7 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | GET | `/v1/shifts/{id}/expected` | → `{sales_count, sales_total_cents, cash_expected_cents, digital_total_cents, product_expected:{presentation_id:qty}, waste_units}` |
 | POST | `/v1/shifts/{id}/close` | `{idempotency_key, closed_at, cash_counted_cents, product_counts:{presentation_id:qty}, checklist:{off_ok,clean_ok,secured_ok,stored_ok,charging_ok}, gps}` → `{shift_id, status:"reconciled"|"difference", cash_expected_cents, cash_counted_cents, difference_cents, product_diff:{presentation_id:int}, case_id|null}` |
 | POST | `/v1/shifts/{id}/transfer` | `{idempotency_key, to_operator_id, cash_counted_cents, product_counts, gps}` → `{closed_shift_id, new_shift_id}` |
+| POST | `/v1/shifts/{id}/reopen` | **Sólo admin.** Continuar un turno terminado: `{reason}` (≥5 car.) → turno con `status:"open"`. Requiere `status=closed` y que ni el operador ni el carrito tengan otro turno abierto (409 `SHIFT_ALREADY_OPEN`). Conserva ventas y el cierre anterior en `audit_log` (`shift.reopen`) + evento `ShiftReopened`; el siguiente cierre concilia contra todas las ventas. |
 | POST | `/v1/sales` | `{idempotency_key, shift_id, occurred_at, price_version_id, lines:[{presentation_id, qty, flavor_id?}], payments:[{method:"cash"|"qr"|"card", amount_cents}], offline_created:boolean, gps?}` → `201 {sale_id, folio, total_cents, status:"recorded", duplicate:false}` |
 | POST | `/v1/sales/{id}/cancel` | `{idempotency_key, reason_code, note?}` → `{sale_id, status:"cancelled"}` |
 | POST | `/v1/waste` | `{idempotency_key, shift_id, occurred_at, presentation_id, qty, reason_code:"spill"|"quality"|"expired"|"sample"|"other", note?}` → `201 {waste_id}` |
@@ -135,7 +136,7 @@ Prioridad de caso: `priority_score = severity_weight(urgent=100, review=50, norm
 ## 7. Eventos de dominio
 
 Tabla `events(id, type, occurred_at, actor_id, point_id, shift_id, entity, entity_id, payload jsonb)` (outbox append-only).
-Tipos: `ShiftOpened, ShiftClosed, ShiftTransferred, SaleRecorded, SaleCancelled, PaymentRecorded, WasteRecorded, InventoryMoved,
+Tipos: `ShiftOpened, ShiftClosed, ShiftTransferred, ShiftReopened, SaleRecorded, SaleCancelled, PaymentRecorded, WasteRecorded, InventoryMoved,
 CashDifferenceDetected, PointLate, PointOffline, HelpRequested, AlertRaised, AlertResolved, AuditCompleted, MaintenanceTicketCreated,
 LotBlocked, ApprovalRequested, ApprovalDecided, AIRecommendationCreated`.
 `audit_log(id, at, actor_id, action, entity, entity_id, before jsonb, after jsonb, reason, ip, device_id)` para cambios críticos.

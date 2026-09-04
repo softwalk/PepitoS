@@ -315,6 +315,56 @@ def transfer_shift(db: Session, current, shift: Shift, data) -> dict:
     return {"closed_shift_id": str(shift.id), "new_shift_id": str(new_shift.id), "difference_cents": diff}
 
 
+def reopen_shift(db: Session, current, shift: Shift, reason: str) -> dict:
+    """Sólo administrador: vuelve a abrir un turno cerrado para que el operador continúe vendiendo y lo cierre de nuevo.
+
+    Conserva la historia (ventas, cierre anterior, casos y aprobaciones ya emitidos) y la registra en audit_log;
+    el próximo cierre vuelve a conciliar caja contra TODAS las ventas del turno.
+    """
+    if shift.status != "closed":
+        raise ApiError("CONFLICT", "Sólo se puede continuar un turno cerrado")
+    if not reason or len(reason.strip()) < 5:
+        raise ApiError("VALIDATION", "Indica un motivo (mínimo 5 caracteres)")
+    if db.query(Shift).filter(Shift.operator_id == shift.operator_id, Shift.status == "open").first():
+        raise ApiError("SHIFT_ALREADY_OPEN", "El operador ya tiene otro turno abierto")
+    if db.query(Shift).filter(Shift.cart_id == shift.cart_id, Shift.status == "open").first():
+        raise ApiError("SHIFT_ALREADY_OPEN", "El carrito ya tiene otro turno abierto")
+    at = utcnow()
+    before = {
+        "closed_at": iso(shift.closed_at), "close_status": shift.close_status, "cash_expected_cents": shift.cash_expected_cents,
+        "cash_counted_cents": shift.cash_counted_cents, "difference_cents": shift.difference_cents,
+    }
+    shift.status = "open"
+    shift.closed_at = None
+    shift.close_status = None
+    shift.cash_expected_cents = None
+    shift.cash_counted_cents = None
+    shift.difference_cents = None
+    shift.product_diff = None
+    shift.close_gps = None
+    shift.last_seen_at = at
+    cs = db.query(CashSession).filter(CashSession.shift_id == shift.id).first()
+    if cs is not None:
+        cs.status = "open"
+        cs.closed_at = None
+        cs.counted_cents = None
+        cs.difference_cents = None
+    att = db.query(Attendance).filter(Attendance.shift_id == shift.id).first()
+    if att is not None:
+        att.check_out_at = None
+    if shift.assignment_id:
+        a = db.get(Assignment, shift.assignment_id)
+        if a is not None:
+            a.status = "started"
+    events.emit(
+        db, "ShiftReopened", actor_id=current.id, point_id=shift.point_id, shift_id=shift.id, entity="shift", entity_id=shift.id,
+        payload={"reason": reason.strip(), "previous_close": before}, occurred_at=at,
+    )
+    audit.log(db, actor_id=current.id, action="shift.reopen", entity="shift", entity_id=shift.id, before=before, after={"status": "open"}, reason=reason.strip())
+    db.flush()
+    return serialize_shift(shift)
+
+
 def record_pings(db: Session, current, pings) -> int:
     accepted = 0
     for p in pings:

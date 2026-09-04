@@ -348,7 +348,7 @@ textarea { min-height: 80px; resize: vertical; }
 
 /* ---------- Modal ---------- */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(20, 33, 61, 0.5); display: flex; align-items: center; justify-content: center; z-index: 90; padding: 16px; backdrop-filter: blur(2px); }
-.modal { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; padding: 18px; box-shadow: var(--shadow-lg); }
+.modal { white-space: normal; text-align: left; background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; padding: 18px; box-shadow: var(--shadow-lg); }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .modal-head .btn-ghost { font-size: 20px; width: 34px; height: 34px; padding: 0; border-radius: 50%; }
 

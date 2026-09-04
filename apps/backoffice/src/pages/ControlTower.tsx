@@ -9,6 +9,7 @@ import { Badge, Card, Empty, LightDot, Loading, PageTitle, SeverityBadge, Status
 import type { PointStatus, Summary } from '../types';
 import { fmtDateTime, fmtTime, money, ratioPct, salesLight, targetLight, ticketLight, todayLocalISO, type Light } from '../lib/format';
 import { Icon } from '../components/icons';
+import { ReopenShiftButton } from '../components/ReopenShift';
 
 function Kpi({ label, value, sub, tone, wide, children }: { label: string; value?: string; sub?: string; tone?: Light; wide?: boolean; children?: React.ReactNode }) {
   return (
@@ -24,7 +25,7 @@ function Kpi({ label, value, sub, tone, wide, children }: { label: string; value
   );
 }
 
-function PointRow({ p }: { p: PointStatus }) {
+function PointRow({ p, onChanged }: { p: PointStatus; onChanged: () => Promise<void> }) {
   const progress = ratioPct(p.sales_cents, p.target_cents);
   const tLight = targetLight(progress);
   return (
@@ -80,6 +81,7 @@ function PointRow({ p }: { p: PointStatus }) {
           <Link to={`/supervisor/auditoria/${p.point.id}`}>
             <Icon name="search" size={13} /> Auditar
           </Link>
+          {p.status === 'closed' && p.shift_id && <ReopenShiftButton shiftId={p.shift_id} label={p.point.name} onDone={onChanged} />}
         </span>
       </td>
     </tr>
@@ -231,7 +233,7 @@ export function ControlTowerPage() {
                 </thead>
                 <tbody>
                   {data.points.map((p) => (
-                    <PointRow key={p.point.id} p={p} />
+                    <PointRow key={p.point.id} p={p} onChanged={() => reload(true)} />
                   ))}
                 </tbody>
               </table>

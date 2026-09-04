@@ -112,11 +112,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
     })();
+    // Cambios hechos desde el backoffice (p. ej. admin "Continuar turno" sobre un turno cerrado) llegan al
+    // volver a la app o, si no hay turno abierto localmente, en el siguiente sondeo de 60 s.
+    let refreshing = false;
+    const refreshFromServer = async () => {
+      if (refreshing || !navigator.onLine) return;
+      const sess = await sessionStore.get();
+      if (!sess || sess.must_change_password) return;
+      refreshing = true;
+      try {
+        await refreshAssignment();
+        await reload();
+      } catch {
+        /* sin red: se usa lo guardado */
+      } finally {
+        refreshing = false;
+      }
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshFromServer();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const poll = setInterval(async () => {
+      const st = await shiftStore.get();
+      if (!st || st.status === 'closed') void refreshFromServer();
+    }, 60_000);
     const unsubSync = subscribeSync((sync) => setState((s) => ({ ...s, sync })));
     const unsubDomain = subscribeDomain(() => void reload());
     const unsubBattery = watchBattery((battery) => setState((s) => ({ ...s, battery })));
     void readBattery().then((battery) => setState((s) => ({ ...s, battery })));
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(poll);
       unsubSync();
       unsubDomain();
       unsubBattery();

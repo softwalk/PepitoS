@@ -8,6 +8,7 @@ import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } fro
 import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, User, Zone } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 import { ROLE_LABEL } from '../components/Layout';
+import { ReopenShiftButton } from '../components/ReopenShift';
 
 type Tab = 'users' | 'points' | 'carts' | 'assignments' | 'presentations' | 'prices' | 'devices' | 'zones' | 'settings';
 /** ops/finance sólo ven Parámetros y Precios (lectura). */
@@ -422,7 +423,9 @@ export function AdminPage() {
             { h: 'Carrito', r: (a) => <span className="mono">{cartCode(a.cart_id)}</span> },
             { h: 'Horario', r: (a) => `${fmtTime(a.planned_start)}–${fmtTime(a.planned_end)}` },
             { h: 'Estado', r: (a) => <StatusBadge status={a.status} /> },
+            { h: 'Turno', r: (a) => (a.shift_status ? <StatusBadge status={a.shift_status} /> : <span className="muted">—</span>) },
           ]}
+          extra={(a) => (a.shift_id && a.shift_status === 'closed' ? <ReopenShiftButton shiftId={a.shift_id} label={`${userName(a.operator_id)} · ${pointName(a.point_id)}`} onDone={() => assignments.reload(true)} /> : null)}
         />
       )}
       {tab === 'assignments' && <p className="muted small">Al crear sin horario, se usa el horario de apertura/cierre del punto. Fecha sugerida: {todayLocalISO()}.</p>}

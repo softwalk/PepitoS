@@ -9,7 +9,8 @@ from app.core.timeutil import utcnow
 from app.models.system import Event
 
 EVENT_TYPES = {
-    "ShiftOpened", "ShiftClosed", "ShiftTransferred", "SaleRecorded", "SaleCancelled", "PaymentRecorded",
+    "ShiftOpened", "ShiftClosed", "ShiftTransferred",
+    "ShiftReopened", "SaleRecorded", "SaleCancelled", "PaymentRecorded",
     "WasteRecorded", "InventoryMoved", "CashDifferenceDetected", "PointLate", "PointOffline", "HelpRequested",
     "AlertRaised", "AlertResolved", "AuditCompleted", "MaintenanceTicketCreated", "LotBlocked",
     "ApprovalRequested", "ApprovalDecided", "AIRecommendationCreated",

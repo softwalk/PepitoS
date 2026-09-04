@@ -54,6 +54,10 @@ class ShiftCloseIn(BaseModel):
     photos: list[Photo] | None = None
 
 
+class ShiftReopenIn(BaseModel):
+    reason: str = Field(min_length=5, max_length=280)
+
+
 class ShiftTransferIn(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=120)
     to_operator_id: uuid.UUID

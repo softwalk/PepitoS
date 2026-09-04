@@ -296,7 +296,7 @@ export interface User { id: string; username: string; name: string; role: Role; 
 export interface ResetPasswordResponse { ok: boolean; user_id: string; must_change_password: boolean; temporary_password?: string }
 export interface Point { id: string; name: string; address: string | null; lat: number; lng: number; geofence_radius_m: number; zone_id: string | null; open_time: string | null; close_time: string | null; daily_target_cents: number; daily_target_tx: number; is_active: boolean }
 export interface Cart { id: string; code: string; description: string | null; is_active: boolean }
-export interface Assignment { id: string; operator_id: string; point_id: string; cart_id: string; shift_date: string; planned_start: string | null; planned_end: string | null; status: string }
+export interface Assignment { id: string; operator_id: string; point_id: string; cart_id: string; shift_date: string; planned_start: string | null; planned_end: string | null; status: string; shift_id?: string | null; shift_status?: string | null }
 export interface Presentation { id: string; name: string; grams: number; sort: number; is_active: boolean; product_id: string | null }
 export interface PriceVersion { id: string; name: string; valid_from: string | null; valid_to: string | null; is_active: boolean; deactivated_at: string | null; sales_count?: number; prices: Record<string, number> }
 /** Parámetro operativo (B6): `GET /v1/admin/settings`. */

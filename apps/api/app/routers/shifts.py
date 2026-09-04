@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import CurrentUser, require
-from app.schemas.operator import ShiftCloseIn, ShiftOpenIn, ShiftTransferIn
+from fastapi import Request
+
+from app.schemas.operator import ShiftCloseIn, ShiftOpenIn, ShiftReopenIn, ShiftTransferIn
 from app.services import shifts as shifts_svc
 from app.services import sync as cmd
 
@@ -45,3 +47,12 @@ def close_shift(shift_id: uuid.UUID, data: ShiftCloseIn, current: CurrentUser = 
 @router.post("/{shift_id}/transfer")
 def transfer_shift(shift_id: uuid.UUID, data: ShiftTransferIn, current: CurrentUser = Depends(require("shift.transfer")), db: Session = Depends(get_db)):
     return _resp(cmd.cmd_shift_transfer(db, current, shift_id, data))
+
+
+@router.post("/{shift_id}/reopen")
+def reopen_shift(shift_id: uuid.UUID, data: ShiftReopenIn, request: Request, current: CurrentUser = Depends(require("shift.reopen")), db: Session = Depends(get_db)):
+    """Continuar un turno terminado (sólo administrador). Devuelve el turno ya abierto."""
+    shift = shifts_svc.get_shift_or_404(db, shift_id)
+    out = shifts_svc.reopen_shift(db, current, shift, data.reason)
+    db.commit()
+    return out
