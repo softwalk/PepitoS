@@ -23,6 +23,7 @@ SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
     "evidence_retention_days": {"type": "int", "default": 180, "min": 1, "description": "Días que se conservan las evidencias (fotos) antes de purgarlas del storage"},
     "gps_retention_days": {"type": "int", "default": 90, "min": 1, "description": "Días que se conservan los gps_pings"},
     "daily_sales_target_default_cents": {"type": "int", "default": 234000, "min": 0, "description": "Meta diaria de ventas por punto (centavos) cuando el punto no tiene una propia"},
+    "shift_reopen_window_hours": {"type": "int", "default": 12, "min": 1, "max": 48, "description": "Horas tras el cierre en que un administrador aún puede continuar (reabrir) un turno terminado; además debe ser del día en curso"},
     "inventory_count_tolerance_units": {"type": "int", "default": 3, "min": 0, "description": "Diferencia (unidades) entre conteo y teórico a partir de la cual se abre caso de inventario"},
 }
 

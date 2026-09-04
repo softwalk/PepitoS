@@ -19,13 +19,13 @@ const summary: Summary = {
   points: [
     {
       point: { id: 'p1', name: 'Metro Insurgentes', lat: 19.42, lng: -99.16, zone_id: 'z' },
-      status: 'open', shift_id: 's1', operator: { id: 'u1', name: 'Operador Uno' }, opened_at: '2026-09-03T14:05:00Z', last_seen_at: '2026-09-03T15:00:00Z',
+      status: 'open', shift_id: 's1', shift_status: 'open', operator: { id: 'u1', name: 'Operador Uno' }, opened_at: '2026-09-03T14:05:00Z', last_seen_at: '2026-09-03T15:00:00Z',
       last_gps: { lat: 19.42, lng: -99.16, at: '2026-09-03T15:00:00Z', in_geofence: true }, battery_pct: 80, sales_cents: 120000, target_cents: 234000, tx: 30, ticket_cents: 4000,
       cash_status: 'pending', stock_risk: 'ok', open_cases: { urgent: 0, review: 1 }, planned_start: '2026-09-03T14:00:00Z',
     },
     {
       point: { id: 'p2', name: 'Parque México', lat: 19.41, lng: -99.17, zone_id: 'z' },
-      status: 'late', shift_id: null, operator: { id: 'u2', name: 'Operador Dos' }, opened_at: null, last_seen_at: null, last_gps: null, battery_pct: null,
+      status: 'late', shift_id: null, shift_status: null, operator: { id: 'u2', name: 'Operador Dos' }, opened_at: null, last_seen_at: null, last_gps: null, battery_pct: null,
       sales_cents: 0, target_cents: 234000, tx: 0, ticket_cents: 0, cash_status: 'pending', stock_risk: 'low', open_cases: { urgent: 1, review: 0 }, planned_start: '2026-09-03T14:00:00Z',
     },
   ],

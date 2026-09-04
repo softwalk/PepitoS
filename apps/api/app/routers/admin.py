@@ -3,14 +3,16 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
-from fastapi import APIRouter, Depends, Request
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session, object_session
 
 from app.core.db import get_db
 from app.core.deps import CurrentUser, client_ip, require
 from app.core.errors import ApiError
 from app.core.security import hash_password
-from app.core.timeutil import iso, local_dt, utcnow
+from app.core.timeutil import iso, local_dt, local_today, utcnow
 from app.models.catalog import Presentation, PriceItem, PriceVersion
 from app.models.ops import Shift
 from app.models.org import Assignment, Cart, Device, Point, User, Zone
@@ -63,15 +65,28 @@ def ser_cart(c: Cart) -> dict:
     return {"id": _u(c.id), "code": c.code, "description": c.description, "is_active": c.is_active}
 
 
-def ser_assignment(a: Assignment) -> dict:
-    # Último turno de la asignación (para "Continuar turno" desde el backoffice).
-    sess = object_session(a)
-    last = sess.query(Shift).filter(Shift.assignment_id == a.id).order_by(Shift.opened_at.desc()).first() if sess is not None else None
-    return {
+def ser_assignment(a: Assignment, last_shift: "Shift | None" = None) -> dict:
+    out = {
         "id": _u(a.id), "operator_id": _u(a.operator_id), "point_id": _u(a.point_id), "cart_id": _u(a.cart_id), "shift_date": a.shift_date.isoformat(),
         "planned_start": iso(a.planned_start), "planned_end": iso(a.planned_end), "status": a.status,
-        "shift_id": _u(last.id) if last else None, "shift_status": last.status if last else None,
     }
+    if last_shift is not None:
+        out["shift_id"], out["shift_status"] = _u(last_shift.id), last_shift.status
+    return out
+
+
+def last_shifts_by_assignment(db: Session, assignment_ids: list[uuid.UUID]) -> dict[uuid.UUID, "Shift"]:
+    """Último turno por asignación en UNA consulta (DISTINCT ON), para "Continuar turno" en el backoffice."""
+    if not assignment_ids:
+        return {}
+    rows = (
+        db.query(Shift)
+        .filter(Shift.assignment_id.in_(assignment_ids))
+        .distinct(Shift.assignment_id)
+        .order_by(Shift.assignment_id, Shift.opened_at.desc())
+        .all()
+    )
+    return {r.assignment_id: r for r in rows}
 
 
 def ser_presentation(p: Presentation) -> dict:
@@ -106,8 +121,23 @@ def _apply_patch(obj, data: dict) -> dict:
 
 def crud(name: str, model, ser: Callable[[Any], dict], create_schema, patch_schema, label: str, order_by, before_create=None, before_patch=None):
     @router.get(f"/{name}", name=f"list_{name}")
-    def _list(current: CurrentUser = Depends(require("admin.users", "people.read", "points.read")), db: Session = Depends(get_db)):
-        return [ser(o) for o in db.query(model).order_by(order_by).all()]
+    def _list(
+        current: CurrentUser = Depends(require("admin.users", "people.read", "points.read")),
+        db: Session = Depends(get_db),
+        date_from: date | None = None,
+        date_to: date | None = None,
+        limit: int = Query(500, ge=1, le=5000),
+    ):
+        q = db.query(model)
+        if model is Assignment:
+            # Por defecto: últimos 30 días + próximos 7 (la pantalla de admin no necesita el histórico completo).
+            today = local_today()
+            q = q.filter(Assignment.shift_date >= (date_from or today - timedelta(days=30)), Assignment.shift_date <= (date_to or today + timedelta(days=7)))
+        rows = q.order_by(order_by).limit(limit).all()
+        if model is Assignment:
+            last = last_shifts_by_assignment(db, [a.id for a in rows])
+            return [ser_assignment(a, last.get(a.id)) for a in rows]
+        return [ser(o) for o in rows]
 
     @router.post(f"/{name}", status_code=201, name=f"create_{name}")
     def _create(data: create_schema, request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):  # type: ignore[valid-type]

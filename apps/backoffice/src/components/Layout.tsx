@@ -40,6 +40,21 @@ export function Layout() {
   const loc = useLocation();
   const [drawer, setDrawer] = useState(false);
   useEffect(() => setDrawer(false), [loc.pathname]);
+  useEffect(() => {
+    if (!drawer) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [drawer]);
+  // En móvil (≤768 px) el sidebar cerrado no debe ser alcanzable por teclado ni por lectores de pantalla.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-width: 768px)');
+    if (!mq) return;
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
   if (!user) return null;
   const items = NAV.filter((n) => n.roles.includes(user.role));
   const mobileItems = user.role === 'supervisor' ? items.filter((n) => n.mobile) : items.slice(0, 4);
@@ -52,7 +67,7 @@ export function Layout() {
 
   return (
     <div className="shell">
-      <aside className={`sidebar ${drawer ? 'open' : ''}`}>
+      <aside id="sidebar" className={`sidebar ${drawer ? 'open' : ''}`} aria-hidden={isMobile && !drawer ? true : undefined} {...(isMobile && !drawer ? { inert: '' } : {})}>
         <div className="brand">
           <span className="brand-mark">P</span>
           <div>
@@ -100,7 +115,7 @@ export function Layout() {
       {drawer && <div className="drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden />}
       <div className="content">
         <header className="topbar">
-          <button type="button" className="btn btn-ghost icon-btn" aria-label="Menú" onClick={() => setDrawer((v) => !v)}>
+          <button type="button" className="btn btn-ghost icon-btn" aria-label="Menú" aria-expanded={drawer} aria-controls="sidebar" onClick={() => setDrawer((v) => !v)}>
             <Icon name="menu" />
           </button>
           <span className="brand-name">PEPITO OS</span>

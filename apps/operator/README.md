@@ -81,10 +81,9 @@ src/
     battery.ts · speech.ts · device.ts
   state/
     actions.ts         login, refreshSession, changePassword, abrir, vender, deshacer/cancelar, merma, ayuda, esperado, cerrar
-    store.tsx          contexto React que lee IndexedDB y se refresca con cada ACK
-  components/          Layout · Numpad · YesNo · PhotoStep (foto del puesto por muestreo; nunca bloquea)
+    store.tsx          contexto React que lee IndexedDB y se refresca con cada ACK; sin turno abierto local, re-consulta /v1/me/assignment al volver a la app (visibilitychange) y cada 60 s para adoptar un turno abierto/reabierto desde el backoffice
   screens/             Login · ChangePassword · Home · OpenShift · Sell · Help · CloseShift · Settings
-  components/          Layout (barra: punto, carrito, estado de sync, batería) · YesNo · Numpad
+  components/          Layout (barra: punto, carrito, tira de estado por sincronía, batería) · YesNo · Numpad · PhotoStep (foto del puesto por muestreo; nunca bloquea) · Icon
 test/                  vitest (fake-indexeddb)
 scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · smoke_refresh.py · reset-demo-op1.sql
 ```

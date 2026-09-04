@@ -50,6 +50,10 @@
 diferencia de caja (umbral → caso `review`; grave → caso `urgent` + `Approval`), `count_adjustment` por presentación (umbral → caso),
 `ShiftClosed`, `CashDifferenceDetected`; asignación pasa a `done`.
 
+## Flujo de reapertura (continuar un turno terminado)
+
+Sólo `admin` (`shift.reopen`). `POST /v1/shifts/{id}/reopen {reason}` exige: `status=closed`, turno abierto en el día local actual, cierre hace menos de `shift_reopen_window_hours` (parámetro B6, 12 h por defecto) y que ni el operador ni el carrito tengan otro turno abierto (la carrera contra una apertura simultánea la resuelven los índices únicos parciales → 409). Se reabre el mismo turno (caja, asistencia, asignación a `started`), se conserva íntegro el cierre anterior en `audit_log` (`shift.reopen`) y en el evento `ShiftReopened`, y los casos `cash_difference` / `inventory_inconsistent` y la aprobación de diferencia grave de ese cierre se marcan **superados** (caso `closed`, aprobación `cancelled`) porque el siguiente cierre vuelve a conciliar contra todas las ventas del turno. La PWA, cuando no tiene turno abierto local, re-consulta `/v1/me/assignment` al volver a primer plano y cada 60 s; al adoptar el turno arranca pings GPS, cachea el esperado y guarda las ventas previas del servidor (`server_sales`) para los contadores y el cierre sin red.
+
 ## Seguridad
 
 JWT HS256 12 h con `jti` revocable · dispositivo registrado y revocable (`401 DEVICE_REVOKED`) · bcrypt · RBAC por permiso en cada

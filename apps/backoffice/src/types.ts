@@ -49,6 +49,7 @@ export interface Case {
   rule_key: string | null;
   point: Ref | null;
   shift_id: string | null;
+  shift_status: 'open' | 'closed' | 'transferred' | null;
   opened_at: string;
   resolved_at: string | null;
   age_minutes: number;
@@ -94,6 +95,7 @@ export interface PointStatus {
   point: { id: string; name: string; lat: number; lng: number; zone_id: string | null };
   status: PointState;
   shift_id: string | null;
+  shift_status: 'open' | 'closed' | 'transferred' | null;
   operator: Ref | null;
   opened_at: string | null;
   last_seen_at: string | null;

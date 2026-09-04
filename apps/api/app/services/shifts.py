@@ -1,6 +1,6 @@
 """Turnos: abrir, esperado, cerrar, transferir. Asistencia y caja asociadas."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -8,14 +8,15 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.timeutil import iso, local_today, utcnow
-from app.models.cases import Approval, Rule
+from app.models.cases import Alert, Approval, Case, Rule
 from app.models.catalog import Presentation
 from app.models.ops import CashSession, ChecklistResult, GpsPing, Shift
 from app.models.org import Assignment, Attendance, Point, User
 from app.services import audit, events
 from app.services import evidence as evidence_svc
 from app.services.cases import open_case_if_new
-from app.services.settings import cash_thresholds
+from app.services import settings as settings_svc
+from app.services.settings import cash_thresholds, get_setting
 from app.services.cash import sales_summary
 from app.services.geo import in_geofence
 from app.services.inventory import add_movement, apply_count, balances_for_point, shift_units
@@ -315,24 +316,35 @@ def transfer_shift(db: Session, current, shift: Shift, data) -> dict:
     return {"closed_shift_id": str(shift.id), "new_shift_id": str(new_shift.id), "difference_cents": diff}
 
 
-def reopen_shift(db: Session, current, shift: Shift, reason: str) -> dict:
-    """Sólo administrador: vuelve a abrir un turno cerrado para que el operador continúe vendiendo y lo cierre de nuevo.
+def reopen_shift(db: Session, current, shift: Shift, reason: str, ip: str | None = None) -> dict:
+    """Sólo administrador: vuelve a abrir un turno cerrado HOY para que el operador continúe vendiendo y lo cierre de nuevo.
 
-    Conserva la historia (ventas, cierre anterior, casos y aprobaciones ya emitidos) y la registra en audit_log;
-    el próximo cierre vuelve a conciliar caja contra TODAS las ventas del turno.
+    - Conserva ventas, movimientos y el cierre anterior (queda íntegro en audit_log y en el evento ShiftReopened).
+    - Los casos de caja/inventario y la aprobación de diferencia grave generados por ese cierre se cierran/cancelan
+      como "superados": el siguiente cierre volverá a evaluar contra TODAS las ventas del turno.
+    - Sólo turnos abiertos en el día local actual: reabrir uno viejo dejaría al operador sin poder abrir el de hoy y
+      fuera del Control Tower (que filtra por día).
     """
     if shift.status != "closed":
-        raise ApiError("CONFLICT", "Sólo se puede continuar un turno cerrado")
-    if not reason or len(reason.strip()) < 5:
+        raise ApiError("CONFLICT", "Sólo se puede continuar un turno cerrado (no transferido ni abierto)")
+    reason = (reason or "").strip()
+    if len(reason) < 5:
         raise ApiError("VALIDATION", "Indica un motivo (mínimo 5 caracteres)")
+    at = utcnow()
+    if local_today(shift.opened_at) != local_today(at):
+        raise ApiError("CONFLICT", "Sólo se puede continuar un turno abierto hoy")
+    window_h = settings_svc.get_int(db, "shift_reopen_window_hours")
+    if shift.closed_at is not None and at - shift.closed_at > timedelta(hours=window_h):
+        raise ApiError("CONFLICT", f"El turno se cerró hace más de {window_h} h (parámetro shift_reopen_window_hours)")
     if db.query(Shift).filter(Shift.operator_id == shift.operator_id, Shift.status == "open").first():
         raise ApiError("SHIFT_ALREADY_OPEN", "El operador ya tiene otro turno abierto")
     if db.query(Shift).filter(Shift.cart_id == shift.cart_id, Shift.status == "open").first():
         raise ApiError("SHIFT_ALREADY_OPEN", "El carrito ya tiene otro turno abierto")
-    at = utcnow()
+
     before = {
         "closed_at": iso(shift.closed_at), "close_status": shift.close_status, "cash_expected_cents": shift.cash_expected_cents,
         "cash_counted_cents": shift.cash_counted_cents, "difference_cents": shift.difference_cents,
+        "product_diff": shift.product_diff, "close_gps": shift.close_gps,
     }
     shift.status = "open"
     shift.closed_at = None
@@ -340,13 +352,16 @@ def reopen_shift(db: Session, current, shift: Shift, reason: str) -> dict:
     shift.cash_expected_cents = None
     shift.cash_counted_cents = None
     shift.difference_cents = None
-    shift.product_diff = None
+    shift.product_diff = {}
     shift.close_gps = None
     shift.last_seen_at = at
     cs = db.query(CashSession).filter(CashSession.shift_id == shift.id).first()
     if cs is not None:
         cs.status = "open"
         cs.closed_at = None
+        cs.cash_sales_cents = 0
+        cs.digital_sales_cents = 0
+        cs.expected_cents = None
         cs.counted_cents = None
         cs.difference_cents = None
     att = db.query(Attendance).filter(Attendance.shift_id == shift.id).first()
@@ -356,11 +371,44 @@ def reopen_shift(db: Session, current, shift: Shift, reason: str) -> dict:
         a = db.get(Assignment, shift.assignment_id)
         if a is not None:
             a.status = "started"
+
+    # Casos y aprobaciones del cierre anterior: quedan superados (el nuevo cierre los volverá a evaluar).
+    note = f"Superado: turno reabierto por administrador ({reason})"
+    superseded_cases: list[str] = []
+    for case in db.query(Case).filter(Case.shift_id == shift.id, Case.rule_key.in_(["cash_difference", "inventory_inconsistent"]), Case.status.in_(["open", "in_progress"])).all():
+        case.status = "closed"
+        case.resolved_at = at
+        case.resolution = note
+        for alert in db.query(Alert).filter(Alert.case_id == case.id, Alert.status == "open").all():
+            alert.status = "resolved"
+            alert.resolved_at = at
+        audit.log(db, actor_id=current.id, action="case.update", entity="case", entity_id=case.id, before={"status": "open"}, after={"status": "closed"}, reason=note, ip=ip)
+        superseded_cases.append(str(case.id))
+    superseded_approvals: list[str] = []
+    for ap in db.query(Approval).filter(Approval.entity == "shift", Approval.entity_id == shift.id, Approval.status == "pending").all():
+        ap.status = "cancelled"
+        ap.decided_by = current.id
+        ap.decided_at = at
+        ap.decision_note = note
+        audit.log(db, actor_id=current.id, action="approval.cancel", entity="approval", entity_id=ap.id, before={"status": "pending"}, after={"status": "cancelled"}, reason=note, ip=ip)
+        superseded_approvals.append(str(ap.id))
+
+    try:
+        db.flush()
+    except IntegrityError as e:
+        db.rollback()
+        # Carrera con otra apertura/reapertura simultánea: índices únicos parciales uq_shifts_operator_open / uq_shifts_cart_open.
+        if "uq_shifts_" in str(e.orig):
+            raise ApiError("SHIFT_ALREADY_OPEN", "El operador o el carrito ya tienen otro turno abierto") from e
+        raise
     events.emit(
         db, "ShiftReopened", actor_id=current.id, point_id=shift.point_id, shift_id=shift.id, entity="shift", entity_id=shift.id,
-        payload={"reason": reason.strip(), "previous_close": before}, occurred_at=at,
+        payload={"reason": reason, "previous_close": before, "superseded_cases": superseded_cases, "superseded_approvals": superseded_approvals}, occurred_at=at,
     )
-    audit.log(db, actor_id=current.id, action="shift.reopen", entity="shift", entity_id=shift.id, before=before, after={"status": "open"}, reason=reason.strip())
+    audit.log(
+        db, actor_id=current.id, action="shift.reopen", entity="shift", entity_id=shift.id, before=before,
+        after={"status": "open", "superseded_cases": superseded_cases, "superseded_approvals": superseded_approvals}, reason=reason, ip=ip,
+    )
     db.flush()
     return serialize_shift(shift)
 

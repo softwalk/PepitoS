@@ -32,7 +32,10 @@ export default function Sell() {
 
   const presentations = (catalog?.presentations ?? []).filter((p) => p.price_cents != null).sort((a, b) => a.sort - b.sort);
   const active = sales.filter(countsAsSale);
-  const total = active.reduce((a, s) => a + s.total_cents, 0);
+  // Ventas previas que ya tiene el servidor (turno adoptado/reabierto) + las de este teléfono.
+  const prev = shift?.server_sales ?? null;
+  const count = active.length + (prev?.count ?? 0);
+  const total = active.reduce((a, s) => a + s.total_cents, 0) + (prev?.total_cents ?? 0);
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -199,7 +202,7 @@ export default function Sell() {
       <div className="counter" aria-live="polite">
         <div>
           <div className="muted">Ventas del turno</div>
-          <div className="n">{active.length}</div>
+          <div className="n">{count}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div className="muted">Total</div>
@@ -224,7 +227,7 @@ export default function Sell() {
         <button type="button" className={`cash ${method === 'cash' ? 'active' : ''}`} aria-pressed={method === 'cash'} onClick={() => setMethod('cash')}>
           <span aria-hidden>💵</span> Efectivo
         </button>
-        <button type="button" className={`qr method-toggle-seg ${method !== 'cash' ? 'active' : ''}`} aria-pressed={method !== 'cash'} onClick={() => setMethod('qr')}>
+        <button type="button" className={`qr ${method !== 'cash' ? 'active' : ''}`} aria-pressed={method !== 'cash'} onClick={() => setMethod('qr')}>
           <span aria-hidden>📱</span> QR / Tarjeta
         </button>
       </div>

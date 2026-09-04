@@ -43,6 +43,7 @@ export function ApprovalsPage() {
             <option value="pending">Pendientes</option>
             <option value="approved">Aprobadas</option>
             <option value="rejected">Rechazadas</option>
+            <option value="cancelled">Canceladas (turno reabierto)</option>
             <option value="">Todas</option>
           </select>
         }

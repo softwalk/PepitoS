@@ -254,6 +254,7 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-accent.small { background: var(--accent-dark); border-color: var(--accent-dark); } /* 12 px: 5.5:1 */
 .btn-accent:hover { background: var(--accent-dark); }
 .btn-danger { background: var(--red); border-color: var(--red); color: #fff; }
 .btn-success { background: var(--green); border-color: var(--green); color: #fff; }
@@ -296,7 +297,7 @@ textarea { min-height: 80px; resize: vertical; }
 .marker-pin.s-not_scheduled { background: #c3ccd6; }
 .marker-num { width: 26px; height: 26px; border-radius: 50%; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .marker-num.sev-urgent { background: var(--red); }
-.marker-num.sev-review { background: var(--amber-fill); }
+.marker-num.sev-review { background: var(--amber-fill); color: #1a1000; }
 .marker-num.sev-normal { background: var(--green); }
 .popup { font-size: 12px; line-height: 1.5; min-width: 180px; }
 .popup b { font-size: 13px; }

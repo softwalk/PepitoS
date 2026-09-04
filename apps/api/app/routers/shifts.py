@@ -1,14 +1,12 @@
 """Turnos: abrir, esperado, cerrar, transferir."""
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.deps import CurrentUser, require
-from fastapi import Request
-
+from app.core.deps import CurrentUser, client_ip, require
 from app.schemas.operator import ShiftCloseIn, ShiftOpenIn, ShiftReopenIn, ShiftTransferIn
 from app.services import shifts as shifts_svc
 from app.services import sync as cmd
@@ -53,6 +51,6 @@ def transfer_shift(shift_id: uuid.UUID, data: ShiftTransferIn, current: CurrentU
 def reopen_shift(shift_id: uuid.UUID, data: ShiftReopenIn, request: Request, current: CurrentUser = Depends(require("shift.reopen")), db: Session = Depends(get_db)):
     """Continuar un turno terminado (sólo administrador). Devuelve el turno ya abierto."""
     shift = shifts_svc.get_shift_or_404(db, shift_id)
-    out = shifts_svc.reopen_shift(db, current, shift, data.reason)
+    out = shifts_svc.reopen_shift(db, current, shift, data.reason, ip=client_ip(request))
     db.commit()
     return out

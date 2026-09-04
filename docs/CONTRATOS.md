@@ -59,7 +59,7 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 ### Operador
 | Método | Ruta | Body → Respuesta |
 |---|---|---|
-| GET | `/v1/me/assignment` | → `{assignment:{id, shift_date, planned_start, planned_end, point:{id,name,address,lat,lng,geofence_radius_m}, cart:{id,code}}|null, active_shift:{id, opened_at, status}|null, catalog:Catalog, config:OperatorConfig}` |
+| GET | `/v1/me/assignment` | → `{assignment:{id, shift_date, planned_start, planned_end, point:{id,name,address,lat,lng,geofence_radius_m}, cart:{id,code}}|null, active_shift:{id, opened_at, status, ready, exceptions}|null, catalog:Catalog, config:OperatorConfig}`. `active_shift` puede ser un turno **reabierto** por el administrador tras un cierre: la PWA lo adopta (GPS, esperado y ventas previas del servidor) |
 | POST | `/v1/shifts/open` | `{idempotency_key, assignment_id, opened_at, checklist:{cart_secure,battery_ok,product_ok,clean_ok,pos_ok:boolean}, gps:GPS|null, photos?:[{key,base64}]}` → `201 {shift_id, status:"open"|"open_with_exception", exceptions:[{code,message}], ready:boolean}` |
 | GET | `/v1/shifts/{id}/expected` | → `{sales_count, sales_total_cents, cash_expected_cents, digital_total_cents, product_expected:{presentation_id:qty}, waste_units}` |
 | POST | `/v1/shifts/{id}/close` | `{idempotency_key, closed_at, cash_counted_cents, product_counts:{presentation_id:qty}, checklist:{off_ok,clean_ok,secured_ok,stored_ok,charging_ok}, gps}` → `{shift_id, status:"reconciled"|"difference", cash_expected_cents, cash_counted_cents, difference_cents, product_diff:{presentation_id:int}, case_id|null}` |
@@ -108,6 +108,7 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | GET | `/v1/assets` · POST `/v1/maintenance/tickets` · PATCH `/v1/maintenance/tickets/{id}` |
 | POST | `/v1/lots/{id}/block` `{reason}` → `{affected_points:[...]}` |
 | CRUD | `/v1/admin/users`, `/v1/admin/points`, `/v1/admin/carts`, `/v1/admin/assignments`, `/v1/admin/presentations`, `/v1/admin/price-versions`, `/v1/admin/devices`, `/v1/admin/zones` |
+| GET | `/v1/admin/assignments?date_from&date_to&limit` | Por defecto últimos 30 días + próximos 7 (máx. 500). Cada fila incluye `shift_id` y `shift_status` del último turno (una sola consulta `DISTINCT ON`) para **Continuar turno** |
 | GET | `/v1/health` → `{status:"ok", db:"ok", version}` |
 
 `PointStatus = {point:{id,name,lat,lng,zone_id}, status:"open"|"closed"|"late"|"offline"|"not_scheduled", shift_id, operator:{id,name}|null, opened_at, last_seen_at, last_gps:{lat,lng,at,in_geofence}|null, battery_pct, sales_cents, target_cents, tx, ticket_cents, cash_status:"ok"|"difference"|"pending", stock_risk:"ok"|"low"|"critical", open_cases:{urgent,review}}`

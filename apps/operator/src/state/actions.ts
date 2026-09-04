@@ -159,7 +159,12 @@ export async function refreshAssignment(): Promise<AssignmentResponse> {
   await catalogStore.set(a.catalog, a.config);
   const local = await shiftStore.get();
   const pendingCmds = (await queue.counts()).pending;
-  if (a.active_shift && pendingCmds === 0 && (!local || local.status === 'closed')) {
+  if (a.active_shift && pendingCmds === 0 && local && local.server_id === a.active_shift.id && local.status === 'closed') {
+    // El administrador reabrió ESTE turno mientras aún se veía el resultado del cierre: conservar local_id y ventas locales.
+    await shiftStore.update({ status: 'open', close_result: null, ready: a.active_shift.ready ?? true, exceptions: a.active_shift.exceptions ?? [] });
+    startGpsPings(a.active_shift.id, await gpsIntervalSeconds());
+    void cacheExpected(a.active_shift.id);
+  } else if (a.active_shift && pendingCmds === 0 && (!local || local.status === 'closed')) {
     await shiftStore.set({
       local_id: a.active_shift.id,
       server_id: a.active_shift.id,
@@ -170,10 +175,14 @@ export async function refreshAssignment(): Promise<AssignmentResponse> {
       status: 'open',
       ready: a.active_shift.ready ?? true,
       exceptions: a.active_shift.exceptions ?? [],
+      server_sales: null,
       last_expected: null,
       close_result: null,
     });
     await salesLocalStore.clearShift(a.active_shift.id);
+    // Turno adoptado (abierto en otro teléfono o reabierto por el administrador): pings GPS y esperado como en una apertura normal.
+    startGpsPings(a.active_shift.id, await gpsIntervalSeconds());
+    void cacheExpected(a.active_shift.id, { withServerSales: true });
   } else if (local && local.server_id && !a.active_shift && pendingCmds === 0 && (local.status === 'open' || local.status === 'open_pending')) {
     // El servidor ya no tiene el turno abierto (lo cerró un supervisor, transferencia...): limpiar localmente.
     await clearShiftLocal(local);
@@ -236,10 +245,13 @@ export async function openShift(checklist: OpenChecklist, gps: GPS | null, photo
   return st;
 }
 
-async function cacheExpected(serverId: string) {
+async function cacheExpected(serverId: string, opts: { withServerSales?: boolean } = {}) {
   try {
     const e = await api.shiftExpected(serverId);
-    await shiftStore.update({ last_expected: { fetched_at: new Date().toISOString(), cash_expected_cents: e.cash_expected_cents, product_expected: e.product_expected } });
+    await shiftStore.update({
+      last_expected: { fetched_at: new Date().toISOString(), cash_expected_cents: e.cash_expected_cents, product_expected: e.product_expected },
+      ...(opts.withServerSales ? { server_sales: { count: e.sales_count, total_cents: e.sales_total_cents, cash_expected_cents: e.cash_expected_cents, digital_total_cents: e.digital_total_cents } } : {}),
+    });
   } catch {
     /* sin red */
   }
@@ -398,13 +410,15 @@ export async function getExpected(): Promise<ExpectedView> {
       if (!(e instanceof NetworkError) && !(e instanceof ApiError && e.status >= 500)) throw e;
     }
   }
+  // Sin red: lo local + lo que el servidor ya tenía cuando se adoptó el turno (reabierto por el administrador).
   const local = computeLocalExpected(sales, waste);
+  const base = st.server_sales;
   return {
     source: 'local',
-    cash_expected_cents: local.cash_expected_cents,
-    sales_count: local.sales_count,
-    sales_total_cents: local.sales_total_cents,
-    digital_total_cents: local.digital_total_cents,
+    cash_expected_cents: local.cash_expected_cents + (base?.cash_expected_cents ?? 0),
+    sales_count: local.sales_count + (base?.count ?? 0),
+    sales_total_cents: local.sales_total_cents + (base?.total_cents ?? 0),
+    digital_total_cents: local.digital_total_cents + (base?.digital_total_cents ?? 0),
     product_expected: computeLocalProductExpected(st.last_expected, sales, waste),
   };
 }

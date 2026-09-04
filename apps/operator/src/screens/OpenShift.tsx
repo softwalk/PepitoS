@@ -118,9 +118,9 @@ export default function OpenShift() {
         {gps === 'loading' ? 'Buscando ubicación…' : gps ? 'Ubicación lista' : 'Sin ubicación (continúa igual)'}
       </div>
       <p className="h2">Revisa y marca Sí o No:</p>
-      <div className="progress-line" aria-hidden>
+      <div className="progress-line" role="progressbar" aria-label="Checklist de apertura" aria-valuemin={0} aria-valuemax={ITEMS.length} aria-valuenow={answered}>
         <span>{answered}/{ITEMS.length}</span>
-        <div className="bar">
+        <div className="bar" aria-hidden>
           <div style={{ width: `${(answered / ITEMS.length) * 100}%` }} />
         </div>
         <span>{complete ? 'Listo' : 'Faltan ' + (ITEMS.length - answered)}</span>

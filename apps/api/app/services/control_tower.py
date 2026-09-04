@@ -118,6 +118,7 @@ def point_statuses(db: Session, day: date, zone_id: uuid.UUID | None = None, now
                 "point": {"id": str(p.id), "name": p.name, "lat": p.lat, "lng": p.lng, "zone_id": str(p.zone_id) if p.zone_id else None},
                 "status": status,
                 "shift_id": str(s.id) if s else None,
+                "shift_status": s.status if s else None,
                 "operator": operator,
                 "opened_at": iso(s.opened_at) if s else None,
                 "last_seen_at": iso(s.last_seen_at) if s else None,

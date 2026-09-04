@@ -15,7 +15,8 @@ function ShiftCard() {
   const a = assignment?.assignment;
   if (open && shift) {
     const active = sales.filter(countsAsSale);
-    const total = active.reduce((s, x) => s + x.total_cents, 0);
+    const count = active.length + (shift.server_sales?.count ?? 0);
+    const total = active.reduce((s, x) => s + x.total_cents, 0) + (shift.server_sales?.total_cents ?? 0);
     const pending = shift.status === 'open_pending';
     return (
       <div className={`shift-card ${pending ? 'is-pending' : 'is-open'}`} role="status">
@@ -29,7 +30,7 @@ function ShiftCard() {
         <div className="stat">
           <b>{money(total)}</b>
           <span>
-            {active.length} {active.length === 1 ? 'venta' : 'ventas'}
+            {count} {count === 1 ? 'venta' : 'ventas'}
           </span>
         </div>
       </div>

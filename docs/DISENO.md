@@ -27,10 +27,11 @@ Regla de color: **un color = un significado**. Verde = abierto/OK/efectivo, ámb
 
 ## Backoffice
 
-- **Sidebar oscuro** (`#14213D`) con navegación agrupada por intención: Monitoreo → Campo → Negocio → Sistema. Activo = acento naranja en el borde. En móvil es un *drawer* (botón ☰) y además hay barra inferior de 4 accesos.
+- **Sidebar oscuro** (`#14213D`) con navegación agrupada por intención: Monitoreo → Campo → Negocio → Sistema. Activo = acento naranja en el borde. En móvil es un *drawer* (botón ☰, cierra con Escape, `inert` cuando está oculto) y además hay barra inferior con 4 accesos (supervisor: los marcados `mobile`; otros roles: los 4 primeros).
 - **KPIs**: 6 en una fila a ≥ 1200 px; barra lateral de color por semáforo; excepciones abiertas como tres contadores clicables.
 - **Tablas**: encabezado sticky, hover, numéricos alineados a la derecha, acciones como botones pequeños (`.row-actions`).
 - **Iconos**: SVG inline en `components/icons.tsx` (`<Icon name="flag" />`), heredan `currentColor`.
+- Texto blanco sobre naranja sólo en tamaño grande; en 12–14 px usar `--accent-dark`/`--brand-dark` o una cápsula oscura (`.sale-btn .btn-sub`). Ámbar sólido siempre con texto oscuro.
 - Un solo botón naranja por pantalla (la acción que cambia el estado del sistema, p. ej. *Ejecutar reglas ahora*); el resto en `--primary` o neutro.
 
 ## Verificación

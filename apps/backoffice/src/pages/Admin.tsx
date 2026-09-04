@@ -414,7 +414,7 @@ export function AdminPage() {
             { key: 'point_id', label: 'Punto', type: 'select', required: true, options: (points.data ?? []).filter((p) => p.is_active).map((p) => ({ value: p.id, label: p.name })) },
             { key: 'cart_id', label: 'Carrito', type: 'select', required: true, options: (carts.data ?? []).filter((c) => c.is_active).map((c) => ({ value: c.id, label: c.code })) },
             { key: 'shift_date', label: 'Fecha', type: 'date', required: true, createOnly: true },
-            { key: 'status', label: 'Estado', type: 'select', options: ['planned', 'open', 'closed', 'absent', 'cancelled'].map((s) => ({ value: s, label: s })) },
+            { key: 'status', label: 'Estado', type: 'select', options: ['planned', 'started', 'done', 'absent'].map((s) => ({ value: s, label: s })) },
           ]}
           columns={[
             { h: 'Fecha', r: (a) => <b>{a.shift_date}</b> },

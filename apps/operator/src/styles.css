@@ -477,22 +477,6 @@ a.pill {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
-.screen-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.screen-head .back {
-  width: var(--tap);
-  height: var(--tap);
-  border-radius: 50%;
-  background: var(--card);
-  border: 1px solid var(--line);
-  display: grid;
-  place-items: center;
-  font-size: 1.3em;
-  flex: none;
-}
 
 /* --- checklist sí/no --- */
 .check-item {
@@ -710,9 +694,15 @@ a.pill {
   text-align: right;
 }
 .sale-btn .btn-sub {
-  text-align: right;
+  justify-self: end;
   font-size: 0.75em;
-  margin-top: 4px;
+  font-weight: 800;
+  margin-top: 6px;
+  opacity: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.3); /* oscurece el fondo: blanco ≥ 6:1 sobre naranja/azul */
+  border-radius: 999px;
+  padding: 2px 10px;
 }
 .sale-btn:disabled {
   opacity: 0.45;
@@ -730,15 +720,6 @@ a.pill {
 }
 .grid3 .sale-btn .p {
   font-size: 1em;
-}
-.method-toggle {
-  border: 3px solid var(--blue);
-  color: var(--blue);
-  background: var(--card);
-}
-.method-toggle.active {
-  background: var(--blue);
-  color: #fff;
 }
 .toast {
   position: fixed;
@@ -1171,8 +1152,7 @@ textarea {
   width: auto;
   max-width: 64px;
 }
-.help-card .icon-img,
-.cards button .icon-img {
+.help-card .icon-img {
   height: 64px;
   width: auto;
   max-width: 110px;

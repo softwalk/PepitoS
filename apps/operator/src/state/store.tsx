@@ -119,6 +119,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (refreshing || !navigator.onLine) return;
       const sess = await sessionStore.get();
       if (!sess || sess.must_change_password) return;
+      // Sólo cuando no hay turno abierto en el teléfono: no re-descargar catálogo/config a mitad de una venta.
+      const st = await shiftStore.get();
+      if (st && st.status !== 'closed') return;
       refreshing = true;
       try {
         await refreshAssignment();
@@ -133,10 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === 'visible') void refreshFromServer();
     };
     document.addEventListener('visibilitychange', onVisible);
-    const poll = setInterval(async () => {
-      const st = await shiftStore.get();
-      if (!st || st.status === 'closed') void refreshFromServer();
-    }, 60_000);
+    const poll = setInterval(() => void refreshFromServer(), 60_000);
     const unsubSync = subscribeSync((sync) => setState((s) => ({ ...s, sync })));
     const unsubDomain = subscribeDomain(() => void reload());
     const unsubBattery = watchBattery((battery) => setState((s) => ({ ...s, battery })));

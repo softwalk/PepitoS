@@ -55,6 +55,9 @@ export interface ShiftStateRecord {
   status: ShiftLocalStatus;
   ready: boolean;
   exceptions: ShiftException[];
+  /** Ventas que el servidor ya tenía cuando este teléfono adoptó el turno (p. ej. turno reabierto por el administrador
+   *  tras un cierre): no están en sales_local, así que se suman a los contadores en pantalla. */
+  server_sales?: { count: number; total_cents: number; cash_expected_cents: number; digital_total_cents: number } | null;
   /** Último "esperado" conocido del servidor (para cierre offline). */
   last_expected?: { fetched_at: string; cash_expected_cents: number; product_expected: Record<string, number> } | null;
   close_result?: {
