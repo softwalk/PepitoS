@@ -42,7 +42,7 @@ function SettingRow({ s, canEdit, onSaved }: { s: Setting; canEdit: boolean; onS
   const toast = useToast();
   const [raw, setRaw] = useState(toInput(s));
   const [busy, setBusy] = useState(false);
-  useEffect(() => setRaw(toInput(s)), [s]);
+  useEffect(() => setRaw(toInput(s)), [s.key, s.value]);
   const parsed = parseSettingValue(s.type, raw);
   const dirty = raw !== toInput(s);
   const invalid = parsed === undefined;
