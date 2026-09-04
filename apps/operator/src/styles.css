@@ -422,6 +422,52 @@ a.pill {
   color: var(--muted);
 }
 
+/* --- ranking del vendedor --- */
+.rank-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-1);
+}
+.rank-title {
+  font-weight: 800;
+  font-size: 0.9em;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+.rank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.rank-cell {
+  text-align: center;
+  background: var(--bg-2);
+  border-radius: var(--r-md);
+  padding: 8px 4px;
+}
+.rank-label {
+  font-size: 0.7em;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rank-pos {
+  font-size: 1.5em;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.rank-pos.is-top {
+  color: var(--brand-dark);
+}
+.rank-total {
+  font-size: 0.75em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 /* --- tarjetas y textos --- */
 .card {
   background: var(--card);

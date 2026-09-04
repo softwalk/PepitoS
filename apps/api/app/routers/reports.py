@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.errors import ApiError
 from app.core.deps import CurrentUser, require
 from app.core.timeutil import iso, local_day_bounds, parse_date
 from sqlalchemy import func, select
@@ -33,7 +34,7 @@ def daily(date: str | None = None, current: CurrentUser = Depends(require("repor
         units = summ["units_sold"]
         stale = int(db.execute(select(func.count(Sale.id)).where(Sale.shift_id == s.id, Sale.price_version_stale.is_(True))).scalar_one())
         rows.append({
-            "point": {"id": str(s.point.id), "name": s.point.name},
+            "point": {"id": str(s.point.id), "name": s.point.display_name},
             "shift_id": str(s.id),
             "operator": {"id": str(s.operator.id), "name": s.operator.name},
             "opened_at": iso(s.opened_at), "closed_at": iso(s.closed_at),
@@ -49,6 +50,17 @@ def daily(date: str | None = None, current: CurrentUser = Depends(require("repor
     return {"date": day.isoformat(), "rows": rows, "totals": totals}
 
 
+@router.get("/people/ranking")
+def people_ranking(period: str = "day", current: CurrentUser = Depends(require("people.read", "supervisor.read", "reports.read")), db: Session = Depends(get_db)):
+    """Ranking de vendedores por ventas (1 = mejor). `period`: day | month | year. El supervisor sólo ve su zona."""
+    from app.services.ranking import PERIODS, leaderboard
+
+    if period not in PERIODS:
+        raise ApiError("VALIDATION", "period debe ser day, month o year")
+    zone = current.zone_id if current.role == "supervisor" else None
+    return {"period": period, "rows": leaderboard(db, period, zone_id=zone)}
+
+
 @router.get("/people/attendance")
 def attendance(date: str | None = None, current: CurrentUser = Depends(require("people.read", "supervisor.read")), db: Session = Depends(get_db)):
     day = parse_date(date)
@@ -61,7 +73,7 @@ def attendance(date: str | None = None, current: CurrentUser = Depends(require("
         r = att.get(a.id)
         rows.append({
             "assignment_id": str(a.id), "operator": {"id": str(a.operator.id), "name": a.operator.name},
-            "point": {"id": str(a.point.id), "name": a.point.name}, "planned_start": iso(a.planned_start), "planned_end": iso(a.planned_end),
+            "point": {"id": str(a.point.id), "name": a.point.display_name}, "planned_start": iso(a.planned_start), "planned_end": iso(a.planned_end),
             "check_in_at": iso(r.check_in_at) if r else None, "check_out_at": iso(r.check_out_at) if r else None,
             "late_minutes": r.late_minutes if r else None, "status": r.status if r else ("absent" if a.status == "absent" else "pending"),
         })

@@ -270,7 +270,7 @@ export function AdminPage() {
   const zoneOpts = useMemo(() => (zones.data ?? []).map((z) => ({ value: z.id, label: z.name })), [zones.data]);
   const zoneName = (id: string | null) => zones.data?.find((z) => z.id === id)?.name ?? '—';
   const userName = (id: string | null) => users.data?.find((u) => u.id === id)?.name ?? '—';
-  const pointName = (id: string) => points.data?.find((p) => p.id === id)?.name ?? id.slice(0, 8);
+  const pointName = (id: string) => { const p = points.data?.find((x) => x.id === id); return p ? p.display_name ?? p.name : id.slice(0, 8); };
   const cartCode = (id: string) => carts.data?.find((c) => c.id === id)?.code ?? id.slice(0, 8);
   const operators = (users.data ?? []).filter((u) => u.role === 'operator' && u.is_active);
 
@@ -395,8 +395,8 @@ export function AdminPage() {
             { h: '#', r: (p) => (p.meta?.ranking ? <span className="mono">{p.meta.ranking}</span> : <span className="muted">—</span>) },
             { h: 'Punto', r: (p) => (
               <>
-                <b>{p.name}</b>
-                {p.meta?.node_type && <div className="muted small">{p.meta.node_type}{p.meta.score ? ` · score ${p.meta.score}` : ''}</div>}
+                <b>{p.display_name ?? p.name}</b>
+                {p.meta?.node_type && <div className="muted small">{p.meta.node_type}{p.score != null ? ` · score estratégico ${p.score}` : ''}</div>}
               </>
             ) },
             { h: 'Alcaldía / zona', r: (p) => zoneName(p.zone_id) },

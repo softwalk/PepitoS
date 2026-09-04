@@ -116,7 +116,7 @@ def block_lot(lot_id: uuid.UUID, data: LotBlockIn, request: Request, current: Cu
     points = []
     for (point_id, pres_id), qty in affected.items():
         p = db.get(Point, point_id)
-        points.append({"point_id": str(point_id), "point_name": p.name if p else None, "presentation_id": str(pres_id), "received_units": qty})
+        points.append({"point_id": str(point_id), "point_name": p.display_name if p else None, "presentation_id": str(pres_id), "received_units": qty})
         # Movimiento "blocked": retira del balance las unidades recibidas de ese lote (política MVP: retiro completo).
         add_movement(db, point_id=point_id, presentation_id=pres_id, qty=-qty, movement_type="blocked", lot_id=lot.id, actor_id=current.id, ref_entity="lot", ref_id=lot.id, occurred_at=now, note=f"Lote bloqueado: {data.reason}")
     events.emit(db, "LotBlocked", actor_id=current.id, entity="lot", entity_id=lot.id, payload={"reason": data.reason, "affected_points": points})

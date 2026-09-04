@@ -26,6 +26,14 @@ class User(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Ranking de ventas del vendedor (1 = mejor) por día, mes y año locales; lo recalcula el motor cada corrida y cada cierre.
+    sales_rank_day: Mapped[int | None] = mapped_column(Integer)
+    sales_rank_month: Mapped[int | None] = mapped_column(Integer)
+    sales_rank_year: Mapped[int | None] = mapped_column(Integer)
+    sales_day_cents: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    sales_month_cents: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    sales_year_cents: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    sales_rank_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     zone: Mapped["Zone | None"] = relationship()
 
@@ -102,6 +110,20 @@ class Point(UUIDMixin, TimestampMixin, Base):
     meta: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     zone: Mapped["Zone | None"] = relationship()
+
+    @property
+    def score(self) -> int | None:
+        """Score estratégico (/100) del catálogo de ubicaciones, si el punto proviene de él."""
+        v = (self.meta or {}).get("score")
+        try:
+            return int(round(float(v))) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def display_name(self) -> str:
+        """Nombre que se muestra en todo el sistema: «Nombre - Score» cuando hay score estratégico."""
+        return f"{self.name} - {self.score}" if self.score is not None else self.name
 
 
 class Cart(UUIDMixin, TimestampMixin, Base):

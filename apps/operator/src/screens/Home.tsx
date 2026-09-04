@@ -77,6 +77,32 @@ function ShiftCard() {
   );
 }
 
+/** Lugar del vendedor por ventas (día / mes / año), calculado por el servidor. */
+function RankingCard() {
+  const { assignment } = useApp();
+  const r = assignment?.ranking;
+  if (!r || (r.day.rank == null && r.month.rank == null && r.year.rank == null)) return null;
+  const cell = (label: string, p: { rank: number | null; total_cents: number }) => (
+    <div className="rank-cell">
+      <div className="rank-label">{label}</div>
+      <div className={`rank-pos ${p.rank === 1 ? 'is-top' : ''}`}>{p.rank == null ? '—' : `#${p.rank}`}</div>
+      <div className="rank-total">{money(p.total_cents)}</div>
+    </div>
+  );
+  return (
+    <div className="rank-card" role="status" aria-label="Tu ranking de ventas" data-testid="ranking-card">
+      <div className="rank-title">
+        <span aria-hidden>🏆</span> Tu lugar en ventas{r.of ? ` (de ${r.of})` : ''}
+      </div>
+      <div className="rank-grid">
+        {cell('Hoy', r.day)}
+        {cell('Mes', r.month)}
+        {cell('Año', r.year)}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const nav = useNavigate();
   const { shift, assignment } = useApp();
@@ -109,6 +135,7 @@ export default function Home() {
   return (
     <>
       <ShiftCard />
+      <RankingCard />
       <div className="home-grid">
         {open ? sellBtn : openBtn}
         <div className="btn-row">

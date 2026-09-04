@@ -274,6 +274,10 @@ def close_shift(db: Session, current, shift: Shift, data) -> dict:
         occurred_at=closed_at,
     )
     case_id = cash_case_id or inv_case_id
+    # El cierre consolida las ventas del turno: refrescar el ranking de vendedores.
+    from app.services.ranking import recompute_rankings
+
+    recompute_rankings(db, closed_at)
     return {
         "shift_id": str(shift.id),
         "status": shift.close_status,

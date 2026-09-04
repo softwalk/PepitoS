@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { api, qs } from '../api/client';
 import { useFetch } from '../lib/useFetch';
 import { Badge, Card, Empty, Loading, PageTitle, StatusBadge } from '../components/ui';
-import type { AttendanceRow } from '../types';
-import { fmtTime, todayLocalISO } from '../lib/format';
+import type { AttendanceRow, RankingRow } from '../types';
+import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 
 const ATT_LABEL: Record<string, string> = { present: 'Presente', late: 'Tarde', absent: 'Ausente', pending: 'Pendiente', closed: 'Terminó', on_time: 'A tiempo' };
 
@@ -13,6 +13,8 @@ export function PeoplePage() {
   const rows = data?.rows ?? [];
   const count = (s: string) => rows.filter((r) => r.status === s).length;
   const late = rows.filter((r) => (r.late_minutes ?? 0) > 0).length;
+  const [period, setPeriod] = useState<'day' | 'month' | 'year'>('day');
+  const ranking = useFetch<{ period: string; rows: RankingRow[] }>(() => api.get(`/v1/people/ranking${qs({ period })}`), [period], { every: 60_000 });
   return (
     <div>
       <PageTitle title="Personas · asistencia" subtitle="Check-in/out por asignación, puntualidad y ausencias." actions={<input type="date" value={date} onChange={(e) => setDate(e.target.value)} />} />
@@ -80,6 +82,56 @@ export function PeoplePage() {
           </Card>
         </>
       )}
+      <Card
+        title="Ranking de vendedores"
+        actions={
+          <div className="tabs" style={{ margin: 0, borderBottom: 0 }}>
+            {(['day', 'month', 'year'] as const).map((p) => (
+              <button key={p} type="button" className={period === p ? 'active' : ''} onClick={() => setPeriod(p)}>
+                {p === 'day' ? 'Hoy' : p === 'month' ? 'Mes' : 'Año'}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {ranking.loading && !ranking.data && <Loading />}
+        {ranking.data && ranking.data.rows.length === 0 && <Empty text="Sin operadores activos" />}
+        {ranking.data && ranking.data.rows.length > 0 && (
+          <div className="table-wrap">
+            <table className="table compact" data-testid="ranking-table">
+              <thead>
+                <tr>
+                  <th className="num">#</th>
+                  <th>Vendedor</th>
+                  <th className="num">Ventas ({period === 'day' ? 'hoy' : period === 'month' ? 'mes' : 'año'})</th>
+                  <th className="num">Hoy</th>
+                  <th className="num">Mes</th>
+                  <th className="num">Año</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.data.rows.map((r) => (
+                  <tr key={r.operator.id}>
+                    <td className="num">
+                      <b>{r.rank == null ? '—' : `#${r.rank}`}</b> {r.rank === 1 && <span aria-hidden>🏆</span>}
+                    </td>
+                    <td>
+                      {r.operator.name} <span className="muted small">{r.operator.username}</span>
+                    </td>
+                    <td className="num">
+                      <b>{money(r.total_cents, { decimals: 0 })}</b>
+                    </td>
+                    <td className="num">{r.ranking.day.rank == null ? '—' : `#${r.ranking.day.rank}`}</td>
+                    <td className="num">{r.ranking.month.rank == null ? '—' : `#${r.ranking.month.rank}`}</td>
+                    <td className="num">{r.ranking.year.rank == null ? '—' : `#${r.ranking.year.rank}`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="updated">Calculado por el servidor cada 5 min y en cada cierre{ranking.data.rows[0]?.ranking.computed_at ? ` · último: ${fmtDateTime(ranking.data.rows[0].ranking.computed_at)}` : ''}. Empates comparten lugar.</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

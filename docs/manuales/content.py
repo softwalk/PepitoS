@@ -45,6 +45,7 @@ OP_DETAIL = """
 <p>Si el administrador te restableció la contraseña, la app te pedirá cambiarla antes de seguir: contraseña actual, nueva (mínimo 8 caracteres) y repetirla → <span class="ui p">GUARDAR CONTRASEÑA</span>.</p>
 
 <h3 id="op-home">Inicio</h3>
+<p>Debajo del estado verás <b>🏆 Tu lugar en ventas (de N)</b> con tu posición <b>Hoy / Mes / Año</b> y lo vendido en cada periodo (#1 = el que más ha vendido; empates comparten lugar). Lo calcula el servidor cada 5 minutos y en cada cierre.</p>
 <p>Una tarjeta te dice en qué estás: <b>Puesto cerrado</b> (con tu horario), <b>Puesto abierto</b> (desde qué hora, cuántas ventas y cuánto llevas), <b>Abierto, pendiente de enviar</b> (abriste sin señal), <b>Turno de hoy terminado</b> o <b>No tienes punto asignado hoy</b>. Debajo, el botón grande es la acción que toca ahora; los botones apagados explican por qué (<i>"Abre el puesto primero"</i>, <i>"Turno terminado"</i>, <i>"Sin asignación"</i>).</p>
 
 <h3 id="op-abrir">Abrir puesto</h3>
@@ -199,7 +200,7 @@ SUP_DETAIL = """
 <ul>
 <li><b>Ventas</b> (reporte diario): KPIs de ventas, transacciones, ticket, diferencia de caja, merma y precio vencido; gráfica por punto; tabla por turno con efectivo esperado vs contado y estado del cierre.</li>
 <li><b>Inventario</b>: balance por punto y presentación. Rojo = por debajo del mínimo (10 u), ámbar = menos del doble (20 u). No puedes bloquear lotes (eso es de Operaciones).</li>
-<li><b>Personas</b>: check-in/out por asignación, retraso (rojo &gt; 20 min), estados Presente / Tarde / Ausente / Pendiente / Terminó.</li>
+<li><b>Personas</b>: check-in/out por asignación, retraso (rojo &gt; 20 min), estados Presente / Tarde / Ausente / Pendiente / Terminó, y la tarjeta <b>Ranking de vendedores</b> (Hoy / Mes / Año) de tu zona.</li>
 </ul>
 """ + fig(semaforo("Semáforos que verás en Ventas e Inventario", [("Ticket promedio", [("< $36", RED), ("$36 – $38.99", AMBER), ("≥ $39", GREEN)]), ("Transacciones por turno", [("< 45", RED), ("45 – 59", AMBER), ("≥ 60", GREEN)]), ("Merma (% de unidades)", [("≤ 2 %", GREEN), ("2 – 4 %", AMBER), ("> 4 %", RED)]), ("Stock por presentación", [("< 10 u", RED), ("10 – 19 u", AMBER), ("≥ 20 u", GREEN)])]), "Umbrales del PRD §15. El administrador puede ajustar los de caja e inventario en Parámetros.")
 
@@ -310,6 +311,10 @@ OPS_DETAIL = """
 
 <h3 id="ops-inv">Inventario y lotes</h3>
 <p>Balance por punto y presentación reconstruido desde movimientos (recepciones, ventas, merma, conteos, transferencias). Muestra <i>(teórico N)</i> cuando el conteo difiere. <b>Lotes</b>: <span class="ui r">Bloquear</span> abre un modal con motivo obligatorio; retira del balance de cada punto las unidades recibidas de ese lote y evita nuevas entregas. Toast <i>"Lote L-2026-001 bloqueado. 3 punto(s) afectado(s)."</i></p>
+
+<h3 id="ops-personas">Personas y ranking de vendedores</h3>
+<p>Asistencia del día y la tarjeta <b>Ranking de vendedores</b> con pestañas Hoy / Mes / Año: posición (🏆 al #1), ventas del periodo y las tres posiciones de cada operador. El ranking se guarda en la ficha del vendedor y se recalcula cada 5 minutos y en cada cierre de turno; el operador ve el suyo en su app.</p>
+<p>Los puntos se muestran en todo el sistema como <b>«Nombre - Score»</b> (score estratégico /100 del catálogo de ubicaciones), por ejemplo <i>Metro Tláhuac – terminal y zona comercial - 96</i>; los puntos dados de alta a mano sin score se muestran sólo con su nombre.</p>
 
 <h3 id="ops-activos">Activos y mantenimiento</h3>
 <p>Tabla de activos (batería cada 30 d, cargador 90 d, POS 180 d en el seed) con <span class="badge b-red">VENCIDO</span> cuando pasa el próximo preventivo, y <span class="ui">+ Ticket</span>. Tickets con Título, Descripción, Severidad, Tipo (Correctivo / Preventivo) y ciclo <span class="ui">Iniciar</span> → <span class="ui">Resolver</span> (con texto de resolución) → <span class="ui">Cerrar</span>.</p>
@@ -481,6 +486,7 @@ ADM_DETAIL = """
 <ul>
 <li><b>Zonas</b>: nombre y activa; muestra cuántos supervisores y puntos tiene. El supervisor sólo ve su zona.</li>
 <li><b>Puntos</b>: nombre, dirección, latitud/longitud, <b>geocerca (m)</b> (radio para "En geocerca / Fuera" y tolerancia de apertura mientras el punto no esté verificado), zona, horario, meta diaria ($) y de transacciones, activo y <b>coordenadas verificadas en campo</b>. Sólo los puntos <b>activos</b> se pueden asignar a carritos.</li>
+<li><b>Nombre mostrado</b>: en Control Tower, casos, ventas, inventario, la app del operador y los manuales, cada punto aparece como <b>«Nombre - Score»</b> (score estratégico del catálogo). En el formulario editas sólo el nombre; el score viene de la ficha.</li>
 <li><b>Catálogo de puntos autorizados</b>: los 100 lugares de <i>Pepito · 100 mejores ubicaciones CDMX</i> vienen precargados (columna <b>#</b> con el ranking, tipo de nodo y score; botón <span class="ui">Ficha</span> con afluencia, riesgo, estrategia de resguardo y fuente). Entran con coordenadas <b>aproximadas</b> (badge <span class="badge b-amber">Por validar · tolerancia 150 m</span>). <span class="ui p">Validar GPS</span> pide las coordenadas reales del lugar exacto del carrito y las marca verificadas (badge <span class="badge b-green">Verificado · apertura ≤ 50 m</span>); desde ese momento aplica la regla estricta. <span class="ui">Reimportar catálogo</span> vuelve a cargar la ficha sin tocar coordenadas ya verificadas. Zona = alcaldía (se crean solas).</li>
 <li><b>Carritos</b>: código (C-001…) y descripción. Un carrito sólo puede tener un turno abierto a la vez.</li>
 <li><b>Asignaciones</b>: operador + punto + carrito + fecha (una por operador y día). Estado <code>planned</code> → <code>started</code> (al abrir) → <code>done</code> (al cerrar) o <code>absent</code>. Columna <b>Turno</b> con el estado del último turno y botón <span class="ui p">Continuar turno</span> si está cerrado.</li>

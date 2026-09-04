@@ -115,7 +115,7 @@ def point_statuses(db: Session, day: date, zone_id: uuid.UUID | None = None, now
         pc = cases.get(p.id, {})
         out.append(
             {
-                "point": {"id": str(p.id), "name": p.name, "lat": p.lat, "lng": p.lng, "zone_id": str(p.zone_id) if p.zone_id else None},
+                "point": {"id": str(p.id), "name": p.display_name, "score": p.score, "lat": p.lat, "lng": p.lng, "zone_id": str(p.zone_id) if p.zone_id else None},
                 "status": status,
                 "shift_id": str(s.id) if s else None,
                 "shift_status": s.status if s else None,
