@@ -76,9 +76,7 @@ export default function Login() {
       <div className="app">
         <div className="main">
           <div className="result result-green" role="status">
-            <div className="ico" aria-hidden>
-              👋
-            </div>
+            <img src="/mark.png" alt="" aria-hidden className="mascot" width={120} height={120} />
             <p className="h1">{welcome.name}</p>
             <p className="h2">
               <span aria-hidden>📍</span> {welcome.point}
@@ -101,8 +99,8 @@ export default function Login() {
     <div className="app">
       <div className="main" style={{ justifyContent: 'center' }}>
         <div className="login-brand">
-          <img src="/icons/icon-192.png" alt="" width={96} height={96} />
-          <h1 className="h1">PEPITO OS</h1>
+          <img src="/logo.png" alt="PEPITO · Pepitas recién doradas al comal" className="logo" width={220} height={240} />
+          <h1 className="sr">PEPITO OS</h1>
           <span className="tag">Operador</span>
         </div>
         <form className="stack" onSubmit={submit}>

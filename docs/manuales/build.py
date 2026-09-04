@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """Genera los manuales HTML por rol de PEPITO OS (autocontenidos, imprimibles)."""
-import html, os, re, sys
+import base64, html, os, re, sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+def _data_uri(rel):
+    with open(os.path.join(_HERE, rel), "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+LOGO = _data_uri("logo.png")
+MARK = _data_uri("mark.png")
 
 CSS = """
 :root{--brand:#e8590c;--brand-dark:#c04607;--navy:#14213d;--ink:#16202c;--muted:#5b6b7d;--line:#dfe4ec;--bg:#f6f7f9;--panel:#fff;
@@ -11,7 +18,9 @@ a{color:var(--blue)}
 .wrap{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
 nav.toc{background:var(--navy);color:#c9d3e6;padding:22px 18px;position:sticky;top:0;height:100vh;overflow:auto}
 nav.toc .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
-nav.toc .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center}
+nav.toc .mark{width:40px;height:40px;border-radius:10px;background:#f8f2e5;object-fit:cover}
+nav.toc .logo{display:block;width:100%;max-width:200px;margin:0 auto 14px;border-radius:14px}
+.hero{display:flex;gap:22px;align-items:center;margin-bottom:6px}.hero img{width:150px;height:auto;border-radius:16px;flex:none}
 nav.toc .t{font-weight:800;letter-spacing:.06em;color:#fff;font-size:13px}nav.toc .s{font-size:12px;color:#7f8fb0}
 nav.toc a{display:block;color:#c9d3e6;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:13.5px}
 nav.toc a:hover{background:rgba(255,255,255,.07);color:#fff}nav.toc a.l2{padding-left:22px;font-size:12.5px;color:#9fb0cc}
@@ -43,7 +52,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
 svg text{font-family:inherit}
 .print{font-size:12px;color:var(--muted);margin-top:40px;border-top:1px solid var(--line);padding-top:10px}
 @media (max-width:860px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto}main{padding:20px}}
-@media print{.wrap{display:block}nav.toc{display:none}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
+@media print{.wrap{display:block}nav.toc{display:none}.hero img{width:110px}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
 """
 
 # ---------- SVG helpers ----------
@@ -125,10 +134,10 @@ def page(role_key, role_name, subtitle, sections, app_label):
         body.append(f'<section id="{sid}"><h2>{sec["title"]}</h2>{sec["html"]}</section>')
     return f"""<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PEPITO OS · Manual · {html.escape(role_name)}</title><style>{CSS}</style></head><body><div class="wrap">
-<nav class="toc"><div class="brand"><div class="mark">P</div><div><div class="t">PEPITO OS</div><div class="s">Manual · {html.escape(role_name)}</div></div></div>
+<nav class="toc"><img class="logo" src="{LOGO}" alt="PEPITO · Pepitas recién doradas al comal"><div class="brand"><img class="mark" src="{MARK}" alt=""><div><div class="t">PEPITO OS</div><div class="s">Manual · {html.escape(role_name)}</div></div></div>
 <div class="g">Contenido</div>{"".join(toc)}
 <div class="g">Otros manuales</div><a href="manual-operador.html">Operador</a><a href="manual-supervisor.html">Supervisor</a><a href="manual-operaciones.html">Operaciones</a><a href="manual-finanzas.html">Finanzas</a><a href="manual-administrador.html">Administrador</a></nav>
-<main><h1>Manual del {html.escape(role_name)}</h1><p class="lead">{subtitle}</p>
+<main><div class="hero"><img src="{LOGO}" alt="PEPITO"><div><h1>Manual del {html.escape(role_name)}</h1><p class="lead">{subtitle}</p></div></div>
 <div class="rolebar"><b>{html.escape(role_key)}</b> {app_label}</div>
 {"".join(body)}
 <p class="print">PEPITO OS v1 · rama feat/ux-redesign · Generado el 4 de septiembre de 2026. Los textos entre comillas son literales de la aplicación.</p>

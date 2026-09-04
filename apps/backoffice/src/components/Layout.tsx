@@ -69,7 +69,7 @@ export function Layout() {
     <div className="shell">
       <aside id="sidebar" className={`sidebar ${drawer ? 'open' : ''}`} aria-hidden={isMobile && !drawer ? true : undefined} {...(isMobile && !drawer ? { inert: '' } : {})}>
         <div className="brand">
-          <span className="brand-mark">P</span>
+          <img src="/mark.png" alt="PEPITO" className="brand-mark" width={40} height={40} />
           <div>
             <div className="brand-name">PEPITO OS</div>
             <div className="brand-sub">Backoffice</div>
@@ -118,6 +118,7 @@ export function Layout() {
           <button type="button" className="btn btn-ghost icon-btn" aria-label="Menú" aria-expanded={drawer} aria-controls="sidebar" onClick={() => setDrawer((v) => !v)}>
             <Icon name="menu" />
           </button>
+          <img src="/mark.png" alt="" aria-hidden className="brand-mark small" width={28} height={28} />
           <span className="brand-name">PEPITO OS</span>
           <span className="muted small topbar-user">
             {user.name} · {ROLE_LABEL[user.role]}

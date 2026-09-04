@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'icon-cart.png', 'icon-product.png'],
+        includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'favicon.ico', 'logo.png', 'mark.png', 'icon-cart.png', 'icon-product.png'],
         manifest: {
           name: 'PEPITO OS — Operador',
           short_name: 'PEPITO',
@@ -22,13 +22,13 @@ export default defineConfig(({ mode }) => {
           scope: '/',
           display: 'standalone',
           orientation: 'portrait',
-          background_color: '#FFF8EC',
+          background_color: '#F8F2E5',
           theme_color: '#E8590C',
           categories: ['business', 'productivity'],
           icons: [
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
         },
         workbox: {

@@ -152,9 +152,12 @@ export default function Settings() {
       <button className="btn btn-ghost" onClick={() => nav('/')}>
         Volver
       </button>
-      <p className="muted center" style={{ fontSize: '0.8em' }}>
-        PEPITO OS Operador v{__APP_VERSION__}
-      </p>
+      <div className="center">
+        <img src="/logo.png" alt="PEPITO" className="logo-small" width={140} height={152} />
+        <p className="muted" style={{ fontSize: '0.8em' }}>
+          PEPITO OS Operador v{__APP_VERSION__}
+        </p>
+      </div>
     </div>
   );
 }

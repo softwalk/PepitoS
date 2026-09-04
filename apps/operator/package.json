@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview --host --port 4173",
     "test": "vitest run",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "python3 scripts/gen-icons.py"
   },
   "dependencies": {
     "idb": "^8.0.0",

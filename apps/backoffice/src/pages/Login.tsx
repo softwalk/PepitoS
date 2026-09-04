@@ -70,12 +70,10 @@ export function LoginPage() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="brand">
-          <span className="brand-mark">P</span>
-          <div>
-            <div className="brand-name">PEPITO OS</div>
-            <div className="brand-sub">Control Tower · Supervisor</div>
-          </div>
+        <div className="login-logo">
+          <img src="/logo.png" alt="PEPITO · Pepitas recién doradas al comal" width={200} height={218} />
+          <div className="brand-name">PEPITO OS</div>
+          <div className="brand-sub">Control Tower · Supervisor</div>
         </div>
         <label className="field">
           <span className="field-label">Usuario</span>

@@ -67,6 +67,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="app">
       <header className="topbar">
         <div className="topbar-row">
+          <img src="/mark.png" alt="PEPITO" className="topbar-logo" width={36} height={36} />
           <div className="point" title={point}>
             <span aria-hidden>📍</span>
             <span>{point}</span>

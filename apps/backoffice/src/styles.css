@@ -104,10 +104,10 @@ p { margin: 0; }
 }
 .brand { display: flex; gap: 10px; align-items: center; padding: 16px 16px 12px; }
 .brand-mark {
-  width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff;
-  font-weight: 800; font-size: 20px; display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 0 var(--accent-dark);
+  width: 40px; height: 40px; border-radius: 10px; background: #f8f2e5; object-fit: cover; flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
+.brand-mark.small { width: 28px; height: 28px; border-radius: 8px; border-color: var(--border); }
 .brand-name { font-weight: 800; letter-spacing: 0.06em; font-size: 13px; }
 .sidebar .brand-name { color: #fff; }
 .brand-sub { font-size: 11px; color: var(--side-muted); }
@@ -281,6 +281,9 @@ textarea { min-height: 80px; resize: vertical; }
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(1200px 600px at 20% -10%, #fbe3d3 0%, transparent 60%), radial-gradient(900px 500px at 100% 110%, #dbe6f5 0%, transparent 60%), var(--bg); }
 .login-card { width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-lg); }
 .login-card .brand { padding: 0 0 6px; }
+.login-logo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding-bottom: 6px; }
+.login-logo img { width: 200px; height: auto; border-radius: 18px; margin-bottom: 8px; }
+.login-logo .brand-name { font-size: 15px; }
 .login-card .brand-name { font-size: 16px; }
 .login-card .btn-primary { min-height: 44px; font-size: 14px; margin-top: 4px; }
 .login-demo { font-size: 11px; color: var(--muted); background: var(--panel-2); border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
