@@ -4,6 +4,7 @@
 #  - Con dominio: SITE_*=https://operador.tudominio.mx … y CADDY_TLS="" (Let's Encrypt automático, puertos 80/443).
 {
 	admin off
+	default_sni {$PUBLIC_HOST:localhost}
 }
 
 {$SITE_OPERATOR} {

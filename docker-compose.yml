@@ -103,6 +103,7 @@ services:
       - operator
       - backoffice
     environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
       SITE_OPERATOR: ${SITE_OPERATOR:-https://${PUBLIC_HOST:-localhost}:8443}
       SITE_BACKOFFICE: ${SITE_BACKOFFICE:-https://${PUBLIC_HOST:-localhost}:8444}
       SITE_API: ${SITE_API:-https://${PUBLIC_HOST:-localhost}:8445}
