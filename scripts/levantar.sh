@@ -54,7 +54,7 @@ ADMIN_TOKEN=$(curl -fsS -X POST "${API_URL}/v1/auth/login" \
 echo "   Token Admin emitido exitosamente (longitud: ${#ADMIN_TOKEN})"
 echo ""
 
-echo "--- [5/5] Ejecución de Pruebas Automatizadas (28 Tests) ---"
+echo "--- [5/5] Ejecución de Pruebas Automatizadas (42 Tests Pytest) ---"
 docker exec \
   -e DATABASE_URL=postgresql+psycopg://pepito:pepito@db:5432/pepito_test \
   -e TEST_DATABASE_URL=postgresql+psycopg://pepito:pepito@db:5432/pepito_test \
