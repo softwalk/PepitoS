@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
-import { getPosition } from '../offline/gps';
+import { getPosition, recentPosition } from '../offline/gps';
 import { compressImage } from '../offline/image';
 import { speak } from '../offline/speech';
 import { requestHelp } from '../state/actions';
@@ -32,7 +32,7 @@ export default function Help() {
     setBusy(true);
     try {
       // Seguridad es prioritaria: no esperar al GPS más de 3 s.
-      const gps = await getPosition(category === 'security' ? 3000 : 6000);
+      const gps = (await getPosition(category === 'security' ? 3000 : 6000)) ?? recentPosition();
       await requestHelp(category, { ...extra, gps });
       await reload();
       setSent(category);

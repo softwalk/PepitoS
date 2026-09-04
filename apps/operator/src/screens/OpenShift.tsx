@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
-import { getPosition } from '../offline/gps';
+import { GPS_REASON_TEXT, getPositionDetailed, type GpsReason } from '../offline/gps';
 import { speak } from '../offline/speech';
 import { openShift, suggestedAction } from '../state/actions';
 import { useApp } from '../state/store';
@@ -20,6 +20,7 @@ export default function OpenShift() {
   const nav = useNavigate();
   const { catalog, config, reload } = useApp();
   const [gps, setGps] = useState<GPS | null | 'loading'>('loading');
+  const [gpsReason, setGpsReason] = useState<GpsReason | null>(null);
   const [values, setValues] = useState<Partial<Record<keyof OpenChecklist, boolean>>>({});
   const [step, setStep] = useState<'checklist' | 'photo'>('checklist');
   const [busy, setBusy] = useState(false);
@@ -27,7 +28,20 @@ export default function OpenShift() {
 
   useEffect(() => {
     let alive = true;
-    getPosition(8000).then((g) => alive && setGps(g));
+    const locate = async () => {
+      const r = await getPositionDetailed(8000);
+      if (!alive) return;
+      setGps(r.gps);
+      setGpsReason(r.reason);
+      // Sin fix por señal: reintentar una vez más mientras el operador marca el checklist.
+      if (!r.gps && r.reason === 'timeout') {
+        const r2 = await getPositionDetailed(12000);
+        if (!alive) return;
+        setGps(r2.gps);
+        setGpsReason(r2.reason);
+      }
+    };
+    void locate();
     return () => {
       alive = false;
     };
@@ -115,8 +129,19 @@ export default function OpenShift() {
       <h1 className="h1">Abrir puesto</h1>
       <div className="row muted">
         <span aria-hidden>📡</span>
-        {gps === 'loading' ? 'Buscando ubicación…' : gps ? 'Ubicación lista' : 'Sin ubicación (continúa igual)'}
+        {gps === 'loading' ? 'Buscando ubicación…' : gps ? `Ubicación lista${gps.accuracy_m ? ` (±${Math.round(gps.accuracy_m)} m)` : ''}` : 'Sin ubicación (continúa igual)'}
       </div>
+      {gps === null && gpsReason && (
+        <div className="exception" role="status" data-testid="gps-reason">
+          <span className="ico" aria-hidden>
+            📡
+          </span>
+          <div>
+            <b>{GPS_REASON_TEXT[gpsReason].title}</b>
+            {GPS_REASON_TEXT[gpsReason].action} Puedes abrir sin ubicación; el supervisor lo verá como pendiente.
+          </div>
+        </div>
+      )}
       <p className="h2">Revisa y marca Sí o No:</p>
       <div className="progress-line" role="progressbar" aria-label="Checklist de apertura" aria-valuemin={0} aria-valuemax={ITEMS.length} aria-valuenow={answered}>
         <span>{answered}/{ITEMS.length}</span>

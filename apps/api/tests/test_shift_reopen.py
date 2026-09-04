@@ -127,7 +127,7 @@ def test_reopen_rejects_old_shift_and_transferred(fresh_operator, catalog, admin
     db_session.commit()
     r = admin.post(f"/v1/shifts/{shift_id}/reopen", json={"reason": "fuera de ventana"})
     assert r.status_code == 409 and "shift_reopen_window_hours" in r.json()["error"]["message"]
-    admin.put("/v1/admin/settings/shift_reopen_window_hours", json={"value": 12})
+    admin.put("/v1/admin/settings/shift_reopen_window_hours", json={"value": 24})
     sh.closed_at = sh.closed_at + timedelta(hours=2)
     db_session.commit()
     # Transferido: tampoco

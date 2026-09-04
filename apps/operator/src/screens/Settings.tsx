@@ -4,11 +4,13 @@ import { retryFailed } from '../offline/queue';
 import { speak } from '../offline/speech';
 import { refreshCounts, syncNow } from '../offline/sync';
 import { logout } from '../state/actions';
+import { GPS_REASON_TEXT, getPositionDetailed, isSecureForGeolocation } from '../offline/gps';
 import { useApp } from '../state/store';
 
 export default function Settings() {
   const nav = useNavigate();
-  const { session, sync, settings, setSettings, clearSession } = useApp();
+  const { session, sync, settings, setSettings, clearSession, gps } = useApp();
+  const [testingGps, setTestingGps] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   const total = sync.pending + sync.failed;
@@ -46,6 +48,53 @@ export default function Settings() {
             Usuario: {session?.user.username ?? '—'}
           </p>
         </div>
+      </div>
+
+      <div className="card stack" data-testid="gps-panel">
+        <div className="row between">
+          <span className="h2">Ubicación (GPS)</span>
+          <span className={`pill ${gps.reason ? 'pill-red' : gps.last ? 'pill-green' : 'pill-gray'}`}>
+            {gps.reason ? 'Con problema' : gps.last ? 'Funciona' : 'Sin probar'}
+          </span>
+        </div>
+        {gps.reason && (
+          <div className="exception" role="status">
+            <span className="ico" aria-hidden>
+              📡
+            </span>
+            <div>
+              <b>{GPS_REASON_TEXT[gps.reason].title}</b>
+              {GPS_REASON_TEXT[gps.reason].action}
+            </div>
+          </div>
+        )}
+        {!isSecureForGeolocation() && (
+          <p className="muted">
+            Dirección actual: <b>{typeof location !== 'undefined' ? location.origin : ''}</b>. El GPS sólo funciona con <b>https://</b>.
+          </p>
+        )}
+        {gps.last && (
+          <p className="muted">
+            Último fix: {new Date(gps.last.at).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })} · {gps.last.lat.toFixed(5)}, {gps.last.lng.toFixed(5)}
+            {gps.last.accuracy_m ? ` · ±${Math.round(gps.last.accuracy_m)} m` : ''}
+          </p>
+        )}
+        <button
+          className="btn btn-outline"
+          disabled={testingGps}
+          data-testid="gps-test"
+          onClick={async () => {
+            setTestingGps(true);
+            const r = await getPositionDetailed(15000);
+            setTestingGps(false);
+            speak(r.gps ? 'Ubicación correcta' : GPS_REASON_TEXT[r.reason ?? 'unavailable'].title, true);
+          }}
+        >
+          <span className="ico" aria-hidden>
+            📡
+          </span>
+          {testingGps ? 'Buscando…' : 'Probar GPS'}
+        </button>
       </div>
 
       <div className="card stack">

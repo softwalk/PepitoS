@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getAuthSession, setAuthSession } from '../api/client';
 import { readBattery, watchBattery, type BatteryInfo } from '../offline/battery';
+import { subscribeGps, type GpsStatus } from '../offline/gps';
 import {
   assignmentStore,
   catalogStore,
@@ -33,6 +34,7 @@ export interface AppState {
   sales: SaleLocalRecord[];
   sync: SyncStatus;
   battery: BatteryInfo | null;
+  gps: GpsStatus;
   settings: Settings;
 }
 
@@ -57,6 +59,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sales: [],
     sync: getSyncStatus(),
     battery: null,
+    gps: { last: null, reason: null, tried_at: null, permission: 'unknown' },
     settings: DEFAULT_SETTINGS,
   });
 
@@ -140,6 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubSync = subscribeSync((sync) => setState((s) => ({ ...s, sync })));
     const unsubDomain = subscribeDomain(() => void reload());
     const unsubBattery = watchBattery((battery) => setState((s) => ({ ...s, battery })));
+    const unsubGps = subscribeGps((gps) => setState((s) => ({ ...s, gps })));
     void readBattery().then((battery) => setState((s) => ({ ...s, battery })));
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
@@ -147,6 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubSync();
       unsubDomain();
       unsubBattery();
+      unsubGps();
     };
   }, [reload]);
 

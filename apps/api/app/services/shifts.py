@@ -335,7 +335,15 @@ def reopen_shift(db: Session, current, shift: Shift, reason: str, ip: str | None
         raise ApiError("CONFLICT", "Sólo se puede continuar un turno abierto hoy")
     window_h = settings_svc.get_int(db, "shift_reopen_window_hours")
     if shift.closed_at is not None and at - shift.closed_at > timedelta(hours=window_h):
-        raise ApiError("CONFLICT", f"El turno se cerró hace más de {window_h} h (parámetro shift_reopen_window_hours)")
+        elapsed = at - shift.closed_at
+        mins = int(elapsed.total_seconds() // 60)
+        closed_local = shift.closed_at.astimezone(settings.tz).strftime("%d-%b %H:%M")
+        now_local = at.astimezone(settings.tz).strftime("%d-%b %H:%M")
+        raise ApiError(
+            "CONFLICT",
+            f"El turno se cerró el {closed_local} (hace {mins // 60} h {mins % 60} min; servidor: {now_local}) y la ventana es de {window_h} h "
+            "(parámetro shift_reopen_window_hours en Administración → Parámetros). Si la hora no cuadra, revisa el reloj del servidor o del teléfono.",
+        )
     if db.query(Shift).filter(Shift.operator_id == shift.operator_id, Shift.status == "open").first():
         raise ApiError("SHIFT_ALREADY_OPEN", "El operador ya tiene otro turno abierto")
     if db.query(Shift).filter(Shift.cart_id == shift.cart_id, Shift.status == "open").first():

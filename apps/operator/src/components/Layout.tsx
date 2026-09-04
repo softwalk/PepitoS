@@ -26,6 +26,26 @@ function SyncPill() {
   );
 }
 
+/** GPS: verde con fix reciente, rojo con motivo si falló (toca para ver qué hacer en Ajustes). */
+function GpsPill() {
+  const { gps, shift } = useApp();
+  const open = shift?.status === 'open' || shift?.status === 'open_pending';
+  if (!open && !gps.reason) return null;
+  if (gps.reason) {
+    return (
+      <Link to="/ajustes" className="pill pill-red" aria-label="Problema con la ubicación: ver Ajustes" title={gps.reason}>
+        <span aria-hidden>📡</span> Sin GPS
+      </Link>
+    );
+  }
+  const fresh = gps.last && Date.now() - new Date(gps.last.at).getTime() < 5 * 60_000;
+  return (
+    <span className={`pill ${fresh ? 'pill-green' : 'pill-gray'}`} aria-label={fresh ? 'Ubicación activa' : 'Ubicación pendiente'}>
+      <span aria-hidden>📡</span>
+    </span>
+  );
+}
+
 function BatteryPill() {
   const { battery } = useApp();
   if (!battery) return null;
@@ -67,6 +87,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="row">
+            <GpsPill />
             <BatteryPill />
             {loc.pathname !== '/ajustes' ? (
               <Link to="/ajustes" className="pill pill-gray" aria-label="Ajustes">
