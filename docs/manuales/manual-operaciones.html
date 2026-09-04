@@ -1,0 +1,157 @@
+<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PEPITO OS · Manual · Operaciones</title><style>
+:root{--brand:#e8590c;--brand-dark:#c04607;--navy:#14213d;--ink:#16202c;--muted:#5b6b7d;--line:#dfe4ec;--bg:#f6f7f9;--panel:#fff;
+--green:#1a7f46;--green-bg:#dff5e7;--amber:#8a5a00;--amber-fill:#e0951a;--amber-bg:#fff1d6;--red:#b3261e;--red-bg:#fde8e6;--blue:#1a56b3;--blue-bg:#e2ecfb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:var(--ink);background:var(--bg)}
+a{color:var(--blue)}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+nav.toc{background:var(--navy);color:#c9d3e6;padding:22px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+nav.toc .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+nav.toc .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center}
+nav.toc .t{font-weight:800;letter-spacing:.06em;color:#fff;font-size:13px}nav.toc .s{font-size:12px;color:#7f8fb0}
+nav.toc a{display:block;color:#c9d3e6;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:13.5px}
+nav.toc a:hover{background:rgba(255,255,255,.07);color:#fff}nav.toc a.l2{padding-left:22px;font-size:12.5px;color:#9fb0cc}
+nav.toc .g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7f8fb0;margin:14px 10px 4px;font-weight:700}
+main{padding:36px 48px 80px;max-width:1080px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}h2{font-size:22px;margin:44px 0 12px;padding-top:12px;border-top:3px solid var(--brand)}
+h3{font-size:17px;margin:26px 0 8px}h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 10px}.lead{font-size:17px;color:#3b4757}
+.rolebar{display:inline-flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;margin:10px 0 22px;font-size:13px}
+.rolebar b{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(22,32,44,.05)}
+.card h5{margin:0 0 6px;font-size:14px}.card p{font-size:13.5px;margin:0;color:#3b4757}.card .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:13px;margin-right:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0 16px;background:var(--panel)}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f8fafc}tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green)}.b-amber{background:var(--amber-bg);color:var(--amber)}.b-red{background:var(--red-bg);color:var(--red)}.b-blue{background:var(--blue-bg);color:var(--blue)}.b-gray{background:#eaeef3;color:#5b6b7d}
+kbd,.ui{display:inline-block;background:#fff;border:1px solid #c7cfdb;border-bottom-width:2px;border-radius:6px;padding:0 7px;font:inherit;font-size:12.5px;font-weight:700;white-space:nowrap}
+.ui.p{background:var(--brand);color:#fff;border-color:var(--brand-dark)}.ui.g{background:var(--green);color:#fff;border-color:#125a32}.ui.a{background:var(--amber-fill);color:#1a1000;border-color:#a86a00}.ui.b{background:var(--blue);color:#fff;border-color:#143f85}.ui.r{background:var(--red);color:#fff;border-color:#86170f}
+.callout{border-left:5px solid var(--blue);background:var(--blue-bg);padding:10px 14px;border-radius:8px;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--amber-fill);background:var(--amber-bg)}.callout.ok{border-color:var(--green);background:var(--green-bg)}.callout.bad{border-color:var(--red);background:var(--red-bg)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}.steps li{position:relative;padding:10px 12px 10px 52px;margin:0 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;display:grid;place-items:center;font-size:13px}
+.steps li b:first-child{display:block;margin-bottom:2px}.steps .ex{margin-top:6px;font-size:13px;color:#3b4757;background:#f8fafc;border-radius:6px;padding:6px 10px;border:1px dashed var(--line)}
+.ex::before{content:'Ejemplo · ';font-weight:700;color:var(--brand-dark)}
+figure{margin:16px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+svg text{font-family:inherit}
+.print{font-size:12px;color:var(--muted);margin-top:40px;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto}main{padding:20px}}
+@media print{.wrap{display:block}nav.toc{display:none}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
+</style></head><body><div class="wrap">
+<nav class="toc"><div class="brand"><div class="mark">P</div><div><div class="t">PEPITO OS</div><div class="s">Manual · Operaciones</div></div></div>
+<div class="g">Contenido</div><a href="#que">Qué puedes hacer</a><a href="#rapida">Guía rápida</a><a href="#detalle">Detalle de cada pantalla</a><a class="l2" href="#ops-ct">Control Tower</a><a class="l2" href="#ops-brief">Briefing</a><a class="l2" href="#ops-reglas">Reglas</a><a class="l2" href="#ops-inv">Inventario y lotes</a><a class="l2" href="#ops-activos">Activos y mantenimiento</a><a class="l2" href="#ops-audit">Audit log</a><a class="l2" href="#ops-admin">Administración (sólo lectura)</a><a href="#pasos">Paso a paso con ejemplos</a><a class="l2" href="#ops-ej1">Ejemplo 1 · Arranque del día (8:30 a.m.)</a><a class="l2" href="#ops-ej2">Ejemplo 2 · Ajustar una regla que hace ruido</a><a class="l2" href="#ops-ej3">Ejemplo 3 · Reporte de calidad de un lote</a><a class="l2" href="#ops-ej4">Ejemplo 4 · Preventivo vencido</a>
+<div class="g">Otros manuales</div><a href="manual-operador.html">Operador</a><a href="manual-supervisor.html">Supervisor</a><a href="manual-operaciones.html">Operaciones</a><a href="manual-finanzas.html">Finanzas</a><a href="manual-administrador.html">Administrador</a></nav>
+<main><h1>Manual del Operaciones</h1><p class="lead">Cómo monitorear toda la red desde el Control Tower, ajustar las reglas y gestionar inventario, activos y mantenimiento.</p>
+<div class="rolebar"><b>ops</b> Backoffice · toda la red</div>
+<section id="que"><h2>Qué puedes hacer</h2>
+<p>Diriges la red completa desde el <b>Control Tower</b>. Ves todos los puntos y zonas, ajustas las reglas que generan casos, gestionas inventario, activos y mantenimiento, y lees el audit log. Puedes:</p>
+<div class="cards">
+<div class="card"><h5>◎ Control Tower</h5><p>KPIs con semáforo, mapa, alertas y tabla de puntos en tiempo real. <span class="ui">Ejecutar reglas ahora</span>.</p></div>
+<div class="card"><h5>☰ Briefing</h5><p>Headline del día, decisiones pendientes con recomendación y números para dirección.</p></div>
+<div class="card"><h5>⚑ Excepciones · Supervisor · Ruta</h5><p>Todo lo que ve un supervisor, pero de toda la red, y con asignación a cualquier persona.</p></div>
+<div class="card"><h5>$ Ventas · ▤ Inventario · ☺ Personas</h5><p>Reporte diario, stock y <b>bloqueo de lotes</b>, asistencia.</p></div>
+<div class="card"><h5>⚙ Activos</h5><p>Carritos, baterías, cargadores y POS; preventivos vencidos y tickets correctivos.</p></div>
+<div class="card"><h5>⚖ Reglas · ≡ Audit log</h5><p>Activar/desactivar reglas, umbrales y severidad; trazabilidad de todo cambio.</p></div>
+</div>
+<div class="callout">Límites: <b>no</b> decides aprobaciones (verás "Decide Finanzas"), en Administración sólo lees Precios y Parámetros, y no puedes reabrir turnos cerrados (administrador).</div>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#5b6b7d"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Eventos</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">ventas, GPS, cierres, ayuda</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#14213d"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Motor de reglas</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">cada 5 min · 11 reglas</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#e8590c"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Alerta + Caso</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">dedupe regla:punto:día</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#1a56b3"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Control Tower</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">semáforos y prioridad</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#1a7f46"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Decisión humana</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">supervisor / ops / finanzas</text></svg><figcaption>Del dato a la decisión: las reglas nunca actúan solas; producen casos que alguien atiende.</figcaption></figure></section><section id="rapida"><h2>Guía rápida</h2>
+<div class="cards">
+<div class="card"><h5><span class="n">1</span>Abre el Control Tower</h5><p>Entra con <code>ops</code>. Mira los 6 KPIs: rojo = actuar, ámbar = vigilar. El contador de excepciones te lleva a los casos por severidad.</p></div>
+<div class="card"><h5><span class="n">2</span>Revisa la tabla de puntos</h5><p>Estado (Abierto / Tarde / Sin señal / Cerrado), geocerca, batería, ventas vs meta, caja, stock, casos. Acciones <span class="ui">Casos</span> y <span class="ui">Auditar</span>.</p></div>
+<div class="card"><h5><span class="n">3</span>Lee el Briefing</h5><p>Top 8 decisiones con "por qué" y "Recomendación". Úsalo para la reunión de la mañana.</p></div>
+<div class="card"><h5><span class="n">4</span>Ajusta reglas</h5><p>Reglas → switch Activa, parámetros (minutos, %, unidades), severidad → <span class="ui">Guardar</span>. Prueba con <span class="ui p">Ejecutar reglas ahora</span>.</p></div>
+<div class="card"><h5><span class="n">5</span>Inventario y activos</h5><p>Bloquea un lote con motivo cuando haya reporte de calidad; crea tickets de mantenimiento cuando un preventivo esté VENCIDO.</p></div>
+<div class="card"><h5><span class="n">6</span>Audita cambios</h5><p>Audit log: filtra por entidad, ID o acción (p. ej. <code>rule.update</code>, <code>shift.reopen</code>).</p></div>
+</div>
+<figure><svg viewBox="0 0 980 236" width="100%" role="img"><text x="0" y="16" font-size="13" font-weight="700" fill="#16202c">Semáforos del Control Tower</text><text x="0" y="52" font-size="12.5" fill="#3b4757">Ventas vs meta (avance)</text><rect x="250" y="34" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="369.6666666666667" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&lt; 75 %</text><rect x="493.33333333333337" y="34" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">75 – 99 %</text><rect x="736.6666666666667" y="34" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="856.3333333333334" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≥ 100 %</text><text x="0" y="92" font-size="12.5" fill="#3b4757">Transacciones por punto</text><rect x="250" y="74" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="369.6666666666667" y="93" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&lt; 45</text><rect x="493.33333333333337" y="74" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="93" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">45 – 59</text><rect x="736.6666666666667" y="74" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="856.3333333333334" y="93" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≥ 60</text><text x="0" y="132" font-size="12.5" fill="#3b4757">Ticket promedio</text><rect x="250" y="114" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="369.6666666666667" y="133" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&lt; $36</text><rect x="493.33333333333337" y="114" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="133" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">$36 – $38.99</text><rect x="736.6666666666667" y="114" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="856.3333333333334" y="133" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≥ $39</text><text x="0" y="172" font-size="12.5" fill="#3b4757">Batería del teléfono</text><rect x="250" y="154" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="369.6666666666667" y="173" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&lt; 10 %</text><rect x="493.33333333333337" y="154" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="173" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">10 – 24 %</text><rect x="736.6666666666667" y="154" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="856.3333333333334" y="173" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≥ 25 %</text><text x="0" y="212" font-size="12.5" fill="#3b4757">Merma</text><rect x="250" y="194" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="369.6666666666667" y="213" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≤ 2 %</text><rect x="493.33333333333337" y="194" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="213" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2 – 4 %</text><rect x="736.6666666666667" y="194" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="856.3333333333334" y="213" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&gt; 4 %</text></svg><figcaption>Umbrales fijos del PRD §15. La meta por punto es $2,340 / 60 tx salvo que el punto tenga una propia.</figcaption></figure></section><section id="detalle"><h2>Detalle de cada pantalla</h2>
+<h3 id="ops-ct">Control Tower</h3>
+<p>Selector de fecha, <span class="ui">Actualizar</span>, <span class="ui">Briefing</span>, <span class="ui p">Ejecutar reglas ahora</span> (toast <i>"Reglas ejecutadas: N alertas, N casos nuevos"</i>). Se refresca solo cada 60 s.</p>
+<div class="tbl"><table><tr><th>KPI</th><th>Cálculo</th></tr>
+<tr><td>Puntos</td><td>Programados hoy, con desglose abiertos / tarde / cerrados / sin señal.</td></tr>
+<tr><td>Ventas hoy</td><td>Suma de ventas registradas vs suma de metas; barra de avance.</td></tr>
+<tr><td>Transacciones</td><td>Total y promedio por punto (meta 60).</td></tr>
+<tr><td>Ticket promedio</td><td>Ventas ÷ transacciones.</td></tr>
+<tr><td>Forecast cierre</td><td>Ritmo actual extrapolado a 10 h, tope 1.5× la meta.</td></tr>
+<tr><td>Excepciones abiertas</td><td>Contadores URGENTE / REVISAR / NORMAL (enlazan a Excepciones filtradas).</td></tr>
+</table></div>
+<figure><svg viewBox="0 0 980 290" width="100%" role="img"><defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><path d="M176.0 130.0 L310.0 130.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="183.6" y="107.0" width="118.8" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="243.0" y="120.0" text-anchor="middle" font-size="11" fill="#3b4757">asignación de hoy</text><path d="M380.0 154.0 L380.0 212.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="252.2" y="174.0" width="118.8" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="311.6" y="187.0" text-anchor="middle" font-size="11" fill="#3b4757">+20 min sin abrir</text><path d="M446.0 139.0 L610.0 139.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="510.2" y="153.0" width="35.6" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="528.0" y="166.0" text-anchor="middle" font-size="11" fill="#3b4757">abre</text><path d="M426.5 223.0 L629.8 148.4" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="486.3" y="163.5442408759043" width="74.0" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="523.3" y="176.5442408759043" text-anchor="middle" font-size="11" fill="#3b4757">abre tarde</text><path d="M709.1 158.3 L818.1 225.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="649.2" y="202.26211865795472" width="138.0" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="718.2" y="215.26211865795472" text-anchor="middle" font-size="11" fill="#3b4757">30 min sin actividad</text><path d="M830.9 211.7 L721.9 145.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="768.1" y="149.73788134204528" width="74.0" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="805.1" y="162.73788134204528" text-anchor="middle" font-size="11" fill="#3b4757">sincroniza</text><path d="M614.0 121.0 L450.0 121.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="466.2" y="89.0" width="131.6" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="532.0" y="102.0" text-anchor="middle" font-size="11" fill="#3b4757">cierra / transfiere</text><rect x="39.4" y="110" width="141.2" height="40" rx="20" fill="#5b6b7d"/><text x="110" y="135" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">No programado</text><rect x="318.0" y="110" width="124.0" height="40" rx="20" fill="#1a56b3"/><text x="380" y="135" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Cerrado</text><rect x="318.0" y="220" width="124.0" height="40" rx="20" fill="#e0951a"/><text x="380" y="245" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Tarde</text><rect x="618.0" y="110" width="124.0" height="40" rx="20" fill="#1a7f46"/><text x="680" y="135" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Abierto</text><rect x="798.0" y="220" width="124.0" height="40" rx="20" fill="#5b6b7d"/><text x="860" y="245" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Sin señal</text></svg><figcaption>Estados de un punto en la tabla del Control Tower. 'Sin señal' es un turno abierto sin actividad en 30 min (regla sync_stale).</figcaption></figure>
+<p>Columnas de la tabla: Punto · Estado · Operador · Apertura · Último GPS (hora + <span class="badge b-green">En geocerca</span> / <span class="badge b-red">Fuera</span>) · Batería · Ventas / meta · Tx · Ticket · Caja (<span class="badge b-amber">Pendiente</span> mientras está abierto, <span class="badge b-green">OK</span> conciliado, <span class="badge b-red">Diferencia</span>) · Stock (OK / Bajo / Crítico) · Casos (N URG / N REV) · acciones.</p>
+
+<h3 id="ops-brief">Briefing</h3>
+<p>Headline: <i>"2 de 3 puntos abiertos, ventas $1,550 (22 % de la meta), 4 urgentes y 6 por revisar."</i> Luego <b>Decisiones</b> (top 8 por prioridad) con severidad, por qué y una recomendación fija por tipo de caso, y <b>Números</b> del día.</p>
+<div class="tbl"><table><tr><th>Caso</th><th>Recomendación que muestra</th></tr>
+<tr><td>Punto sin abrir</td><td>Llamar al operador; si no responde en 15 min, enviar flotante o supervisor</td></tr>
+<tr><td>Fuera de geocerca</td><td>Contactar al operador y verificar ubicación; considerar visita</td></tr>
+<tr><td>Ventas bajo trayectoria</td><td>Revisar afluencia y producto; evaluar reubicación temporal</td></tr>
+<tr><td>Merma alta</td><td>Revisar manejo de producto y calidad del lote; auditar en la próxima visita</td></tr>
+<tr><td>Diferencia de caja</td><td>Conciliar con el operador; si es grave, escalar a Finanzas y bloquear pagos pendientes</td></tr>
+<tr><td>Batería baja</td><td>Enviar batería de reemplazo o indicar carga inmediata</td></tr>
+<tr><td>Sin sincronizar</td><td>Verificar conectividad del dispositivo; llamar al operador</td></tr>
+<tr><td>Stock crítico</td><td>Programar reposición hoy desde almacén</td></tr>
+<tr><td>Seguridad</td><td>Aplicar protocolo de seguridad; contactar al operador de inmediato</td></tr>
+</table></div>
+
+<h3 id="ops-reglas">Reglas</h3>
+<p>Cada regla evalúa cada 5 minutos (o al pulsar <span class="ui p">Ejecutar reglas ahora</span>) y, si dispara y no existe ya un caso abierto de esa regla para ese punto hoy, crea <b>alerta + caso</b>. Por fila: switch <b>Activa</b>, parámetros editables, severidad y <span class="ui">Guardar</span>. Cambios al audit log.</p>
+<div class="tbl"><table><tr><th>Regla</th><th>Severidad</th><th>Parámetros (default)</th><th>Dispara cuando</th></tr>
+<tr><td>Punto sin abrir</td><td><span class="badge b-red">URGENTE</span></td><td>grace_minutes 20</td><td>Asignación de hoy sin turno pasados 20 min de la hora planeada</td></tr>
+<tr><td>Fuera de geocerca</td><td><span class="badge b-red">URGENTE</span></td><td>minutes 10</td><td>Último GPS fuera del radio (150 m) por ≥ 10 min</td></tr>
+<tr><td>Ventas bajo trayectoria</td><td><span class="badge b-amber">REVISAR</span></td><td>pct 60 · min_hours 2</td><td>Con ≥ 2 h abierto, ventas &lt; 60 % de la meta prorrateada</td></tr>
+<tr><td>Merma alta</td><td><span class="badge b-amber">REVISAR</span></td><td>pct 4</td><td>merma / (ventas + merma) &gt; 4 %</td></tr>
+<tr><td>Diferencia de caja</td><td>REVISAR / URGENTE</td><td>hereda Parámetros ($20 / $100)</td><td>|contado − esperado| &gt; umbral al cerrar; grave → urgente + aprobación</td></tr>
+<tr><td>Inventario inconsistente</td><td><span class="badge b-amber">REVISAR</span></td><td>hereda (3 u)</td><td>|conteo − teórico| &gt; 3 unidades</td></tr>
+<tr><td>Batería baja</td><td>REVISAR / URGENTE</td><td>warn 25 · critical 10</td><td>Último ping &lt; 25 %; &lt; 10 % urgente</td></tr>
+<tr><td>Cancelaciones anómalas</td><td><span class="badge b-amber">REVISAR</span></td><td>count 3 · pct 10</td><td>&gt; 3 cancelaciones o &gt; 10 % de las ventas del turno</td></tr>
+<tr><td>Sin sincronizar</td><td><span class="badge b-amber">REVISAR</span></td><td>minutes 30</td><td>Turno abierto sin evento ni ping en 30 min</td></tr>
+<tr><td>Mantenimiento vencido</td><td><span class="badge b-amber">REVISAR</span></td><td>—</td><td>Activo con preventivo vencido (dedupe por activo)</td></tr>
+<tr><td>Stock crítico</td><td><span class="badge b-amber">REVISAR</span></td><td>min_units 10</td><td>Punto abierto con alguna presentación &lt; 10 u</td></tr>
+</table></div>
+<p>Las reglas de caja e inventario muestran <span class="badge b-gray">heredado de Parámetros</span>; puedes <span class="ui">Definir override</span> sólo para esa regla o <span class="ui">Quitar override</span> para volver a heredar. Las reglas transitorias (sin abrir, sin sincronizar, geocerca, batería) se autoresuelven cuando la condición desaparece si nadie tomó el caso.</p>
+
+<h3 id="ops-inv">Inventario y lotes</h3>
+<p>Balance por punto y presentación reconstruido desde movimientos (recepciones, ventas, merma, conteos, transferencias). Muestra <i>(teórico N)</i> cuando el conteo difiere. <b>Lotes</b>: <span class="ui r">Bloquear</span> abre un modal con motivo obligatorio; retira del balance de cada punto las unidades recibidas de ese lote y evita nuevas entregas. Toast <i>"Lote L-2026-001 bloqueado. 3 punto(s) afectado(s)."</i></p>
+
+<h3 id="ops-activos">Activos y mantenimiento</h3>
+<p>Tabla de activos (batería cada 30 d, cargador 90 d, POS 180 d en el seed) con <span class="badge b-red">VENCIDO</span> cuando pasa el próximo preventivo, y <span class="ui">+ Ticket</span>. Tickets con Título, Descripción, Severidad, Tipo (Correctivo / Preventivo) y ciclo <span class="ui">Iniciar</span> → <span class="ui">Resolver</span> (con texto de resolución) → <span class="ui">Cerrar</span>.</p>
+
+<h3 id="ops-audit">Audit log</h3>
+<p>Filtros: Entidad (case, action, audit, rule, approval, lot, device, users, points, carts, assignments, presentations, price_version, zones, maintenance_ticket, token), ID de entidad, "Acción contiene", límite. Cada fila: cuándo, actor (o "sistema"), acción, entidad, diff <i>campo: antes → después</i>, motivo, IP/dispositivo.</p>
+
+<h3 id="ops-admin">Administración (sólo lectura)</h3>
+<p>Ves <b>Precios</b> (versiones, precio por presentación, ventas con cada versión) y <b>Parámetros</b> con el aviso <i>"Sólo lectura para tu rol; edita un administrador."</i> Úsalo para verificar umbrales vigentes antes de interpretar un caso.</p>
+</section><section id="pasos"><h2>Paso a paso con ejemplos</h2>
+<h3 id="ops-ej1">Ejemplo 1 · Arranque del día (8:30 a.m.)</h3>
+<ol class="steps">
+<li><b>Control Tower</b> KPI Puntos: 3 programados · 2 abiertos · 1 tarde. Excepciones: 1 URGENTE.<div class="ex">Tabla: Parque México en <span class="badge b-amber">Tarde</span>, Operador Dos, sin GPS; casos "1 URG".</div></li>
+<li><b>Briefing</b> Decisión 1: "Punto sin abrir: Parque México · Recomendación: Llamar al operador; si no responde en 15 min, enviar flotante o supervisor".</li>
+<li><b>Actúa</b> <span class="ui">Abrir caso →</span> → Estado <i>En proceso</i> → Asignar a: Supervisor Centro → acción "Llamar al operador · Supervisor Centro · hoy".<div class="ex">El supervisor lo ve en su Mi día como URGENTE asignado a él.</div></li>
+<li><b>Verifica a las 9:00</b> <span class="ui">Actualizar</span>: Parque México ahora <span class="badge b-green">Abierto</span>, "En geocerca", batería 88 %. El caso pasa a resuelto por el supervisor con nota.</li>
+</ol>
+
+<h3 id="ops-ej2">Ejemplo 2 · Ajustar una regla que hace ruido</h3>
+<ol class="steps">
+<li><b>Síntoma</b> Cada mañana hay 3 casos "Sin sincronizar" a los 30 min de abrir, porque los operadores venden poco la primera media hora.</li>
+<li><b>Reglas</b> Fila "Sin sincronizar": cambia <code>minutes</code> de 30 a 45 → <span class="ui">Guardar</span>.<div class="ex">Toast "Regla sync_stale guardada". En Audit log aparece <code>rule.update</code> con "minutes: 30 → 45" y tu usuario.</div></li>
+<li><b>Prueba</b> <span class="ui p">Ejecutar reglas ahora</span>.<div class="ex">"Motor ejecutado: 0 alertas, 0 casos". Los casos anteriores sin responsable se autoresolvieron.</div></li>
+</ol>
+
+<h3 id="ops-ej3">Ejemplo 3 · Reporte de calidad de un lote</h3>
+<ol class="steps">
+<li><b>Aviso</b> El proveedor reporta humedad en el lote L-2026-001.</li>
+<li><b>Inventario → Lotes</b> <span class="ui r">Bloquear</span> → motivo "Reporte de calidad del proveedor: humedad" → <span class="ui r">Bloquear lote</span>.<div class="ex">"Lote L-2026-001 bloqueado. 3 punto(s) afectado(s)." y la lista: Metro Insurgentes · 50 g · 40 u retiradas del balance, …</div></li>
+<li><b>Consecuencia</b> Los puntos afectados pasan a stock Crítico; la regla "Stock crítico" abre casos REVISAR y el Briefing recomienda "Programar reposición hoy desde almacén".</li>
+</ol>
+
+<h3 id="ops-ej4">Ejemplo 4 · Preventivo vencido</h3>
+<ol class="steps">
+<li><b>Activos</b> C-002-BATTERY muestra Próximo preventivo <span class="badge b-red">VENCIDO</span>; ya existe el caso "Mantenimiento vencido: C-002-BATTERY".</li>
+<li><b>+ Ticket</b> Título "Preventivo batería C-002", Tipo Preventivo, Severidad REVISAR → <span class="ui p">Crear ticket</span>.</li>
+<li><b>Ciclo</b> <span class="ui">Iniciar</span> cuando lo toma mantenimiento → <span class="ui">Resolver</span> con "Cambio de celdas y prueba de carga" → <span class="ui">Cerrar</span>.<div class="ex">Al resolver se actualiza el último preventivo y el caso deja de disparar.</div></li>
+</ol>
+</section>
+<p class="print">PEPITO OS v1 · rama feat/ux-redesign · Generado el 4 de septiembre de 2026. Los textos entre comillas son literales de la aplicación.</p>
+</main></div></body></html>

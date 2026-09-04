@@ -1,0 +1,150 @@
+<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PEPITO OS · Manual · Administrador</title><style>
+:root{--brand:#e8590c;--brand-dark:#c04607;--navy:#14213d;--ink:#16202c;--muted:#5b6b7d;--line:#dfe4ec;--bg:#f6f7f9;--panel:#fff;
+--green:#1a7f46;--green-bg:#dff5e7;--amber:#8a5a00;--amber-fill:#e0951a;--amber-bg:#fff1d6;--red:#b3261e;--red-bg:#fde8e6;--blue:#1a56b3;--blue-bg:#e2ecfb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:var(--ink);background:var(--bg)}
+a{color:var(--blue)}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+nav.toc{background:var(--navy);color:#c9d3e6;padding:22px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+nav.toc .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+nav.toc .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center}
+nav.toc .t{font-weight:800;letter-spacing:.06em;color:#fff;font-size:13px}nav.toc .s{font-size:12px;color:#7f8fb0}
+nav.toc a{display:block;color:#c9d3e6;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:13.5px}
+nav.toc a:hover{background:rgba(255,255,255,.07);color:#fff}nav.toc a.l2{padding-left:22px;font-size:12.5px;color:#9fb0cc}
+nav.toc .g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7f8fb0;margin:14px 10px 4px;font-weight:700}
+main{padding:36px 48px 80px;max-width:1080px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}h2{font-size:22px;margin:44px 0 12px;padding-top:12px;border-top:3px solid var(--brand)}
+h3{font-size:17px;margin:26px 0 8px}h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 10px}.lead{font-size:17px;color:#3b4757}
+.rolebar{display:inline-flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;margin:10px 0 22px;font-size:13px}
+.rolebar b{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(22,32,44,.05)}
+.card h5{margin:0 0 6px;font-size:14px}.card p{font-size:13.5px;margin:0;color:#3b4757}.card .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:13px;margin-right:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0 16px;background:var(--panel)}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f8fafc}tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green)}.b-amber{background:var(--amber-bg);color:var(--amber)}.b-red{background:var(--red-bg);color:var(--red)}.b-blue{background:var(--blue-bg);color:var(--blue)}.b-gray{background:#eaeef3;color:#5b6b7d}
+kbd,.ui{display:inline-block;background:#fff;border:1px solid #c7cfdb;border-bottom-width:2px;border-radius:6px;padding:0 7px;font:inherit;font-size:12.5px;font-weight:700;white-space:nowrap}
+.ui.p{background:var(--brand);color:#fff;border-color:var(--brand-dark)}.ui.g{background:var(--green);color:#fff;border-color:#125a32}.ui.a{background:var(--amber-fill);color:#1a1000;border-color:#a86a00}.ui.b{background:var(--blue);color:#fff;border-color:#143f85}.ui.r{background:var(--red);color:#fff;border-color:#86170f}
+.callout{border-left:5px solid var(--blue);background:var(--blue-bg);padding:10px 14px;border-radius:8px;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--amber-fill);background:var(--amber-bg)}.callout.ok{border-color:var(--green);background:var(--green-bg)}.callout.bad{border-color:var(--red);background:var(--red-bg)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}.steps li{position:relative;padding:10px 12px 10px 52px;margin:0 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;display:grid;place-items:center;font-size:13px}
+.steps li b:first-child{display:block;margin-bottom:2px}.steps .ex{margin-top:6px;font-size:13px;color:#3b4757;background:#f8fafc;border-radius:6px;padding:6px 10px;border:1px dashed var(--line)}
+.ex::before{content:'Ejemplo · ';font-weight:700;color:var(--brand-dark)}
+figure{margin:16px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+svg text{font-family:inherit}
+.print{font-size:12px;color:var(--muted);margin-top:40px;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto}main{padding:20px}}
+@media print{.wrap{display:block}nav.toc{display:none}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
+</style></head><body><div class="wrap">
+<nav class="toc"><div class="brand"><div class="mark">P</div><div><div class="t">PEPITO OS</div><div class="s">Manual · Administrador</div></div></div>
+<div class="g">Contenido</div><a href="#que">Qué puedes hacer</a><a href="#rapida">Guía rápida</a><a class="l2" href="#adm-params">Parámetros (Administración → Parámetros)</a><a href="#detalle">Detalle de cada pantalla</a><a class="l2" href="#adm-usuarios">Usuarios y dispositivos</a><a class="l2" href="#adm-puntos">Zonas, puntos, carritos y asignaciones</a><a class="l2" href="#adm-precios">Presentaciones y versiones de precio</a><a class="l2" href="#adm-reopen">Continuar turno (reabrir un turno terminado)</a><a class="l2" href="#adm-reglas">Reglas y Parámetros</a><a class="l2" href="#adm-audit">Audit log</a><a href="#pasos">Paso a paso con ejemplos</a><a class="l2" href="#adm-ej1">Ejemplo 1 · Puesta en marcha de una zona nueva</a><a class="l2" href="#adm-ej2">Ejemplo 2 · Subir precios el lunes</a><a class="l2" href="#adm-ej3">Ejemplo 3 · Operador cerró por error a las 11 a.m.</a><a class="l2" href="#adm-ej4">Ejemplo 4 · Teléfono robado</a>
+<div class="g">Otros manuales</div><a href="manual-operador.html">Operador</a><a href="manual-supervisor.html">Supervisor</a><a href="manual-operaciones.html">Operaciones</a><a href="manual-finanzas.html">Finanzas</a><a href="manual-administrador.html">Administrador</a></nav>
+<main><h1>Manual del Administrador</h1><p class="lead">Cómo configurar usuarios, puntos, precios y parámetros, y resolver las excepciones que sólo el administrador puede.</p>
+<div class="rolebar"><b>admin</b> Backoffice · todos los permisos</div>
+<section id="que"><h2>Qué puedes hacer</h2>
+<p>Tienes todos los permisos. Además de todo lo que hacen Operaciones, Supervisor y Finanzas, configuras el sistema y tomas las decisiones que nadie más puede:</p>
+<div class="cards">
+<div class="card"><h5>⚒ Administración</h5><p>Usuarios (y restablecer contraseña), puntos, carritos, asignaciones, presentaciones, versiones de precio, dispositivos, zonas.</p></div>
+<div class="card"><h5>🎚 Parámetros</h5><p>Umbrales de caja, ventana de cancelación, intervalo GPS, muestreo de fotos, retención, meta por defecto, ventana de reapertura, tolerancia de inventario.</p></div>
+<div class="card"><h5>⚖ Reglas</h5><p>Activar, parametrizar y cambiar severidad de las 11 reglas.</p></div>
+<div class="card"><h5>▶ Continuar turno</h5><p>Reabrir un turno cerrado hoy para que el operador siga vendiendo y vuelva a cerrar.</p></div>
+<div class="card"><h5>✓ Aprobaciones</h5><p>Decidir junto con Finanzas.</p></div>
+<div class="card"><h5>📱 Dispositivos</h5><p>Revocar un teléfono perdido: su sesión muere al instante.</p></div>
+</div>
+<div class="callout warn">Todo lo que haces queda en el audit log con tu usuario, IP y motivo. Las bajas son lógicas (nunca se borra historia). Los precios nunca se editan: se crean versiones.</div>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#14213d"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Configurar</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">zonas → puntos → carritos → usuarios</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#e8590c"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Catálogo</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">presentaciones → versión de precio</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#1a56b3"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Operar</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">asignaciones diarias</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Ajustar</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">parámetros y reglas</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#b3261e"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Excepciones</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">reabrir turno · revocar · restablecer</text></svg><figcaption>Orden recomendado de puesta en marcha y las tareas recurrentes del administrador.</figcaption></figure></section><section id="rapida"><h2>Guía rápida</h2>
+<div class="cards">
+<div class="card"><h5><span class="n">1</span>Alta de un operador</h5><p>Administración → Usuarios → <span class="ui p">+ Nuevo</span>: usuario, nombre, rol Operador, contraseña, zona → <span class="ui p">Crear</span>. Entra sólo por la PWA.</p></div>
+<div class="card"><h5><span class="n">2</span>Asignación de hoy</h5><p>Asignaciones → + Nuevo: operador, punto, carrito, fecha. Sin horario usa el del punto.</p></div>
+<div class="card"><h5><span class="n">3</span>Cambio de precio</h5><p>Precios → <span class="ui p">+ Nueva versión</span>: nombre y precio por presentación → vigente ahora. Luego desactiva la anterior.</p></div>
+<div class="card"><h5><span class="n">4</span>Contraseña olvidada</h5><p>Usuarios → <span class="ui">Restablecer contraseña</span>: copia la temporal (se muestra una sola vez); el usuario deberá cambiarla al entrar.</p></div>
+<div class="card"><h5><span class="n">5</span>Teléfono perdido</h5><p>Dispositivos → <span class="ui r">Revocar</span> con motivo. La app del operador muestra "Este teléfono fue dado de baja".</p></div>
+<div class="card"><h5><span class="n">6</span>Cerró por error</h5><p>Control Tower (fecha de hoy) o Asignaciones → <span class="ui p">Continuar turno</span> → motivo → <span class="ui p">Reabrir turno</span>.</p></div>
+</div>
+<h3 id="adm-params">Parámetros (Administración → Parámetros)</h3>
+<div class="tbl"><table><tr><th>Parámetro</th><th>Default</th><th>Efecto</th></tr>
+<tr><td>cash_difference_threshold_cents</td><td>2000 ($20)</td><td>Diferencia de caja a partir de la cual se abre caso REVISAR (cierre y arqueo sorpresa).</td></tr>
+<tr><td>cash_difference_severe_cents</td><td>10000 ($100)</td><td>Diferencia grave: caso URGENTE + aprobación de Finanzas.</td></tr>
+<tr><td>cancel_window_minutes</td><td>5</td><td>Minutos en que el operador puede cancelar su propia venta ya enviada.</td></tr>
+<tr><td>gps_interval_seconds</td><td>120</td><td>Cada cuánto envía GPS la PWA con turno abierto (mín. 10).</td></tr>
+<tr><td>photo_sampling_pct</td><td>10</td><td>% de aperturas (y cierres) con foto obligatoria por muestreo.</td></tr>
+<tr><td>evidence_retention_days</td><td>180</td><td>Días que se conservan las fotos.</td></tr>
+<tr><td>gps_retention_days</td><td>90</td><td>Días que se conservan los pings GPS.</td></tr>
+<tr><td>daily_sales_target_default_cents</td><td>234000 ($2,340)</td><td>Meta diaria cuando el punto no tiene una propia.</td></tr>
+<tr><td>shift_reopen_window_hours</td><td>24 (1–48)</td><td>Horas tras el cierre en que aún puedes "Continuar turno" (además debe ser del mismo día).</td></tr>
+<tr><td>inventory_count_tolerance_units</td><td>3</td><td>Diferencia entre conteo y teórico que abre caso de inventario.</td></tr>
+</table></div>
+<p>Precedencia: override en <b>Reglas</b> (params) &gt; Parámetros &gt; valor por defecto. Cada guardado: toast <i>"Parámetro X guardado"</i> y entrada <code>settings.update</code> en el audit log. Un valor fuera de rango devuelve un error como <i>"photo_sampling_pct debe ser ≤ 100"</i>.</p>
+</section><section id="detalle"><h2>Detalle de cada pantalla</h2>
+<h3 id="adm-usuarios">Usuarios y dispositivos</h3>
+<p><b>Usuarios</b>: usuario (no se cambia), nombre, rol (Operador, Supervisor, Operaciones, Finanzas, Administrador), contraseña, zona, teléfono, activo. Badge <span class="badge b-amber">Debe cambiar contraseña</span> tras un restablecimiento. <span class="ui">Restablecer contraseña</span> genera una temporal, cierra todas sus sesiones y obliga a cambiarla al entrar; se muestra una sola vez con botón <span class="ui">Copiar</span>. La baja es lógica: el usuario deja de poder entrar, su historia se conserva.</p>
+<p><b>Dispositivos</b>: nombre/ID, usuario, plataforma, último login y visto. <span class="ui r">Revocar</span> pide motivo (por defecto "Dispositivo perdido") e invalida la sesión al instante (la PWA recibe DEVICE_REVOKED y cierra sesión sin borrar su cola cifrada); <span class="ui">Reactivar</span> la vuelve a permitir.</p>
+
+<h3 id="adm-puntos">Zonas, puntos, carritos y asignaciones</h3>
+<ul>
+<li><b>Zonas</b>: nombre y activa; muestra cuántos supervisores y puntos tiene. El supervisor sólo ve su zona.</li>
+<li><b>Puntos</b>: nombre, dirección, latitud/longitud, <b>geocerca (m)</b> (radio para "En geocerca / Fuera"; 150 m en demo), zona, horario de apertura/cierre, meta diaria ($) y meta de transacciones.</li>
+<li><b>Carritos</b>: código (C-001…) y descripción. Un carrito sólo puede tener un turno abierto a la vez.</li>
+<li><b>Asignaciones</b>: operador + punto + carrito + fecha (una por operador y día). Estado <code>planned</code> → <code>started</code> (al abrir) → <code>done</code> (al cerrar) o <code>absent</code>. Columna <b>Turno</b> con el estado del último turno y botón <span class="ui p">Continuar turno</span> si está cerrado.</li>
+</ul>
+
+<h3 id="adm-precios">Presentaciones y versiones de precio</h3>
+<p><b>Presentaciones</b>: nombre, gramos, orden, activa; columna "Precio vigente". <b>Precios</b>: cada cambio es una <b>nueva versión</b> con vigencia; las ventas guardan la versión usada (nunca se reescriben). <span class="ui p">+ Nueva versión</span> pide nombre y un precio por presentación y queda vigente ahora. <span class="ui">Desactivar</span> advierte: los operadores sin señal seguirán vendiendo con esos precios hasta sincronizar; el servidor acepta esas ventas <b>72 h</b> y las marca "precio vencido" en el reporte. Asegúrate de tener otra versión activa.</p>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#5b6b7d"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">v1 vigente</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">$25 · $35 · $45</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#e8590c"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">+ Nueva versión v2</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">$28 · $38 · $48 · vigente ahora</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Desactivar v1</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">confirmación</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#1a56b3"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">72 h de gracia</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">ventas offline con v1 aceptadas y marcadas</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#1a7f46"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Reporte</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">columna &#x27;Precio vencido&#x27;</text></svg><figcaption>Ciclo de un cambio de precio. Las ventas históricas conservan la versión con la que se hicieron.</figcaption></figure>
+<h3 id="adm-reopen">Continuar turno (reabrir un turno terminado)</h3>
+<p>Disponible en <b>Control Tower</b> (sólo con la fecha de hoy, en filas con turno Cerrado) y en <b>Asignaciones</b>. Modal <i>"Continuar turno terminado"</i>: explica el efecto, pide <b>motivo</b> (5–280 caracteres) y confirma con <span class="ui p">Reabrir turno</span>.</p>
+<figure><svg viewBox="0 0 980 240" width="100%" role="img"><defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><path d="M186.0 60.0 L350.0 60.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="192.6" y="37.0" width="150.8" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="268.0" y="50.0" text-anchor="middle" font-size="11" fill="#3b4757">Reabrir turno + motivo</text><path d="M486.0 60.0 L690.0 60.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="506.2" y="37.0" width="163.6" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="588.0" y="50.0" text-anchor="middle" font-size="11" fill="#3b4757">operador cierra de nuevo</text><path d="M162.4 78.4 L373.9 170.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="79.9" y="102.35900637039246" width="387.6" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="273.7" y="115.35900637039246" text-anchor="middle" font-size="11" fill="#3b4757">no es de hoy · &gt; ventana · otro turno abierto · transferido</text><rect x="58.0" y="40" width="124.0" height="40" rx="20" fill="#1a56b3"/><text x="120" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Cerrado</text><rect x="358.0" y="40" width="124.0" height="40" rx="20" fill="#1a7f46"/><text x="420" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Abierto</text><rect x="664.2" y="40" width="191.6" height="40" rx="20" fill="#1a56b3"/><text x="760" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Cerrado (2º cierre)</text><rect x="349.4" y="170" width="141.2" height="40" rx="20" fill="#b3261e"/><text x="420" y="195" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Rechazado 409</text></svg><figcaption>Reglas de la reapertura. El sistema conserva íntegro el cierre anterior en el audit log.</figcaption></figure>
+<div class="tbl"><table><tr><th>Condición</th><th>Mensaje si no se cumple</th></tr>
+<tr><td>El turno está <code>closed</code> (no transferido)</td><td>"Sólo se puede continuar un turno cerrado (no transferido ni abierto)"</td></tr>
+<tr><td>Se abrió hoy (día local)</td><td>"Sólo se puede continuar un turno abierto hoy"</td></tr>
+<tr><td>Cerró hace menos de <code>shift_reopen_window_hours</code></td><td>"El turno se cerró el 04-sep 10:34 (hace 14 h 2 min; servidor: 05-sep 00:36) y la ventana es de 24 h…" — si las horas no cuadran, revisa el reloj del servidor o del teléfono</td></tr>
+<tr><td>Ni el operador ni el carrito tienen otro turno abierto</td><td>"El operador ya tiene otro turno abierto" / "El carrito ya tiene otro turno abierto"</td></tr>
+</table></div>
+<p><b>Qué hace</b>: el mismo turno vuelve a <i>abierto</i> (caja y asistencia reabiertas, asignación a <code>started</code>); las ventas se conservan; los casos de diferencia de caja / inventario y la aprobación pendiente de ese cierre se marcan <b>superados</b> (caso cerrado, aprobación <span class="badge b-gray">Cancelada</span>) con tu motivo; evento <code>ShiftReopened</code> y audit <code>shift.reopen</code> con el cierre anterior completo. El operador ve el puesto abierto al volver a su app (o en menos de 60 s) con el acumulado de ventas, y al cerrar de nuevo se concilia todo el día.</p>
+
+<h3 id="adm-reglas">Reglas y Parámetros</h3>
+<p>Ver el manual de Operaciones para la tabla de reglas. Como administrador eres el único que edita <b>Parámetros</b>; Operaciones y Finanzas los ven en lectura. Los umbrales de caja e inventario los heredan las reglas salvo override.</p>
+
+<h3 id="adm-audit">Audit log</h3>
+<p>Acciones que generas: <code>users.create/patch/delete</code>, <code>password.reset</code>, <code>device.revoke</code>, <code>price_version.create/patch</code>, <code>settings.update</code>, <code>rule.update</code>, <code>shift.reopen</code>, <code>approval.decide</code>, <code>approval.cancel</code>. Cada una con antes/después, motivo, IP y dispositivo.</p>
+</section><section id="pasos"><h2>Paso a paso con ejemplos</h2>
+<h3 id="adm-ej1">Ejemplo 1 · Puesta en marcha de una zona nueva</h3>
+<ol class="steps">
+<li><b>Zona</b> Zonas → + Nuevo → "Norte" → Crear.</li>
+<li><b>Puntos</b> Puntos → + Nuevo → "Metro Indios Verdes", dirección, lat 19.4956, lng −99.1195, geocerca 150, zona Norte, 08:00–18:00, meta $2,600, 65 tx.<div class="ex">Si dejas la meta vacía se usa daily_sales_target_default_cents ($2,340).</div></li>
+<li><b>Carrito</b> Carritos → + Nuevo → C-004.</li>
+<li><b>Usuarios</b> Supervisor "sup2" (rol Supervisor, zona Norte) y operador "op4" (rol Operador, zona Norte, contraseña inicial).<div class="ex">Comparte la contraseña por un canal seguro; el operador entra sólo desde la PWA en https.</div></li>
+<li><b>Asignación</b> Asignaciones → + Nuevo → op4 · Metro Indios Verdes · C-004 · fecha de hoy → Crear.<div class="ex">"Al crear sin horario, se usa el horario de apertura/cierre del punto." A partir de la hora de apertura + 20 min sin abrir, la regla "Punto sin abrir" avisará a sup2.</div></li>
+</ol>
+
+<h3 id="adm-ej2">Ejemplo 2 · Subir precios el lunes</h3>
+<ol class="steps">
+<li><b>Nueva versión</b> Precios → <span class="ui p">+ Nueva versión</span> → Nombre "v2 septiembre" → 50 g $28 · 75 g $38 · 100 g $48 → <span class="ui p">Crear versión (vigente ahora)</span>.<div class="ex">Toast "Versión de precio creada". La PWA toma los precios nuevos en su siguiente sincronización.</div></li>
+<li><b>Desactivar v1</b> Fila v1 → <span class="ui">Desactivar</span> → lee la advertencia de las 72 h → aceptar.<div class="ex">Un operador sin señal que vendió a $25 esa mañana sincroniza a mediodía: la venta se acepta y en Ventas aparece "1 vencido".</div></li>
+<li><b>Verifica</b> Precios muestra v2 Activa con "Ventas: 37" al final del día; v1 "Desactivada 09/08 08:02".</li>
+</ol>
+
+<h3 id="adm-ej3">Ejemplo 3 · Operador cerró por error a las 11 a.m.</h3>
+<ol class="steps">
+<li><b>Control Tower</b> (fecha de hoy) fila Metro Insurgentes: Estado Cerrado, Caja OK. Acción <span class="ui p">▶ Continuar turno</span>.</li>
+<li><b>Motivo</b> "El operador cerró por error a media jornada; continúa hasta las 6 pm" → <span class="ui p">Reabrir turno</span>.<div class="ex">Toast "Turno reabierto: Metro Insurgentes. El operador puede seguir vendiendo." La fila pasa a Abierto y el botón desaparece.</div></li>
+<li><b>En el teléfono</b> El operador abre la app: "Puesto abierto · $70 · 2 ventas". Sigue vendiendo.</li>
+<li><b>Si sale un 409</b> "El turno se cerró el 04-sep 10:34 (hace 14 h 2 min; servidor: 05-sep 00:36)…" y apenas son las 12:40: el reloj del servidor está mal. Corrige la hora/zona de la VM antes de reintentar.</li>
+<li><b>Trazabilidad</b> Audit log → Entidad shift → acción <code>shift.reopen</code>: antes (closed_at, contado, diferencia, product_diff) → después (open, casos y aprobaciones superados), tu usuario, IP y motivo.</li>
+</ol>
+
+<h3 id="adm-ej4">Ejemplo 4 · Teléfono robado</h3>
+<ol class="steps">
+<li><b>Revocar</b> Dispositivos → fila del operador (último visto hace 40 min) → <span class="ui r">Revocar</span> → motivo "Robo reportado 5 p.m." → aceptar.<div class="ex">"Dispositivo revocado". Cualquier petición desde ese teléfono recibe 401 DEVICE_REVOKED; la app muestra "Este teléfono fue dado de baja. Avisa a tu supervisor."</div></li>
+<li><b>Contraseña</b> Usuarios → <span class="ui">Restablecer contraseña</span> → copia la temporal → entrégala en persona.<div class="ex">El operador entra desde otro teléfono, la app le exige cambiarla ("Cambia tu contraseña") y luego trabaja normal.</div></li>
+<li><b>Turno abierto en el teléfono robado</b> Si el turno quedó abierto, el supervisor puede transferirlo o esperar el cierre desde el nuevo teléfono (la app adopta el turno abierto del servidor al entrar).</li>
+</ol>
+</section>
+<p class="print">PEPITO OS v1 · rama feat/ux-redesign · Generado el 4 de septiembre de 2026. Los textos entre comillas son literales de la aplicación.</p>
+</main></div></body></html>

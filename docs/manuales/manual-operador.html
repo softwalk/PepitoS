@@ -1,0 +1,179 @@
+<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PEPITO OS · Manual · Operador</title><style>
+:root{--brand:#e8590c;--brand-dark:#c04607;--navy:#14213d;--ink:#16202c;--muted:#5b6b7d;--line:#dfe4ec;--bg:#f6f7f9;--panel:#fff;
+--green:#1a7f46;--green-bg:#dff5e7;--amber:#8a5a00;--amber-fill:#e0951a;--amber-bg:#fff1d6;--red:#b3261e;--red-bg:#fde8e6;--blue:#1a56b3;--blue-bg:#e2ecfb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:var(--ink);background:var(--bg)}
+a{color:var(--blue)}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+nav.toc{background:var(--navy);color:#c9d3e6;padding:22px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+nav.toc .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+nav.toc .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center}
+nav.toc .t{font-weight:800;letter-spacing:.06em;color:#fff;font-size:13px}nav.toc .s{font-size:12px;color:#7f8fb0}
+nav.toc a{display:block;color:#c9d3e6;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:13.5px}
+nav.toc a:hover{background:rgba(255,255,255,.07);color:#fff}nav.toc a.l2{padding-left:22px;font-size:12.5px;color:#9fb0cc}
+nav.toc .g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7f8fb0;margin:14px 10px 4px;font-weight:700}
+main{padding:36px 48px 80px;max-width:1080px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}h2{font-size:22px;margin:44px 0 12px;padding-top:12px;border-top:3px solid var(--brand)}
+h3{font-size:17px;margin:26px 0 8px}h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 10px}.lead{font-size:17px;color:#3b4757}
+.rolebar{display:inline-flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;margin:10px 0 22px;font-size:13px}
+.rolebar b{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(22,32,44,.05)}
+.card h5{margin:0 0 6px;font-size:14px}.card p{font-size:13.5px;margin:0;color:#3b4757}.card .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:13px;margin-right:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0 16px;background:var(--panel)}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f8fafc}tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green)}.b-amber{background:var(--amber-bg);color:var(--amber)}.b-red{background:var(--red-bg);color:var(--red)}.b-blue{background:var(--blue-bg);color:var(--blue)}.b-gray{background:#eaeef3;color:#5b6b7d}
+kbd,.ui{display:inline-block;background:#fff;border:1px solid #c7cfdb;border-bottom-width:2px;border-radius:6px;padding:0 7px;font:inherit;font-size:12.5px;font-weight:700;white-space:nowrap}
+.ui.p{background:var(--brand);color:#fff;border-color:var(--brand-dark)}.ui.g{background:var(--green);color:#fff;border-color:#125a32}.ui.a{background:var(--amber-fill);color:#1a1000;border-color:#a86a00}.ui.b{background:var(--blue);color:#fff;border-color:#143f85}.ui.r{background:var(--red);color:#fff;border-color:#86170f}
+.callout{border-left:5px solid var(--blue);background:var(--blue-bg);padding:10px 14px;border-radius:8px;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--amber-fill);background:var(--amber-bg)}.callout.ok{border-color:var(--green);background:var(--green-bg)}.callout.bad{border-color:var(--red);background:var(--red-bg)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}.steps li{position:relative;padding:10px 12px 10px 52px;margin:0 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;display:grid;place-items:center;font-size:13px}
+.steps li b:first-child{display:block;margin-bottom:2px}.steps .ex{margin-top:6px;font-size:13px;color:#3b4757;background:#f8fafc;border-radius:6px;padding:6px 10px;border:1px dashed var(--line)}
+.ex::before{content:'Ejemplo · ';font-weight:700;color:var(--brand-dark)}
+figure{margin:16px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+svg text{font-family:inherit}
+.print{font-size:12px;color:var(--muted);margin-top:40px;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto}main{padding:20px}}
+@media print{.wrap{display:block}nav.toc{display:none}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
+</style></head><body><div class="wrap">
+<nav class="toc"><div class="brand"><div class="mark">P</div><div><div class="t">PEPITO OS</div><div class="s">Manual · Operador</div></div></div>
+<div class="g">Contenido</div><a href="#que">Qué puedes hacer</a><a href="#rapida">Guía rápida</a><a class="l2" href="#op-barra">La barra superior</a><a href="#detalle">Detalle de cada pantalla</a><a class="l2" href="#op-login">Entrar y cambio de contraseña</a><a class="l2" href="#op-home">Inicio</a><a class="l2" href="#op-abrir">Abrir puesto</a><a class="l2" href="#op-vender">Vender</a><a class="l2" href="#op-ayuda">Necesito ayuda</a><a class="l2" href="#op-cerrar">Cerrar puesto</a><a class="l2" href="#op-ajustes">Ajustes</a><a class="l2" href="#op-gps">Si el GPS no funciona</a><a class="l2" href="#op-offline">Sin señal: cómo funciona</a><a href="#pasos">Paso a paso con ejemplos</a><a class="l2" href="#op-ej1">Ejemplo 1 · Un día normal (Operador Uno, Metro Insurgentes, carrito C-001)</a><a class="l2" href="#op-ej2">Ejemplo 2 · Sin señal toda la mañana</a><a class="l2" href="#op-ej3">Ejemplo 3 · Abriste con un pendiente y pediste ayuda</a><a class="l2" href="#op-ej4">Ejemplo 4 · Cerraste por error y el administrador te reabre el turno</a>
+<div class="g">Otros manuales</div><a href="manual-operador.html">Operador</a><a href="manual-supervisor.html">Supervisor</a><a href="manual-operaciones.html">Operaciones</a><a href="manual-finanzas.html">Finanzas</a><a href="manual-administrador.html">Administrador</a></nav>
+<main><h1>Manual del Operador</h1><p class="lead">Cómo usar la app del teléfono para abrir el puesto, vender, pedir ayuda y cerrar caja, con o sin señal.</p>
+<div class="rolebar"><b>operator</b> PWA Operador · teléfono · funciona sin señal</div>
+<section id="que"><h2>Qué puedes hacer</h2>
+<p>Eres quien vende en la calle. Tu app es la <b>PWA Operador</b> en tu teléfono: funciona sin señal y guarda todo hasta que vuelva la red. Con ella puedes:</p>
+<div class="cards">
+<div class="card"><h5>🔓 Abrir el puesto</h5><p>Checklist de 5 puntos (Sí/No), ubicación automática y, algunos días, una foto de muestreo.</p></div>
+<div class="card"><h5>🛍️ Vender</h5><p>Un toque por venta: 50 g, 75 g o 100 g. Efectivo o QR/Tarjeta. Sabor opcional. Deshacer en 60 s.</p></div>
+<div class="card"><h5>🗑️ Registrar merma</h5><p>Producto que se tira o regala: tamaño, cantidad y motivo.</p></div>
+<div class="card"><h5>🆘 Pedir ayuda</h5><p>Carrito, batería, producto, cobro, seguridad (prioritaria) u otro con nota y foto.</p></div>
+<div class="card"><h5>🔒 Cerrar el puesto</h5><p>Cuenta el efectivo, cuenta el producto, checklist de salida. El sistema concilia.</p></div>
+<div class="card"><h5>⚙️ Ajustes</h5><p>Ver estado del GPS y de lo pendiente de enviar, audio, texto grande, cerrar sesión.</p></div>
+</div>
+<div class="callout">Lo que <b>no</b> puedes hacer: entrar al backoffice (te dirá <i>"Este acceso es para supervisores y backoffice. Usa la app de operador."</i>), cambiar precios, cancelar ventas de otros ni reabrir un turno cerrado (eso lo hace el administrador).</div>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#14213d"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Entrar</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">usuario y contraseña</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#1a7f46"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ABRIR PUESTO</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">checklist + GPS (+ foto)</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#e8590c"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">VENDER</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">un toque por venta</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#1a56b3"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">NECESITO AYUDA</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">cuando haga falta</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">CERRAR PUESTO</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">efectivo · producto · checklist</text></svg><figcaption>Tu jornada en cinco pasos. La barra superior siempre muestra tu punto, tu carrito, si lo tuyo ya se envió, el GPS y la batería.</figcaption></figure></section><section id="rapida"><h2>Guía rápida</h2>
+<div class="cards">
+<div class="card"><h5><span class="n">1</span>Entra</h5><p>Abre la app desde el icono de tu pantalla de inicio (<b>https://</b>). Escribe usuario y contraseña → <span class="ui p">ENTRAR</span>. Verás "Bienvenido" con tu punto y carrito.</p></div>
+<div class="card"><h5><span class="n">2</span>Abre el puesto</h5><p><span class="ui g">ABRIR PUESTO</span> → marca Sí/No en los 5 puntos → <span class="ui g">LISTO</span>. Si hoy toca foto: <span class="ui b">TOMAR FOTO</span>.</p></div>
+<div class="card"><h5><span class="n">3</span>Vende</h5><p>Elige forma de pago (Efectivo / QR) y toca el tamaño. Verás "✓ Venta registrada". Si te equivocaste: <span class="ui">↩ Deshacer</span> (60 s).</p></div>
+<div class="card"><h5><span class="n">4</span>Si algo pasa</h5><p><span class="ui b">NECESITO AYUDA</span> y toca la categoría. Seguridad se envía de inmediato.</p></div>
+<div class="card"><h5><span class="n">5</span>Cierra</h5><p><span class="ui a">CERRAR PUESTO</span> → escribe cuánto efectivo tienes → cuenta producto → checklist de salida → <span class="ui a">CERRAR PUESTO</span> → <span class="ui">Terminar</span>.</p></div>
+<div class="card"><h5><span class="n">6</span>Revisa la barra</h5><p>"✓ Guardado" = todo enviado. "Pendiente de enviar (n)" = se enviará solo cuando haya señal. "Requiere ayuda" = avisa al supervisor.</p></div>
+</div>
+<h3 id="op-barra">La barra superior</h3>
+<div class="tbl"><table><tr><th>Lo que ves</th><th>Significa</th><th>Qué hacer</th></tr>
+<tr><td><span class="badge b-green">✓ Guardado</span></td><td>Todo lo que hiciste ya está en el servidor.</td><td>Nada.</td></tr>
+<tr><td><span class="badge b-amber">Pendiente de enviar (3)</span></td><td>Hay 3 registros guardados en el teléfono esperando red. La tira se pone ámbar.</td><td>Sigue trabajando; se envían solos. No cierres sesión.</td></tr>
+<tr><td><span class="badge b-red">Requiere ayuda</span></td><td>Algún registro fue rechazado por el servidor.</td><td>Ajustes → <span class="ui">Reintentar enviar</span>; si persiste, avisa al supervisor.</td></tr>
+<tr><td><span class="badge b-gray">📴 Sin señal</span></td><td>El teléfono no tiene internet.</td><td>Puedes vender, cerrar y pedir ayuda igual; se envía después.</td></tr>
+<tr><td><span class="badge b-red">📡 Sin GPS</span></td><td>La app no consigue tu ubicación.</td><td>Tócala: te lleva a Ajustes y te dice la causa y la solución.</td></tr>
+<tr><td><span class="badge b-amber">🔋 22%</span></td><td>Batería del teléfono baja (ámbar ≤ 25 %, rojo ≤ 10 %).</td><td>Conecta el cargador; el supervisor también lo ve.</td></tr>
+</table></div>
+</section><section id="detalle"><h2>Detalle de cada pantalla</h2>
+<h3 id="op-login">Entrar y cambio de contraseña</h3>
+<p>Pantalla con el logo, <b>Usuario</b> y <b>Contraseña</b>. Mensajes posibles: <i>"Usuario o contraseña incorrectos"</i>, <i>"No hay señal. Conéctate para iniciar sesión."</i> (la primera vez necesitas internet), <i>"Este teléfono fue dado de baja. Avisa a tu supervisor."</i> y, tras varios intentos fallidos, <i>"Demasiados intentos. Espera N minutos"</i> con cuenta regresiva.</p>
+<p>Si el administrador te restableció la contraseña, la app te pedirá cambiarla antes de seguir: contraseña actual, nueva (mínimo 8 caracteres) y repetirla → <span class="ui p">GUARDAR CONTRASEÑA</span>.</p>
+
+<h3 id="op-home">Inicio</h3>
+<p>Una tarjeta te dice en qué estás: <b>Puesto cerrado</b> (con tu horario), <b>Puesto abierto</b> (desde qué hora, cuántas ventas y cuánto llevas), <b>Abierto, pendiente de enviar</b> (abriste sin señal), <b>Turno de hoy terminado</b> o <b>No tienes punto asignado hoy</b>. Debajo, el botón grande es la acción que toca ahora; los botones apagados explican por qué (<i>"Abre el puesto primero"</i>, <i>"Turno terminado"</i>, <i>"Sin asignación"</i>).</p>
+
+<h3 id="op-abrir">Abrir puesto</h3>
+<p>La app busca tu ubicación mientras contestas (<i>"Buscando ubicación…"</i> → <i>"Ubicación lista (±12 m)"</i>). Si no la consigue, verás la causa y qué hacer; <b>puedes abrir igual</b>: el supervisor lo verá como pendiente.</p>
+<div class="tbl"><table><tr><th>Pregunta</th><th>Si contestas No…</th><th>Qué pasa</th></tr>
+<tr><td>🔐 Carrito asegurado</td><td>Crítico</td><td>Se abre un caso <b>URGENTE</b> para el supervisor: <i>"Carrito no asegurado: revisa candado y resguardo"</i>.</td></tr>
+<tr><td>🔋 Batería cargada</td><td>Crítico</td><td>Caso REVISAR: <i>"conecta el cargador o pide reemplazo"</i>.</td></tr>
+<tr><td>Producto suficiente y en buen estado</td><td>Crítico</td><td>Caso REVISAR: <i>"pide reposición"</i>.</td></tr>
+<tr><td>🧽 Carrito limpio</td><td>No crítico</td><td>Queda anotado; se te pide limpiar antes de vender.</td></tr>
+<tr><td>💳 Terminal POS funciona</td><td>Crítico</td><td>Caso REVISAR: <i>"cobra sólo en efectivo y pide ayuda"</i>.</td></tr>
+</table></div>
+<p>Con todo en Sí → <b>"LISTO PARA VENDER"</b>. Con algún No crítico → <b>"ABIERTO CON PENDIENTES"</b>, la lista de lo que falta y <i>"Ya avisamos al supervisor"</i>; puedes vender de todos modos. Si estás lejos de tu punto (fuera de la geocerca, 150 m normalmente) aparece <i>"Estás fuera del punto asignado"</i>.</p>
+<p><b>Foto de muestreo.</b> Algunos días (10 % de las aperturas, lo decide el sistema) el botón dice <span class="ui g">SIGUIENTE: FOTO</span>: toma una foto del puesto listo. Si la cámara falla, <span class="ui">Continuar sin foto</span>; nunca te bloquea. Ese mismo día también se pide foto al cerrar.</p>
+
+<h3 id="op-vender">Vender</h3>
+<p>Arriba: <b>Ventas del turno</b> y <b>Total</b>. Luego la forma de pago (<span class="ui g">💵 Efectivo</span> | <span class="ui b">📱 QR / Tarjeta</span>) y un botón grande por tamaño con su precio. La forma de pago digital vuelve sola a Efectivo después de cada venta, para que no se te quede pegada.</p>
+<div class="tbl"><table><tr><th>Acción</th><th>Cómo</th><th>Límite</th></tr>
+<tr><td>Venta</td><td>Toca el tamaño. Toast <i>"✓ Venta registrada · 100 g · $45"</i> y la voz lo repite si tienes audio.</td><td>—</td></tr>
+<tr><td>Sabor</td><td>Abre <i>"🌶️ Sabor (opcional)"</i> y elige un chip; se aplica a la siguiente venta.</td><td>Se limpia tras cada venta.</td></tr>
+<tr><td>Deshacer</td><td><span class="ui">↩ Deshacer</span> en el toast.</td><td>60 s. Si la venta ya se envió, te pide motivo: <i>Me equivoqué · Cliente se fue · Cambio de tamaño</i> (hasta 5 min después). Pasado ese tiempo sólo el supervisor puede cancelarla.</td></tr>
+<tr><td>Merma</td><td><span class="ui">🗑️ MERMA</span> → tamaño → cuántas (1, 2, 3 o +) → motivo (derrame, calidad, caducado, muestra, otro).</td><td>Cuenta para el indicador de merma del punto (más de 4 % abre un caso).</td></tr>
+</table></div>
+
+<h3 id="op-ayuda">Necesito ayuda</h3>
+<div class="tbl"><table><tr><th>Botón</th><th>Prioridad para el supervisor</th><th>Detalle</th></tr>
+<tr><td>🚨 Seguridad</td><td><span class="badge b-red">URGENTE</span></td><td>Se envía de inmediato (espera GPS máximo 3 s). Mensaje: <i>"Mantente a salvo. Ayuda prioritaria en camino."</i></td></tr>
+<tr><td>🔋 Batería · 💳 Cobro</td><td><span class="badge b-amber">REVISAR</span></td><td>Impacto alto.</td></tr>
+<tr><td>Carrito · Producto</td><td><span class="badge b-amber">REVISAR</span></td><td>—</td></tr>
+<tr><td>❓ Otro</td><td><span class="badge b-green">NORMAL</span></td><td>Puedes escribir una nota (280 caracteres) y adjuntar foto. El sistema sugiere una categoría al supervisor.</td></tr>
+</table></div>
+
+<h3 id="op-cerrar">Cerrar puesto</h3>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">1 · Efectivo</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">Debes tener $X · Tengo: teclado</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">2 · Producto</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">cuántas quedan por tamaño</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">3 · Antes de irte</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">checklist Sí/No</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#5b6b7d"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">4 · Foto</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">sólo días de muestreo</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#1a7f46"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Resultado</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">Conciliado o Diferencia</text></svg><figcaption>Los pasos del cierre. El paso 4 sólo aparece los días en que también se pidió foto al abrir.</figcaption></figure>
+<p><b>"Debes tener"</b> es el efectivo esperado: ventas en efectivo del turno (las digitales no cuentan). Escribe lo que contaste y <span class="ui p">CONTINUAR</span>. Si estás sin señal, el monto se calcula en tu teléfono (<i>"calculado en el teléfono"</i>) y el servidor confirma después.</p>
+<div class="tbl"><table><tr><th>Resultado</th><th>Cuándo</th><th>Qué sigue</th></tr>
+<tr><td>✅ Cierre conciliado</td><td>Diferencia de ±$20 o menos (parámetro del administrador).</td><td>Nada. <i>"Buen trabajo."</i></td></tr>
+<tr><td>📋 Se registró una diferencia</td><td>Más de $20 de diferencia.</td><td>Se abre un caso para el supervisor. Más de $100: caso urgente y Finanzas debe aprobar. <i>"No necesitas hacer nada más."</i></td></tr>
+</table></div>
+<p>El conteo de producto viene precargado con lo que debería quedar; ajusta con − y +. Una diferencia de más de 3 unidades abre un caso de inventario.</p>
+
+<h3 id="op-ajustes">Ajustes</h3>
+<ul>
+<li><b>Ubicación (GPS)</b>: pastilla <i>Funciona / Con problema / Sin probar</i>, causa y solución si falla, último fix y botón <span class="ui">📡 Probar GPS</span>.</li>
+<li><b>Por enviar</b>: cuántos registros faltan y <span class="ui">🔄 Reintentar enviar</span>.</li>
+<li>🔊 Leer instrucciones en voz alta · 🔠 Texto más grande.</li>
+<li>🚪 <b>Cerrar sesión</b>: si hay algo sin enviar, la app te avisa (<i>"Hay N registros sin enviar. Si sales ahora se perderán."</i>). Mejor espera a tener señal.</li>
+</ul>
+
+<h3 id="op-gps">Si el GPS no funciona</h3>
+<div class="tbl"><table><tr><th>Mensaje</th><th>Causa</th><th>Solución</th></tr>
+<tr><td>La app no está en modo seguro (https)</td><td>Abriste la app por una dirección <code>http://</code> o el certificado no está instalado.</td><td>Pide al supervisor la dirección <b>https://</b> y el certificado; vuelve a instalar la app desde ahí.</td></tr>
+<tr><td>Ubicación bloqueada para esta app</td><td>Le dijiste "Bloquear" al permiso.</td><td>Ajustes del teléfono → Apps → Chrome (o Safari) → Permisos → Ubicación → Permitir.</td></tr>
+<tr><td>El teléfono no entrega ubicación</td><td>Ubicación apagada.</td><td>Enciéndela en los ajustes rápidos.</td></tr>
+<tr><td>Sin señal GPS por ahora</td><td>Estás bajo techo.</td><td>Sal a cielo abierto; la app reintenta sola y usa la última posición reciente.</td></tr>
+</table></div>
+
+<h3 id="op-offline">Sin señal: cómo funciona</h3>
+<figure><svg viewBox="0 0 980 240" width="100%" role="img"><defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><path d="M186.0 60.0 L330.0 60.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="198.6" y="37.0" width="118.8" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="258.0" y="50.0" text-anchor="middle" font-size="11" fill="#3b4757">se guarda siempre</text><path d="M466.0 60.0 L610.0 60.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="465.8" y="37.0" width="144.4" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="538.0" y="50.0" text-anchor="middle" font-size="11" fill="#3b4757">con señal · cada 30 s</text><path d="M391.0 84.0 L391.0 162.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="305.4" y="114.0" width="67.6" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="339.2" y="127.0" text-anchor="middle" font-size="11" fill="#3b4757">rechazado</text><path d="M409.0 166.0 L409.0 88.0" stroke="#8a97a5" stroke-width="2" marker-end="url(#ar2)"/><rect x="427.0" y="118.0" width="118.8" height="17" rx="4" fill="#fff" stroke="#e3e8ef"/><text x="486.4" y="131.0" text-anchor="middle" font-size="11" fill="#3b4757">Reintentar enviar</text><rect x="36.8" y="40" width="166.4" height="40" rx="20" fill="#14213d"/><text x="120" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Acción en la app</text><rect x="316.8" y="40" width="166.4" height="40" rx="20" fill="#5b6b7d"/><text x="400" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Guardado cifrado</text><rect x="618.0" y="40" width="124.0" height="40" rx="20" fill="#1a7f46"/><text x="680" y="65" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Enviado ✓</text><rect x="325.2" y="170" width="149.6" height="40" rx="20" fill="#b3261e"/><text x="400" y="195" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">Requiere ayuda</text></svg><figcaption>Cada venta, apertura, cierre o ayuda se guarda primero en el teléfono y se envía en orden. Un turno abierto sin señal se llama 'pendiente de enviar' hasta que el servidor lo confirma.</figcaption></figure>
+<div class="callout warn">Nunca desinstales la app ni cierres sesión con registros pendientes: se perderían. Si cambias de teléfono, avisa al supervisor.</div>
+</section><section id="pasos"><h2>Paso a paso con ejemplos</h2>
+<h3 id="op-ej1">Ejemplo 1 · Un día normal (Operador Uno, Metro Insurgentes, carrito C-001)</h3>
+<ol class="steps">
+<li><b>Entrar</b> Usuario <code>op1</code>, contraseña, <span class="ui p">ENTRAR</span>.<div class="ex">Pantalla verde: "Bienvenido · 📍 Metro Insurgentes · Carrito C-001". A los 2 segundos pasas a Inicio con "Puesto cerrado · Turno 8:00 a.m. – 6:00 p.m.".</div></li>
+<li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>.</div></li>
+<li><b>Primera venta en efectivo</b> Con "💵 Efectivo" seleccionado toca <b>100 g · $45</b>.<div class="ex">Toast "✓ Venta registrada · 100 g · $45". Contador: 1 venta · $45. La barra sigue en "✓ Guardado".</div></li>
+<li><b>Venta con QR</b> Toca <span class="ui b">📱 QR / Tarjeta</span>, luego <b>75 g · $35</b>.<div class="ex">El botón se ve azul y el toast también. Después de la venta la forma de pago regresa a Efectivo.</div></li>
+<li><b>Te equivocaste</b> Vendiste 50 g pero era 100 g. En el toast toca <span class="ui">↩ Deshacer</span> antes de 60 s.<div class="ex">Si ya decía "Última venta" y se había enviado, elige el motivo "🔁 Cambio de tamaño". Luego registra la venta correcta.</div></li>
+<li><b>Merma</b> Se cayó una bolsa de 50 g. <span class="ui">🗑️ MERMA</span> → 50 → 1 → "💧 Derrame".<div class="ex">"Merma registrada" → <span class="ui">Volver a vender</span>. No cuenta como venta ni suma al efectivo esperado.</div></li>
+<li><b>Cerrar</b> A las 6 p.m.: <span class="ui a">CERRAR PUESTO</span>.<div class="ex">"Debes tener $45" (sólo el efectivo; los $35 del QR no cuentan). Escribes 45 → CONTINUAR → producto: 50 g queda 37 (40 − 1 venta deshecha − 1 merma − … la app ya lo precarga) → CONTINUAR → checklist de salida todo Sí → CERRAR PUESTO → "✅ Cierre conciliado" → Terminar. Inicio muestra "Turno de hoy terminado".</div></li>
+</ol>
+
+<h3 id="op-ej2">Ejemplo 2 · Sin señal toda la mañana</h3>
+<ol class="steps">
+<li><b>Abrir sin internet</b> La barra dice "📴 Sin señal". Contestas el checklist y tocas LISTO.<div class="ex">Resultado "LISTO PARA VENDER · Se enviará cuando haya señal". En Inicio: "Abierto, pendiente de enviar". La barra se pone ámbar: "Pendiente de enviar (1)".</div></li>
+<li><b>Vender igual</b> Cada venta suma al contador y a la lista pendiente.<div class="ex">"Pendiente de enviar (7)" con el puntito ámbar latiendo. Tu efectivo esperado se calcula en el teléfono.</div></li>
+<li><b>Vuelve la red</b> No tienes que hacer nada.<div class="ex">En menos de 30 segundos la barra pasa a "✓ Guardado". Si algo quedó en rojo "Requiere ayuda", ve a Ajustes → Reintentar enviar.</div></li>
+<li><b>Cerrar sin señal</b> También se puede.<div class="ex">"Debes tener $X (calculado en el teléfono)". El resultado que ves es provisional; el definitivo lo fija el servidor al sincronizar, y si hubo diferencia el supervisor lo verá en su lista.</div></li>
+</ol>
+
+<h3 id="op-ej3">Ejemplo 3 · Abriste con un pendiente y pediste ayuda</h3>
+<ol class="steps">
+<li><b>La terminal no enciende</b> En el checklist marcas "Terminal POS funciona: ✕ No" y LISTO.<div class="ex">"ABIERTO CON PENDIENTES · Ya avisamos al supervisor" con la tarjeta "Terminal POS no funciona: cobra sólo en efectivo y pide ayuda". Tocas CONTINUAR y puedes vender (en efectivo).</div></li>
+<li><b>Pide ayuda</b> Inicio → <span class="ui b">NECESITO AYUDA</span> → <b>💳 Cobro</b>.<div class="ex">"📨 Enviado, te contactan". El supervisor lo ve como caso REVISAR "Problema de cobro" con tu ubicación.</div></li>
+<li><b>Situación de riesgo</b> <span class="ui b">NECESITO AYUDA</span> → <b>🚨 Seguridad</b>.<div class="ex">Se envía sin esperar el GPS más de 3 s. "Mantente a salvo. Ayuda prioritaria en camino." Es un caso URGENTE para toda la red.</div></li>
+</ol>
+
+<h3 id="op-ej4">Ejemplo 4 · Cerraste por error y el administrador te reabre el turno</h3>
+<ol class="steps">
+<li><b>Avisa</b> Llama al supervisor/administrador: sólo el administrador puede "Continuar turno" y sólo el mismo día.</li>
+<li><b>Vuelve a la app</b> Al abrirla (o en menos de un minuto si ya estaba abierta) Inicio cambia de "Turno de hoy terminado" a "Puesto abierto".<div class="ex">El contador muestra las ventas de antes ("$70 · 2 ventas") y puedes seguir vendiendo.</div></li>
+<li><b>Cierra otra vez al final</b> "Debes tener" incluye todo el efectivo del día (antes y después de la reapertura).</li>
+</ol>
+</section>
+<p class="print">PEPITO OS v1 · rama feat/ux-redesign · Generado el 4 de septiembre de 2026. Los textos entre comillas son literales de la aplicación.</p>
+</main></div></body></html>

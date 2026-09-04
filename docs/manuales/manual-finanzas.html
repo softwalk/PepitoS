@@ -1,0 +1,119 @@
+<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PEPITO OS · Manual · Finanzas</title><style>
+:root{--brand:#e8590c;--brand-dark:#c04607;--navy:#14213d;--ink:#16202c;--muted:#5b6b7d;--line:#dfe4ec;--bg:#f6f7f9;--panel:#fff;
+--green:#1a7f46;--green-bg:#dff5e7;--amber:#8a5a00;--amber-fill:#e0951a;--amber-bg:#fff1d6;--red:#b3261e;--red-bg:#fde8e6;--blue:#1a56b3;--blue-bg:#e2ecfb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:var(--ink);background:var(--bg)}
+a{color:var(--blue)}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+nav.toc{background:var(--navy);color:#c9d3e6;padding:22px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+nav.toc .brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+nav.toc .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center}
+nav.toc .t{font-weight:800;letter-spacing:.06em;color:#fff;font-size:13px}nav.toc .s{font-size:12px;color:#7f8fb0}
+nav.toc a{display:block;color:#c9d3e6;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:13.5px}
+nav.toc a:hover{background:rgba(255,255,255,.07);color:#fff}nav.toc a.l2{padding-left:22px;font-size:12.5px;color:#9fb0cc}
+nav.toc .g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7f8fb0;margin:14px 10px 4px;font-weight:700}
+main{padding:36px 48px 80px;max-width:1080px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}h2{font-size:22px;margin:44px 0 12px;padding-top:12px;border-top:3px solid var(--brand)}
+h3{font-size:17px;margin:26px 0 8px}h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 10px}.lead{font-size:17px;color:#3b4757}
+.rolebar{display:inline-flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;margin:10px 0 22px;font-size:13px}
+.rolebar b{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(22,32,44,.05)}
+.card h5{margin:0 0 6px;font-size:14px}.card p{font-size:13.5px;margin:0;color:#3b4757}.card .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:13px;margin-right:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0 16px;background:var(--panel)}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#f8fafc}tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green)}.b-amber{background:var(--amber-bg);color:var(--amber)}.b-red{background:var(--red-bg);color:var(--red)}.b-blue{background:var(--blue-bg);color:var(--blue)}.b-gray{background:#eaeef3;color:#5b6b7d}
+kbd,.ui{display:inline-block;background:#fff;border:1px solid #c7cfdb;border-bottom-width:2px;border-radius:6px;padding:0 7px;font:inherit;font-size:12.5px;font-weight:700;white-space:nowrap}
+.ui.p{background:var(--brand);color:#fff;border-color:var(--brand-dark)}.ui.g{background:var(--green);color:#fff;border-color:#125a32}.ui.a{background:var(--amber-fill);color:#1a1000;border-color:#a86a00}.ui.b{background:var(--blue);color:#fff;border-color:#143f85}.ui.r{background:var(--red);color:#fff;border-color:#86170f}
+.callout{border-left:5px solid var(--blue);background:var(--blue-bg);padding:10px 14px;border-radius:8px;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--amber-fill);background:var(--amber-bg)}.callout.ok{border-color:var(--green);background:var(--green-bg)}.callout.bad{border-color:var(--red);background:var(--red-bg)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}.steps li{position:relative;padding:10px 12px 10px 52px;margin:0 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;display:grid;place-items:center;font-size:13px}
+.steps li b:first-child{display:block;margin-bottom:2px}.steps .ex{margin-top:6px;font-size:13px;color:#3b4757;background:#f8fafc;border-radius:6px;padding:6px 10px;border:1px dashed var(--line)}
+.ex::before{content:'Ejemplo · ';font-weight:700;color:var(--brand-dark)}
+figure{margin:16px 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+svg text{font-family:inherit}
+.print{font-size:12px;color:var(--muted);margin-top:40px;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto}main{padding:20px}}
+@media print{.wrap{display:block}nav.toc{display:none}main{max-width:none;padding:0}h2{break-before:page}figure{break-inside:avoid}.steps li{break-inside:avoid}}
+</style></head><body><div class="wrap">
+<nav class="toc"><div class="brand"><div class="mark">P</div><div><div class="t">PEPITO OS</div><div class="s">Manual · Finanzas</div></div></div>
+<div class="g">Contenido</div><a href="#que">Qué puedes hacer</a><a href="#rapida">Guía rápida</a><a class="l2" href="#fin-tipos">Tipos de aprobación</a><a href="#detalle">Detalle de cada pantalla</a><a class="l2" href="#fin-apr">Aprobaciones</a><a class="l2" href="#fin-ventas">Ventas (reporte diario)</a><a class="l2" href="#fin-ct">Control Tower y Briefing</a><a class="l2" href="#fin-casos">Excepciones y casos (lectura)</a><a class="l2" href="#fin-audit">Audit log y Administración</a><a href="#pasos">Paso a paso con ejemplos</a><a class="l2" href="#fin-ej1">Ejemplo 1 · Diferencia de caja grave</a><a class="l2" href="#fin-ej2">Ejemplo 2 · La aprobación aparece como Cancelada</a><a class="l2" href="#fin-ej3">Ejemplo 3 · Cierre semanal</a>
+<div class="g">Otros manuales</div><a href="manual-operador.html">Operador</a><a href="manual-supervisor.html">Supervisor</a><a href="manual-operaciones.html">Operaciones</a><a href="manual-finanzas.html">Finanzas</a><a href="manual-administrador.html">Administrador</a></nav>
+<main><h1>Manual del Finanzas</h1><p class="lead">Cómo decidir aprobaciones, revisar caja y ventas, y auditar cambios.</p>
+<div class="rolebar"><b>finance</b> Backoffice · toda la red · lectura + aprobaciones</div>
+<section id="que"><h2>Qué puedes hacer</h2>
+<p>Custodias el dinero y la trazabilidad. Ves toda la red en modo lectura y tienes una decisión exclusiva: <b>aprobar o rechazar</b> lo que requiere autorización humana (diferencias de caja graves, pagos, compras, ajustes). Puedes:</p>
+<div class="cards">
+<div class="card"><h5>✓ Aprobaciones</h5><p>Decidir cada solicitud pendiente con nota. Quien solicita nunca aprueba.</p></div>
+<div class="card"><h5>$ Ventas</h5><p>Reporte diario por turno: efectivo esperado vs contado, diferencia, digital, merma, precio vencido.</p></div>
+<div class="card"><h5>◎ Control Tower · ☰ Briefing</h5><p>Estado de la red y decisiones del día (sin ejecutar reglas).</p></div>
+<div class="card"><h5>⚑ Excepciones</h5><p>Leer casos y su línea de tiempo completa, incluido el audit log.</p></div>
+<div class="card"><h5>≡ Audit log · Administración</h5><p>Trazabilidad de todo cambio; Precios y Parámetros en lectura.</p></div>
+</div>
+<div class="callout">No puedes editar casos, reglas, precios ni parámetros, ni ver Supervisor, Ruta, Inventario, Personas o Activos.</div>
+<figure><svg viewBox="0 0 980 150" width="100%" role="img"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#8a97a5"/></marker></defs><rect x="10.0" y="30" width="171.2" height="74" rx="12" fill="#b3261e"/><text x="95.6" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Cierre con diferencia</text><text x="95.6" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">|contado − esperado| &gt; $100</text><path d="M184.2 67 L201.2 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="207.2" y="30" width="171.2" height="74" rx="12" fill="#e8590c"/><text x="292.79999999999995" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Caso URGENTE</text><text x="292.79999999999995" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">para el supervisor</text><path d="M381.4 67 L398.4 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="404.4" y="30" width="171.2" height="74" rx="12" fill="#e0951a"/><text x="490.0" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Aprobación pendiente</text><text x="490.0" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">tipo cash_difference</text><path d="M578.5999999999999 67 L595.5999999999999 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="601.5999999999999" y="30" width="171.2" height="74" rx="12" fill="#1a56b3"/><text x="687.1999999999999" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Finanzas decide</text><text x="687.1999999999999" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">Aprobar / Rechazar + nota</text><path d="M775.8 67 L792.8 67" stroke="#8a97a5" stroke-width="2.5" marker-end="url(#ar)"/><rect x="798.8" y="30" width="171.2" height="74" rx="12" fill="#1a7f46"/><text x="884.4" y="62" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Audit log</text><text x="884.4" y="84" text-anchor="middle" fill="#fff" font-size="11.5" opacity=".9">quién, cuándo, por qué</text></svg><figcaption>Ruta de una diferencia de caja grave hasta tu decisión. Con diferencias entre $20 y $100 sólo hay caso, sin aprobación.</figcaption></figure></section><section id="rapida"><h2>Guía rápida</h2>
+<div class="cards">
+<div class="card"><h5><span class="n">1</span>Entra</h5><p>Usuario <code>finanzas</code>. Llegas al Control Tower; ve a <b>Aprobaciones</b>.</p></div>
+<div class="card"><h5><span class="n">2</span>Revisa pendientes</h5><p>Filtro "Pendientes" (default). Cada fila: solicitada, tipo, título, monto, quién solicitó, nota.</p></div>
+<div class="card"><h5><span class="n">3</span>Investiga</h5><p>Para una diferencia de caja: abre <b>Ventas</b> del día y el <b>caso</b> vinculado (línea de tiempo, evidencias, nota del supervisor).</p></div>
+<div class="card"><h5><span class="n">4</span>Decide</h5><p><span class="ui g">Aprobar</span> o <span class="ui r">Rechazar</span> → nota (motivo o referencia) → <span class="ui p">Confirmar</span>.</p></div>
+<div class="card"><h5><span class="n">5</span>Cierra el mes</h5><p>Ventas por fecha: totales, diferencias, digital vs efectivo, ventas con precio vencido. Audit log para justificar cambios.</p></div>
+</div>
+<h3 id="fin-tipos">Tipos de aprobación</h3>
+<div class="tbl"><table><tr><th>Tipo</th><th>Origen</th><th>Qué revisar antes de decidir</th></tr>
+<tr><td>Ajuste (diferencia de caja)</td><td>Automático al cerrar con |diferencia| &gt; $100 (parámetro <code>cash_difference_severe_cents</code>)</td><td>Caso del turno, nota de conciliación del supervisor, historial del operador, evidencias.</td></tr>
+<tr><td>Pago</td><td>Solicitud manual</td><td>Referencia, monto, solicitante.</td></tr>
+<tr><td>Compra</td><td>Solicitud manual</td><td>Presupuesto y necesidad (p. ej. reposición tras bloqueo de lote).</td></tr>
+</table></div>
+<p>Estados: <span class="badge b-amber">Pendiente</span> → <span class="badge b-green">Aprobada</span> / <span class="badge b-red">Rechazada</span>. Un cuarto estado, <span class="badge b-gray">Cancelada</span>, aparece cuando el administrador reabre el turno que originó la diferencia: la aprobación deja de tener sentido porque el turno volverá a cerrarse y a conciliarse.</p>
+</section><section id="detalle"><h2>Detalle de cada pantalla</h2>
+<h3 id="fin-apr">Aprobaciones</h3>
+<p>Subtítulo: <i>"Human-in-the-loop: pagos, compras y ajustes materiales requieren decisión humana. Quien solicita no puede aprobar."</i> Filtro Pendientes / Aprobadas / Rechazadas / Canceladas (turno reabierto) / Todas. Columnas: Solicitada · Tipo · Título · Monto · Solicitó · Nota · Estado · Decisión. En pendientes: <span class="ui g">Aprobar</span> y <span class="ui r">Rechazar</span>; el modal muestra el monto, un campo <b>Nota</b> y <span class="ui p">Confirmar</span>. Toast "Aprobada" / "Rechazada". Cada decisión queda en el audit log (<code>approval.decide</code>) con tu usuario, IP y nota.</p>
+
+<h3 id="fin-ventas">Ventas (reporte diario)</h3>
+<div class="tbl"><table><tr><th>KPI / columna</th><th>Significado</th></tr>
+<tr><td>Ventas totales · Transacciones · Ticket promedio</td><td>Del día seleccionado, todos los puntos.</td></tr>
+<tr><td>Diferencia de caja</td><td>Suma de (contado − esperado) de los cierres; verde si 0.</td></tr>
+<tr><td>Merma</td><td>Unidades y % sobre unidades vendidas + merma (ámbar 2–4 %, rojo &gt; 4 %).</td></tr>
+<tr><td>Ventas con precio vencido</td><td>Ventas hechas sin señal con una versión de precio ya desactivada; se aceptan 72 h de gracia y se marcan. Ámbar si &gt; 0.</td></tr>
+<tr><td>Por turno</td><td>Punto, operador, apertura/cierre, ventas, tx, ticket, digital, efectivo esperado, contado, diferencia, cancelaciones, merma, precio vencido, estado (Conciliado / Diferencia / Abierto).</td></tr>
+</table></div>
+<figure><svg viewBox="0 0 980 76" width="100%" role="img"><text x="0" y="16" font-size="13" font-weight="700" fill="#16202c">Umbrales de caja (Parámetros del administrador)</text><text x="0" y="52" font-size="12.5" fill="#3b4757">Diferencia por cierre</text><rect x="250" y="34" width="239.33333333333334" height="28" rx="6" fill="#1a7f46"/><text x="369.6666666666667" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">≤ $20 conciliado</text><rect x="493.33333333333337" y="34" width="239.33333333333334" height="28" rx="6" fill="#e0951a"/><text x="613.0" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">$20 – $100 caso REVISAR</text><rect x="736.6666666666667" y="34" width="239.33333333333334" height="28" rx="6" fill="#b3261e"/><text x="856.3333333333334" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">&gt; $100 URGENTE + aprobación</text></svg><figcaption>cash_difference_threshold_cents = 2000 y cash_difference_severe_cents = 10000 por defecto; se ven en Administración → Parámetros.</figcaption></figure>
+<h3 id="fin-ct">Control Tower y Briefing</h3>
+<p>Los mismos KPIs, mapa, alertas y tabla que Operaciones, sin el botón "Ejecutar reglas ahora" y sin "Continuar turno". El Briefing incluye "Cierres con diferencia de caja" en la tarjeta Números.</p>
+
+<h3 id="fin-casos">Excepciones y casos (lectura)</h3>
+<p>Lista de casos con filtros y detalle completo: descripción, evidencias, acciones correctivas y línea de tiempo con las entradas del audit log (quién cambió qué y cuándo). No verás la tarjeta "Gestión".</p>
+
+<h3 id="fin-audit">Audit log y Administración</h3>
+<p>Audit log con filtros por entidad (approval, price_version, rule, shift…), ID y acción. En Administración sólo lees <b>Precios</b> (qué versión estuvo vigente y cuántas ventas usó cada una) y <b>Parámetros</b>.</p>
+</section><section id="pasos"><h2>Paso a paso con ejemplos</h2>
+<h3 id="fin-ej1">Ejemplo 1 · Diferencia de caja grave</h3>
+<ol class="steps">
+<li><b>6:20 p.m.</b> Aprobaciones → Pendientes: "Diferencia de caja grave en turno 7a3f21c9 · Monto −$405.00 · Solicitó: Operador Uno".<div class="ex">Se creó automáticamente al cerrar con contado $0 y esperado $405.</div></li>
+<li><b>Investiga</b> Ventas (hoy): Metro Insurgentes · Esperado $405 · Contado $0 · Estado Diferencia. Excepciones: caso URGENTE "Diferencia de caja de $405.00", línea de tiempo: el supervisor anotó "Operador olvidó contar; efectivo entregado en oficina 6:40 p.m., recibo #118".</li>
+<li><b>Decide</b> <span class="ui g">Aprobar</span> → Nota "Efectivo recibido en oficina, recibo #118" → <span class="ui p">Confirmar</span>.<div class="ex">Toast "Aprobada". Audit log: approval.decide · status: pending → approved · tu usuario · la nota.</div></li>
+</ol>
+
+<h3 id="fin-ej2">Ejemplo 2 · La aprobación aparece como Cancelada</h3>
+<ol class="steps">
+<li><b>Contexto</b> El operador cerró por error a media jornada con diferencia grave; el administrador reabrió el turno ("Continuar turno").</li>
+<li><b>Qué ves</b> En el filtro "Canceladas (turno reabierto)": la aprobación con nota "Superado: turno reabierto por administrador (…motivo…)".</li>
+<li><b>Qué hacer</b> Nada: cuando el operador vuelva a cerrar, el sistema concilia contra todas las ventas del día y, si vuelve a haber diferencia grave, generará una aprobación nueva.</li>
+</ol>
+
+<h3 id="fin-ej3">Ejemplo 3 · Cierre semanal</h3>
+<ol class="steps">
+<li><b>Ventas por día</b> Cambia la fecha lunes a domingo y anota Ventas totales, Diferencia de caja y Ventas con precio vencido.<div class="ex">Miércoles: "Precio vencido: 4" → esa mañana el administrador desactivó la versión v1; las 4 ventas sin señal usaron el precio anterior dentro de las 72 h de gracia. Es esperado, no un error.</div></li>
+<li><b>Aprobaciones</b> Filtro "Todas": confirma que no queda nada pendiente de más de 24 h.</li>
+<li><b>Audit log</b> Entidad price_version: quién creó/desactivó versiones y cuándo, para justificar el cambio de precio en el reporte.</li>
+</ol>
+</section>
+<p class="print">PEPITO OS v1 · rama feat/ux-redesign · Generado el 4 de septiembre de 2026. Los textos entre comillas son literales de la aplicación.</p>
+</main></div></body></html>
