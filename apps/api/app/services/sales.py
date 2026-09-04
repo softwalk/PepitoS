@@ -9,15 +9,10 @@ from app.core.timeutil import utcnow
 from app.models.catalog import Flavor, Presentation, PriceItem, PriceVersion
 from app.models.ops import Shift
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine
+from app.core.config import settings
 from app.services import audit, events
+from app.services import settings as settings_svc
 from app.services.inventory import add_movement
-
-OPERATOR_CONFIG_DEFAULTS = {
-    "cash_difference_threshold_cents": 2000,
-    "cancel_window_minutes": 5,
-    "gps_interval_seconds": 120,
-    "photo_sampling_pct": 10,
-}
 
 
 def current_price_version(db: Session, at=None) -> PriceVersion | None:
@@ -34,13 +29,33 @@ def price_map(db: Session, version_id: uuid.UUID) -> dict[uuid.UUID, int]:
     return {pi.presentation_id: pi.amount_cents for pi in db.query(PriceItem).filter(PriceItem.price_version_id == version_id)}
 
 
+def validate_price_version(version: PriceVersion | None, occurred, requested_id) -> bool:
+    """Ventana tolerante para ventas offline (B8). Devuelve `True` si la versión entra por la gracia
+    (desactivada hace menos de `PRICE_OFFLINE_GRACE_HOURS`), `False` si está vigente; 422 si no aplica."""
+    rid = str(requested_id)
+    if version is None:
+        raise ApiError("PRICE_VERSION_INVALID", "La versión de precio no existe", details={"price_version_id": rid})
+    if version.valid_from > occurred + timedelta(minutes=5):
+        raise ApiError("PRICE_VERSION_INVALID", "La versión de precio todavía no estaba vigente cuando ocurrió la venta", details={"price_version_id": rid, "valid_from": version.valid_from.isoformat(), "occurred_at": occurred.isoformat()})
+    if version.is_active:
+        return False
+    grace = timedelta(hours=settings.PRICE_OFFLINE_GRACE_HOURS)
+    deactivated = version.deactivated_at or version.updated_at
+    if deactivated is not None and occurred <= deactivated + grace:
+        return True
+    raise ApiError(
+        "PRICE_VERSION_INVALID",
+        f"La versión de precio fue desactivada hace más de {settings.PRICE_OFFLINE_GRACE_HOURS} h; sincroniza el catálogo y vuelve a registrar la venta",
+        details={"price_version_id": rid, "deactivated_at": deactivated.isoformat() if deactivated else None, "grace_hours": settings.PRICE_OFFLINE_GRACE_HOURS, "occurred_at": occurred.isoformat()},
+    )
+
+
 def create_sale(db: Session, shift: Shift, user_id: uuid.UUID, device_id: str | None, data) -> Sale:
     if shift.status != "open":
         raise ApiError("SHIFT_NOT_OPEN")
     occurred = data.occurred_at or utcnow()
     version = db.get(PriceVersion, data.price_version_id)
-    if version is None or not version.is_active or version.valid_from > occurred + timedelta(minutes=5):
-        raise ApiError("PRICE_VERSION_INVALID", details={"price_version_id": str(data.price_version_id)})
+    stale = validate_price_version(version, occurred, data.price_version_id)
     prices = price_map(db, version.id)
 
     total = 0
@@ -65,7 +80,7 @@ def create_sale(db: Session, shift: Shift, user_id: uuid.UUID, device_id: str | 
     sale = Sale(
         shift_id=shift.id, point_id=shift.point_id, cart_id=shift.cart_id, operator_id=shift.operator_id,
         device_id=device_id, price_version_id=version.id, idempotency_key=data.idempotency_key, occurred_at=occurred,
-        total_cents=total, status="recorded", offline_created=data.offline_created,
+        total_cents=total, status="recorded", offline_created=data.offline_created, price_version_stale=stale,
         gps=data.gps.model_dump(mode="json") if data.gps else None, folio="PENDING",
     )
     sale.lines = lines
@@ -86,7 +101,7 @@ def create_sale(db: Session, shift: Shift, user_id: uuid.UUID, device_id: str | 
             "operator_id": shift.operator_id, "price_version_id": version.id, "occurred_at": occurred,
             "lines": [{"presentation_id": l.presentation_id, "qty": l.qty, "unit_price_cents": l.unit_price_cents} for l in lines],
             "payments": [{"method": p.method, "amount_cents": p.amount_cents} for p in data.payments],
-            "offline_created": data.offline_created, "total_cents": total,
+            "offline_created": data.offline_created, "total_cents": total, "price_version_stale": stale,
         },
         occurred_at=occurred,
     )
@@ -99,9 +114,11 @@ def create_sale(db: Session, shift: Shift, user_id: uuid.UUID, device_id: str | 
     return sale
 
 
-def cancel_sale(db: Session, sale: Sale, current, data, cancel_window_minutes: int, ip: str | None = None) -> SaleCancellation:
+def cancel_sale(db: Session, sale: Sale, current, data, cancel_window_minutes: int | None = None, ip: str | None = None) -> SaleCancellation:
     if sale.status == "cancelled":
         raise ApiError("CANCEL_NOT_ALLOWED", "La venta ya está cancelada")
+    if cancel_window_minutes is None:
+        cancel_window_minutes = settings_svc.get_int(db, "cancel_window_minutes")
     shift = db.get(Shift, sale.shift_id)
     now = utcnow()
     if current.role == "operator":

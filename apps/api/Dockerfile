@@ -7,6 +7,9 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+# Directorio para STORAGE_BACKEND=local (efímero: en producción usa STORAGE_BACKEND=s3 o monta un volumen)
+RUN mkdir -p /app/evidence
+VOLUME ["/app/evidence"]
 
 EXPOSE 8000
 # Migra y arranca. Seed según SEED_MODE (demo | prod | none). Compatibilidad: SEED=true equivale a SEED_MODE=demo.

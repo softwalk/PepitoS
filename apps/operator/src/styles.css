@@ -665,3 +665,28 @@ textarea {
     min-height: 150px;
   }
 }
+
+/* Foto de muestreo (apertura / cierre) */
+.photo-preview {
+  width: 100%;
+  max-height: 46vh;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 3px solid var(--green, #2f9e44);
+}
+.photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34vh;
+  border-radius: 16px;
+  border: 3px dashed rgba(0, 0, 0, 0.2);
+  font-size: 64px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Iconos de imagen (carrito V5-B, mascota Pepito) */
+.icon-img { height: 1.6em; width: auto; max-width: 2.4em; object-fit: contain; vertical-align: middle; }
+.icon-inline { height: 1.3em; }
+.check-item .icon-img { height: 44px; width: auto; max-width: 64px; }
+.help-card .icon-img, .cards button .icon-img { height: 64px; width: auto; max-width: 110px; }

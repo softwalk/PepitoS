@@ -51,6 +51,7 @@ class ShiftCloseIn(BaseModel):
     product_counts: dict[uuid.UUID, int] = Field(default_factory=dict)
     checklist: CloseChecklist = Field(default_factory=CloseChecklist)
     gps: GPS | None = None
+    photos: list[Photo] | None = None
 
 
 class ShiftTransferIn(BaseModel):

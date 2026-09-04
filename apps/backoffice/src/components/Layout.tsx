@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
   { to: '/reglas', label: 'Reglas', icon: '⚖', roles: ['ops', 'admin'] },
   { to: '/aprobaciones', label: 'Aprobaciones', icon: '✓', roles: ['ops', 'finance', 'admin'] },
   { to: '/auditoria', label: 'Audit log', icon: '≡', roles: ['ops', 'finance', 'admin'] },
-  { to: '/admin', label: 'Administración', icon: '⚒', roles: ['admin'] },
+  { to: '/admin', label: 'Administración', icon: '⚒', roles: ['admin', 'ops', 'finance'] },
 ];
 
 export const ROLE_LABEL: Record<Role, string> = { operator: 'Operador', supervisor: 'Supervisor', ops: 'Operaciones', finance: 'Finanzas', admin: 'Administrador' };

@@ -14,4 +14,4 @@ from app.models.cases import (  # noqa: F401
     MaintenanceTicket,
     Rule,
 )
-from app.models.system import AuditLog, Event, IdempotencyKey  # noqa: F401
+from app.models.system import AuditLog, Event, Evidence, IdempotencyKey, Setting  # noqa: F401

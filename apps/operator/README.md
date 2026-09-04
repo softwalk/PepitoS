@@ -46,7 +46,8 @@ Los iconos PNG (`public/icons/`) se regeneran con `npm run icons` (no requiere d
 ## Pruebas
 
 ```bash
-npm test                      # vitest: cola offline (idempotencia, orden, ok/duplicate/error, backoff), efectivo esperado local y sesión (refresh, 401→reintento, refresh fallido)
+npm test                      # vitest: cola offline (idempotencia, orden, ok/duplicate/error, backoff), efectivo esperado local, sesión (refresh, 401→reintento, refresh fallido),
+                              #         compresión/validación de fotos (canvas simulado) y apertura/cierre con `photos` en la cola + config cacheada
 ```
 
 Smoke end-to-end contra el backend real (Playwright + Chromium ya instalados en el contenedor):
@@ -56,7 +57,10 @@ Smoke end-to-end contra el backend real (Playwright + Chromium ya instalados en 
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke.py           # login → abrir → 2 ventas → cerrar → verifica en API
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke_offline.py   # todo sin red → reinicio → vuelve la red → sincroniza
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke_refresh.py   # venta sin red + access token inválido → reinicio → refresh → sincroniza sin login
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke_photo.py     # admin fuerza photo_sampling_pct=100 → abrir sin red con foto (viaja en la cola) → GET /v1/evidence la lista → cerrar con foto → restaura 10
 ```
+
+Los smokes toleran que a `op1` le toque foto de muestreo ese día (pulsan "Continuar sin foto").
 
 Cada smoke consume la asignación de hoy de `op1`; para repetirlo: `psql ... -f scripts/reset-demo-op1.sql` (sólo demo).
 
@@ -67,7 +71,8 @@ src/
   api/client.ts        cliente tipado de todos los endpoints del operador (§3, §5); sesión en memoria, refresh con lock y reintento ante 401
   types.ts             Catalog, OperatorConfig, GPS, payloads y respuestas iguales al contrato
   offline/
-    db.ts              IndexedDB (idb): session, assignment, catalog, queue, shift_state, sales_local, waste_local, secrets, settings
+    db.ts              IndexedDB (idb): session, assignment, catalog (+config del operador), queue, shift_state, sales_local, waste_local, secrets, settings
+    image.ts           fotos: reducción en el cliente (≤1280 px, JPEG 0.8) y validación contra config.evidence_max_bytes (3 MB)
     crypto.ts          AES-GCM (WebCrypto) sobre los payloads de la cola; clave por sesión en IndexedDB
     queue.ts           enqueue / flush → POST /v1/sync/batch; ok/duplicate/error; resolución de shift_id local
     sync.ts            dispara en `online`, cada 30 s y tras cada acción; lock; backoff; aplica ACKs al estado local
@@ -77,6 +82,7 @@ src/
   state/
     actions.ts         login, refreshSession, changePassword, abrir, vender, deshacer/cancelar, merma, ayuda, esperado, cerrar
     store.tsx          contexto React que lee IndexedDB y se refresca con cada ACK
+  components/          Layout · Numpad · YesNo · PhotoStep (foto del puesto por muestreo; nunca bloquea)
   screens/             Login · ChangePassword · Home · OpenShift · Sell · Help · CloseShift · Settings
   components/          Layout (barra: punto, carrito, estado de sync, batería) · YesNo · Numpad
 test/                  vitest (fake-indexeddb)
@@ -137,3 +143,20 @@ scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · smoke_re
 - **Inventario**: `inventory_receipt` / `inventory_count` están en el cliente API pero no tienen pantalla en el MVP.
 - **Transferencia de turno** (`/v1/shifts/{id}/transfer`) la inicia el supervisor; el operador sólo la ve como
   turno cerrado al refrescar.
+
+## Config del operador (`GET /v1/me/assignment` → `config`)
+
+Se cachea en IndexedDB (store `catalog`) con cada descarga de la asignación y se usa sin red:
+
+| Campo | Uso en la PWA |
+| --- | --- |
+| `cash_difference_threshold_cents` / `cash_difference_severe_cents` | resultado provisional del cierre sin red |
+| `cancel_window_minutes` | tras la ventana de "Deshacer" (60 s), la cancelación con motivo sólo se ofrece dentro de esta ventana |
+| `gps_interval_seconds` | intervalo de `gps_ping` mientras el turno está abierto |
+| `photo_sampling_pct` / `require_open_photo` | el servidor decide (muestreo determinístico por asignación); si `require_open_photo` es true, apertura **y** cierre piden una foto del puesto |
+| `evidence_max_bytes` | límite por foto; la PWA la reduce a ≤1280 px / JPEG 0.8 y baja calidad hasta caber |
+
+Fotos: viajan en base64 dentro del comando (`shift_open` / `shift_close` con `photos:[{key:"puesto", base64}]`,
+`help_case.photo_base64`) y por tanto también en la cola cifrada sin red. Si la cámara falla o se cancela, el
+operador puede continuar y el comando lleva `photos: []` (la apertura nunca se bloquea). El servidor responde
+422 VALIDATION si una foto excede el máximo o no es JPEG/PNG/WebP.

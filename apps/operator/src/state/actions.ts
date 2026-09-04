@@ -25,13 +25,34 @@ import type {
   HelpCategory,
   OpenChecklist,
   PaymentMethod,
+  Photo,
   Presentation,
   ShiftException,
   ShiftExpected,
   WasteReason,
 } from '../types';
 
+/** Ventana de "Deshacer" local (la venta aún no salió del teléfono o acaba de salir). */
 export const UNDO_WINDOW_MS = 60_000;
+/** Fallbacks sólo si aún no se descargó `config` (mismos defaults que el servidor). */
+export const DEFAULT_GPS_INTERVAL_S = 120;
+export const DEFAULT_CANCEL_WINDOW_MIN = 5;
+
+/** Config del operador cacheada en IndexedDB (se refresca con cada `GET /v1/me/assignment`). */
+export async function getConfig() {
+  return (await catalogStore.get())?.config ?? null;
+}
+
+export async function gpsIntervalSeconds(): Promise<number> {
+  const cfg = await getConfig();
+  return cfg?.gps_interval_seconds ?? DEFAULT_GPS_INTERVAL_S;
+}
+
+/** Ventana (ms) en la que el operador puede cancelar su propia venta ya enviada (`cancel_window_minutes`). */
+export async function cancelWindowMs(): Promise<number> {
+  const cfg = await getConfig();
+  return (cfg?.cancel_window_minutes ?? DEFAULT_CANCEL_WINDOW_MIN) * 60_000;
+}
 
 const OPEN_MESSAGES: Record<string, { message: string; action: string }> = {
   cart_secure: { message: 'Carrito no asegurado', action: 'Revisa candado y resguardo' },
@@ -181,10 +202,13 @@ export function localOpenExceptions(checklist: OpenChecklist): ShiftException[] 
     .map((k) => ({ code: k, message: OPEN_MESSAGES[k]?.message ?? k }));
 }
 
-export async function openShift(checklist: OpenChecklist, gps: GPS | null): Promise<ShiftStateRecord> {
+/**
+ * Abre el puesto. `photos` (foto del puesto, key "puesto") sólo cuando `config.require_open_photo`; si la cámara falla
+ * se abre igual con `photos: []`. La foto viaja dentro del comando `shift_open` (cola cifrada) cuando no hay red.
+ */
+export async function openShift(checklist: OpenChecklist, gps: GPS | null, photos: Photo[] = []): Promise<ShiftStateRecord> {
   const a = (await assignmentStore.get())?.data;
   if (!a?.assignment) throw new ApiError('NO_ASSIGNMENT', 'No tienes asignación para hoy', 409);
-  const cfg = (await catalogStore.get())?.config;
   const local_id = `local:${uuidv4()}`;
   const exceptions = localOpenExceptions(checklist);
   const ready = !exceptions.some((e) => CRITICAL_OPEN.has(e.code));
@@ -202,11 +226,11 @@ export async function openShift(checklist: OpenChecklist, gps: GPS | null): Prom
     last_expected: null,
     close_result: null,
   });
-  await queue.enqueue('shift_open', { assignment_id: a.assignment.id, opened_at, checklist, gps });
+  await queue.enqueue('shift_open', { assignment_id: a.assignment.id, opened_at, checklist, gps, photos });
   // Si hay red, esperamos la confirmación para mostrar excepciones del servidor (geocerca, etc.).
   await syncNow();
   const st = (await shiftStore.get())!;
-  startGpsPings(st.server_id ?? st.local_id, cfg?.gps_interval_seconds ?? 120);
+  startGpsPings(st.server_id ?? st.local_id, await gpsIntervalSeconds());
   // Cachear esperado inicial (producto) para el cierre offline.
   if (st.server_id) void cacheExpected(st.server_id);
   return st;
@@ -228,9 +252,8 @@ function currentShiftId(st: ShiftStateRecord): string {
 /** Reanuda pings y adopta un turno del servidor si hace falta (al arrancar la app). */
 export async function resumeShift() {
   const st = await shiftStore.get();
-  const cfg = (await catalogStore.get())?.config;
   if (st && (st.status === 'open' || st.status === 'open_pending')) {
-    startGpsPings(currentShiftId(st), cfg?.gps_interval_seconds ?? 120);
+    startGpsPings(currentShiftId(st), await gpsIntervalSeconds());
   }
 }
 
@@ -279,7 +302,10 @@ export async function recordSale(p: Presentation, method: PaymentMethod, flavor_
 
 export type UndoOutcome = 'removed' | 'needs_reason' | 'too_late';
 
-/** Deshacer: si aún está en cola (≤60 s) se elimina; si ya sincronizó hace falta motivo (cancelación). */
+/**
+ * Deshacer: si aún está en cola (≤60 s) se elimina; si ya sincronizó hace falta motivo (cancelación), siempre que
+ * siga dentro de `cancel_window_minutes` (config del servidor); después de eso sólo el supervisor puede cancelar.
+ */
 export async function undoSale(key: string): Promise<UndoOutcome> {
   const s = await salesLocalStore.get(key);
   if (!s) return 'too_late';
@@ -290,6 +316,8 @@ export async function undoSale(key: string): Promise<UndoOutcome> {
     trigger();
     return 'removed';
   }
+  const cancelWindow = await cancelWindowMs();
+  if (age > cancelWindow) return 'too_late';
   if (s.status === 'synced' && s.sale_id) return 'needs_reason';
   if (s.status === 'pending') {
     // Sincronizó justo ahora: esperar a que el ACK actualice el registro.
@@ -387,10 +415,12 @@ export async function closeShift(input: {
   checklist: CloseChecklist;
   gps: GPS | null;
   expected_cash_cents: number;
+  /** Foto del puesto al cerrar (key "puesto") cuando `config.require_open_photo`; vacío si falló la cámara. */
+  photos?: Photo[];
 }): Promise<NonNullable<ShiftStateRecord['close_result']>> {
   const st = await shiftStore.get();
   if (!st) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno', 409);
-  const cfg = (await catalogStore.get())?.config;
+  const cfg = await getConfig();
   const threshold = cfg?.cash_difference_threshold_cents ?? 2000;
   const closed_at = new Date().toISOString();
   const diff = input.cash_counted_cents - input.expected_cash_cents;
@@ -411,6 +441,7 @@ export async function closeShift(input: {
     product_counts: input.product_counts,
     checklist: input.checklist,
     gps: input.gps,
+    photos: input.photos ?? [],
   });
   stopGpsPings();
   await syncNow();

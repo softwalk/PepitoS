@@ -51,7 +51,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="cart">
             {cart && (
               <>
-                <span aria-hidden>🛒</span> {cart}
+                <img src="/icon-cart.png" alt="" aria-hidden className="icon-img icon-inline" /> {cart}
               </>
             )}
           </div>

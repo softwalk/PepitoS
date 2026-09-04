@@ -93,10 +93,10 @@ export function CaseLink({ id, children }: { id: string; children: ReactNode }) 
   return <Link to={`/casos/${id}`}>{children}</Link>;
 }
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <header className="modal-head">
           <h3>{title}</h3>
           <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">

@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import CurrentUser, require
 from app.core.timeutil import iso, local_day_bounds, parse_date
+from sqlalchemy import func, select
+
 from app.models.ops import Shift
+from app.models.sales import Sale
 from app.models.org import Assignment, Attendance, Point, User
 from app.models.system import AuditLog
 from app.services.cash import sales_summary
@@ -28,6 +31,7 @@ def daily(date: str | None = None, current: CurrentUser = Depends(require("repor
         summ = sales_summary(db, s.id)
         waste = shift_units(db, s.id, "waste")
         units = summ["units_sold"]
+        stale = int(db.execute(select(func.count(Sale.id)).where(Sale.shift_id == s.id, Sale.price_version_stale.is_(True))).scalar_one())
         rows.append({
             "point": {"id": str(s.point.id), "name": s.point.name},
             "shift_id": str(s.id),
@@ -37,10 +41,11 @@ def daily(date: str | None = None, current: CurrentUser = Depends(require("repor
             "cash_expected_cents": s.cash_expected_cents if s.cash_expected_cents is not None else summ["cash_expected_cents"],
             "cash_counted_cents": s.cash_counted_cents, "difference_cents": s.difference_cents,
             "digital_cents": summ["digital_total_cents"], "cancelled_count": summ["cancelled_count"],
+            "stale_price_sales": stale,
             "waste_units": waste, "waste_pct": round(waste * 100 / (units + waste), 1) if (units + waste) else 0.0,
             "status": s.close_status or s.status,
         })
-    totals = {"sales_cents": sum(r["sales_cents"] for r in rows), "tx": sum(r["tx"] for r in rows), "difference_cents": sum(r["difference_cents"] or 0 for r in rows), "waste_units": sum(r["waste_units"] for r in rows)}
+    totals = {"sales_cents": sum(r["sales_cents"] for r in rows), "tx": sum(r["tx"] for r in rows), "difference_cents": sum(r["difference_cents"] or 0 for r in rows), "waste_units": sum(r["waste_units"] for r in rows), "stale_price_sales": sum(r["stale_price_sales"] for r in rows)}
     return {"date": day.isoformat(), "rows": rows, "totals": totals}
 
 

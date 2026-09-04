@@ -4,8 +4,9 @@ import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
 import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
+import { EvidenceGallery } from '../components/EvidenceGallery';
 import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
-import type { Action, AuditLogRow, Case, CaseStatus, Severity, User } from '../types';
+import type { Action, Audit, AuditLogRow, Case, CaseStatus, Severity, User } from '../types';
 import { CATEGORY_LABEL, ageLabel, fmtDate, fmtDateTime, label, todayLocalISO } from '../lib/format';
 
 const CATEGORIES = ['cart', 'battery', 'product', 'payment', 'security', 'other'];
@@ -18,6 +19,9 @@ export function CaseDetailPage() {
   const { data: c, loading, reload, setData } = useFetch<Case>(() => api.get(`/v1/cases/${id}`), [id]);
   const users = useFetch<User[]>(() => api.get('/v1/admin/users'), [], { silent: true, enabled: hasRole('ops', 'admin') });
   const log = useFetch<AuditLogRow[]>(() => api.get(`/v1/audit-log?entity=case&entity_id=${id}&limit=100`), [id], { silent: true, enabled: hasRole('ops', 'admin', 'finance') });
+  // Caso abierto por una auditoría: sus fotos también son evidencia del caso.
+  const auditId = typeof c?.payload?.audit_id === 'string' ? (c.payload.audit_id as string) : null;
+  const audit = useFetch<Audit>(() => api.get(`/v1/audits/${auditId}`), [auditId], { silent: true, enabled: !!auditId && hasRole('supervisor', 'ops', 'admin') });
 
   const [desc, setDesc] = useState('');
   const [owner, setOwner] = useState('');
@@ -121,6 +125,15 @@ export function CaseDetailPage() {
                     Aceptar sugerencia
                   </button>
                 )}
+              </div>
+            )}
+          </Card>
+
+          <Card title={`Evidencias (${(c.evidence?.length ?? 0) + (audit.data?.evidence.length ?? 0)})`} actions={auditId ? <Link to={`/auditorias/${auditId}`} className="btn small">Ver auditoría</Link> : undefined}>
+            <EvidenceGallery items={c.evidence} emptyText={auditId ? 'Sin fotos propias del caso' : 'Sin fotos adjuntas'} />
+            {audit.data && audit.data.evidence.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <EvidenceGallery items={audit.data.evidence} title={`Fotos de la auditoría (${fmtDateTime(audit.data.performed_at)})`} />
               </div>
             )}
           </Card>

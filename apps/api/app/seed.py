@@ -25,6 +25,7 @@ from app.models.ops import Checklist
 from app.models.org import Assignment, Asset, Cart, Point, User, Zone
 from app.services.cases import DEFAULT_RULE_PARAMS
 from app.services.inventory import add_movement
+from app.services.settings import ensure_defaults as ensure_settings
 
 log = logging.getLogger("pepito.seed")
 
@@ -94,6 +95,8 @@ def _seed_catalog(db: Session, created_by) -> list:
         r = db.get(Rule, key)
         if r is None:
             db.add(Rule(key=key, name=name, enabled=True, params=DEFAULT_RULE_PARAMS[key], severity=severity, updated_at=utcnow()))
+
+    ensure_settings(db)  # parámetros operativos (B6), mismas claves en demo y prod
 
     if db.query(Checklist).count() == 0:
         for i, (key, label, critical) in enumerate(CHECKLIST_OPEN):

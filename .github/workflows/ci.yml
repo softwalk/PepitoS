@@ -84,6 +84,24 @@ jobs:
           TOKEN=$(curl -fsS -X POST http://localhost:8000/v1/auth/login -H 'Content-Type: application/json' \
             -d '{"username":"op1","password":"op123","device_id":"ci"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
           curl -fsS http://localhost:8000/v1/me/assignment -H "Authorization: Bearer $TOKEN" | head -c 300
+      - name: Evidencia en MinIO (foto en NECESITO AYUDA → GET /v1/evidence → archivo)
+        run: |
+          TOKEN=$(curl -fsS -X POST http://localhost:8000/v1/auth/login -H 'Content-Type: application/json' \
+            -d '{"username":"op2","password":"op123","device_id":"ci-ev"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+          PNG=iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGP438AARwzEcQB+ohfxXaFgBQAAAABJRU5ErkJggg==
+          KEY=$(python3 -c 'import uuid;print(uuid.uuid4())')
+          CASE=$(curl -fsS -X POST http://localhost:8000/v1/help-cases -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"idempotency_key\":\"$KEY\",\"occurred_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"category\":\"other\",\"note\":\"ci foto\",\"photo_base64\":\"data:image/png;base64,$PNG\"}" \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["case_id"])')
+          EV=$(curl -fsS "http://localhost:8000/v1/evidence?entity=case&entity_id=$CASE" -H "Authorization: Bearer $TOKEN")
+          echo "$EV" | head -c 400; echo
+          URL=$(echo "$EV" | python3 -c 'import sys,json;e=json.load(sys.stdin);assert len(e)==1,e;print(e[0]["url"])')
+          curl -fsS -o /tmp/ev.png -H "Authorization: Bearer $TOKEN" "http://localhost:8000$URL" && file /tmp/ev.png | grep -q PNG && echo "evidencia OK"
+      - name: HTTPS vía Caddy (CA interna)
+        run: |
+          curl -kfsS -o /dev/null -w "operador https %{http_code}\n" https://localhost:8443/
+          curl -kfsS -o /dev/null -w "backoffice https %{http_code}\n" https://localhost:8444/
+          curl -kfsS https://localhost:8445/v1/health
       - name: Seed prod rechaza demo en producción
         run: |
           set +e

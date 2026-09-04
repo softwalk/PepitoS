@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Numpad, { pesosToCents } from '../components/Numpad';
+import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
 import { getPosition } from '../offline/gps';
 import { speak } from '../offline/speech';
 import { closeShift, finishClosedShift, getExpected, type ExpectedView } from '../state/actions';
 import { money, useApp } from '../state/store';
-import type { CloseChecklist } from '../types';
+import type { CloseChecklist, Photo } from '../types';
 
 const CHECKS: { key: keyof CloseChecklist; icon: string; label: string }[] = [
   { key: 'off_ok', icon: '🔌', label: 'Apagar equipo' },
@@ -21,7 +22,7 @@ type Result = { status: 'reconciled' | 'difference'; difference_cents: number; p
 export default function CloseShift() {
   const nav = useNavigate();
   const { catalog, config, shift, reload } = useApp();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [expected, setExpected] = useState<ExpectedView | null>(null);
   const [cash, setCash] = useState('');
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -54,14 +55,17 @@ export default function CloseShift() {
   const checksComplete = CHECKS.every((c) => typeof checks[c.key] === 'boolean');
   const cashCents = pesosToCents(cash);
   const threshold = config?.cash_difference_threshold_cents ?? 2000;
+  // Mismo muestreo que la apertura: si hoy toca foto, también se pide al cerrar (PRD: fotos sólo por muestreo).
+  const needsPhoto = !!config?.require_open_photo;
+  const totalSteps = needsPhoto ? 4 : 3;
 
-  const finish = async () => {
+  const finish = async (photos: Photo[] = []) => {
     if (!expected || !checksComplete || busy) return;
     setBusy(true);
     try {
       const gps = await getPosition(6000);
       const checklist = Object.fromEntries(CHECKS.map((c) => [c.key, checks[c.key] === true])) as unknown as CloseChecklist;
-      const r = await closeShift({ cash_counted_cents: cashCents, product_counts: counts, checklist, gps, expected_cash_cents: expected.cash_expected_cents });
+      const r = await closeShift({ cash_counted_cents: cashCents, product_counts: counts, checklist, gps, expected_cash_cents: expected.cash_expected_cents, photos });
       const pending = r.status === 'pending';
       const status: Result['status'] = r.status === 'pending' ? (Math.abs(r.difference_cents) <= threshold ? 'reconciled' : 'difference') : r.status;
       setResult({ status, difference_cents: r.difference_cents, pending });
@@ -69,6 +73,12 @@ export default function CloseShift() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const afterChecklist = () => {
+    if (!checksComplete || busy) return;
+    if (needsPhoto) setStep(4);
+    else void finish([]);
   };
 
   const done = async () => {
@@ -108,8 +118,8 @@ export default function CloseShift() {
 
   return (
     <div className="stack">
-      <div className="steps" aria-label={`Paso ${step} de 3`}>
-        {[1, 2, 3].map((n) => (
+      <div className="steps" aria-label={`Paso ${step} de ${totalSteps}`}>
+        {Array.from({ length: totalSteps }, (_, i) => i + 1).map((n) => (
           <span key={n} className={n <= step ? 'on' : ''} />
         ))}
       </div>
@@ -180,17 +190,19 @@ export default function CloseShift() {
           {CHECKS.map((c) => (
             <YesNo key={c.key} icon={c.icon} label={labels.get(c.key) ?? c.label} value={checks[c.key] ?? null} onChange={(v) => setChecks((s) => ({ ...s, [c.key]: v }))} />
           ))}
-          <button className="btn btn-amber" disabled={!checksComplete || busy} onClick={finish}>
+          <button className="btn btn-amber" disabled={!checksComplete || busy} onClick={afterChecklist}>
             <span className="ico" aria-hidden>
-              🔒
+              {needsPhoto ? '📷' : '🔒'}
             </span>
-            {busy ? 'Cerrando…' : 'CERRAR PUESTO'}
+            {busy ? 'Cerrando…' : needsPhoto ? 'SIGUIENTE: FOTO' : 'CERRAR PUESTO'}
           </button>
           <button className="btn btn-ghost" onClick={() => setStep(2)}>
             Atrás
           </button>
         </>
       )}
+
+      {step === 4 && <PhotoStep title="Toma una foto del puesto listo" maxBytes={config?.evidence_max_bytes} busy={busy} onContinue={(photos) => void finish(photos)} onBack={() => setStep(3)} continueLabel="CERRAR PUESTO" />}
     </div>
   );
 }

@@ -13,7 +13,7 @@ cd apps/api
 pip install --break-system-packages -r requirements.txt   # o: make install
 ./scripts/dev_db.sh start          # PostgreSQL 16 local en :5433 (initdb en ../../.pgdata la primera vez)
 cp .env.example .env               # ajusta JWT_SECRET si quieres
-alembic upgrade head               # crea el esquema (0001 inicial + 0002 auth hardening)
+alembic upgrade head               # crea el esquema (0001 inicial + 0002 auth hardening + 0003 gate 6-20)
 python -m app.seed                 # datos demo §10 (idempotente; SEED_MODE=demo por default)
 uvicorn app.main:app --reload --port 8000
 ```
@@ -138,8 +138,89 @@ de ese usuario. Los intentos de más de `LOGIN_ATTEMPTS_RETENTION_DAYS` (7) día
 | `LOGIN_ATTEMPTS_RETENTION_DAYS` | `7` | Purga de `login_attempts` |
 | `REFRESH_EXPIRES_DAYS` | `30` | Vigencia del refresh token |
 | `PASSWORD_MIN_LENGTH` | `8` | Política de contraseñas |
+| `STORAGE_BACKEND` | `local` | `s3` \| `local` \| `none` (ver "Evidencias") |
+| `STORAGE_ENDPOINT_URL` | — | Endpoint S3-compatible (p. ej. `http://minio:9000`); vacío = AWS |
+| `STORAGE_BUCKET` | `pepito-evidence` | Bucket |
+| `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` | — | Credenciales (vacías = cadena de credenciales de boto3) |
+| `STORAGE_REGION` | `us-east-1` | Región |
+| `STORAGE_PUBLIC_URL` | — | Endpoint público para presignar hacia fuera (opcional) |
+| `STORAGE_LOCAL_DIR` | `./evidence` | Directorio del backend `local` |
+| `EVIDENCE_MAX_BYTES` | `3145728` | Tamaño máximo por foto (3 MB) → `422 VALIDATION` |
+| `EVIDENCE_RETENTION_DAYS` | `180` | Retención por defecto (la clave `evidence_retention_days` de `settings` manda) |
+| `PRICE_OFFLINE_GRACE_HOURS` | `72` | Gracia para ventas offline con versión de precio desactivada |
 
 Se leen de `.env` (pydantic-settings) o del entorno.
+
+## Evidencias (fotos) — B4
+
+Las fotos de `POST /v1/help-cases` (`photo_base64`), `POST /v1/shifts/open` (`photos[{key, base64}]`),
+`POST /v1/shifts/{id}/close` (`photos[{key, base64}]`, opcional) y `POST /v1/audits` (`photos[]`: base64 o
+`{key, base64}`) se validan y se guardan en object storage; en la DB sólo queda la referencia (tabla `evidence`).
+Los mismos comandos vía `/v1/sync/batch` quedan cubiertos (mismos servicios). El hash de idempotencia excluye
+`photo_base64` / `photos`.
+
+- Entrada: data URL (`data:image/jpeg;base64,…`) o base64 puro. Se valida por firma real: JPEG, PNG o WebP; ≤
+  `EVIDENCE_MAX_BYTES` (3 MB). Si no cumple → `422 VALIDATION` y el comando no se ejecuta (la clave de idempotencia
+  no se consume).
+- `evidence(id, kind: help_case|shift_open|shift_close|audit|case_note, entity: case|shift|audit, entity_id, point_id,
+  shift_id, uploaded_by, storage_key, content_type, size_bytes, sha256, taken_at, created_at, retention_until,
+  deleted_at)`. `retention_until = now + settings.evidence_retention_days`.
+- Backends (`app/services/storage.py`, interfaz `put(key, bytes, content_type)`, `get_url(key, expires=900)`,
+  `delete(key)`): `s3` (boto3; `get_url` presignada 15 min, `STORAGE_PUBLIC_URL` para firmar con el host público),
+  `local` (`STORAGE_LOCAL_DIR`; `url` = `/v1/evidence/{id}/file`, servido por la API), `none` (valida y descarta).
+  Default `local` en dev/tests; en producción usa `s3`.
+- `GET /v1/evidence?entity=case|shift|audit&entity_id=…` → `[{id, kind, entity, entity_id, content_type, size_bytes,
+  sha256, taken_at, url}]`. Permisos: operador sólo las que subió; supervisor las de su zona; ops/finance/admin todo.
+  `GET /v1/evidence/{id}` → el mismo objeto. `GET /v1/evidence/{id}/file`: en `local` sirve el archivo (mismos
+  permisos); en `s3` responde `302` a la URL presignada.
+- `serialize_case` (GET/PATCH `/v1/cases/{id}`, listados) incluye `evidence: [...]` (mismo formato) y
+  `payload.evidence_ids`. `GET /v1/audits`, `GET /v1/audits/{id}` y la respuesta de `POST /v1/audits` incluyen
+  `evidence: [...]`; `audits.photos` guarda sólo `[{evidence_id, key}]`. Las respuestas de `shifts/open` y
+  `shifts/{id}/close` traen `evidence_ids`.
+- Retención: `purge_expired_evidence(db, now)` borra del storage y marca `deleted_at`; corre en el job del motor de
+  reglas (`run_maintenance`, cada `RULES_INTERVAL_SECONDS`) junto con `purge_old_gps(db, now)` (`gps_retention_days`).
+- Muestreo de foto en apertura: `GET /v1/me/assignment` → `config.require_open_photo` (bool) decidido en servidor:
+  `sha256(assignment_id)[:8] % 100 < photo_sampling_pct` (estable durante el día para la asignación).
+
+## Parámetros operativos (`settings`) — B6
+
+Tabla `settings(key, value jsonb, updated_at, updated_by)` con esquema de tipos en `app/services/settings.py`
+(`SETTINGS_SCHEMA`). Claves (seed demo y prod; la migración 0003 también las inserta):
+
+| clave | default | uso |
+|---|---|---|
+| `cash_difference_threshold_cents` | 2000 | cierre, arqueo sorpresa, regla `cash_difference`, `config` del operador |
+| `cash_difference_severe_cents` | 10000 | idem (urgente + aprobación de Finanzas) |
+| `cancel_window_minutes` | 5 | `cancel_sale` del operador (REST y sync) |
+| `gps_interval_seconds` | 120 | `config` del operador |
+| `photo_sampling_pct` | 10 | `require_open_photo` |
+| `evidence_retention_days` | 180 | `retention_until` de evidencias |
+| `gps_retention_days` | 90 | `purge_old_gps` |
+| `daily_sales_target_default_cents` | 234000 | meta por punto cuando el punto no tiene una / al crear puntos sin meta |
+| `inventory_count_tolerance_units` | 3 | `apply_count` y regla `inventory_inconsistent` |
+
+- `GET /v1/admin/settings` (admin, ops, finance) → `[{key, value, type, default, description, updated_at, updated_by}]`;
+  `GET /v1/admin/settings/{key}`.
+- `PUT /v1/admin/settings/{key} {"value": …}` (admin) → el mismo objeto. Tipo inválido / fuera de rango → `422
+  VALIDATION`; clave desconocida → `404`. Deja `audit_log settings.update` (`entity=setting`, `before/after = {key,
+  value}`).
+- **Precedencia** para los umbrales que también existen en reglas: `rules.params` (sólo si la clave está definida
+  explícitamente: `cash_difference.threshold_cents|severe_cents`, `inventory_inconsistent.units`) > `settings` >
+  default de código. El seed ya no escribe esos parámetros en `rules` y la migración 0003 los elimina de `rules.params`
+  cuando tenían el valor por defecto. `PUT /v1/rules/{key}` acepta `null` en un parámetro para eliminar el override.
+  `OPERATOR_CONFIG_DEFAULTS` desapareció: `/v1/me/assignment.config` se arma desde `settings`.
+
+## Ventana de precio para ventas offline — B8
+
+- `price_versions.deactivated_at` se fija con `PATCH /v1/admin/price-versions/{id} {"is_active": false}` (admin; también
+  `name`, `valid_to`; `is_active: true` la reactiva y limpia `deactivated_at`). `GET /v1/admin/price-versions` incluye
+  `deactivated_at` y `sales_count`.
+- `create_sale` acepta la versión si `valid_from <= occurred_at + 5 min` **y** (`is_active` **o**
+  `occurred_at <= deactivated_at + PRICE_OFFLINE_GRACE_HOURS`). Fuera de eso → `422 PRICE_VERSION_INVALID` con mensaje
+  claro (`no existe` / `todavía no estaba vigente` / `desactivada hace más de N h`) y `details` (`deactivated_at`,
+  `grace_hours`, `occurred_at`).
+- Si entra por la gracia, `sales.price_version_stale=true` (también en `SaleRecorded.payload` y en `GET
+  /v1/sales/{id}`). `GET /v1/reports/daily` añade `stale_price_sales` por fila y en `totals` para Finanzas.
 
 ## Pruebas
 
@@ -158,7 +239,12 @@ excepción, `CART_IN_USE` / `SHIFT_ALREADY_OPEN` / `NO_ASSIGNMENT`, transferenci
 `sync/batch` mixto con error y duplicado, ventana de cancelación y permisos, inventario reconstruible (API, movimientos
 y vista SQL), bloqueo de lote, motor de reglas (`no_open`, `cash_difference`, `low_battery`, `out_of_geofence`,
 `sync_stale`, `high_waste`, `stock_critical`, `anomalous_cancellations`, `maintenance_overdue`), configuración de reglas
-con audit log, auditoría con acciones correctivas.
+con audit log, auditoría con acciones correctivas. `tests/test_gate_6_20.py` cubre B4 (evidencia en help-case /
+apertura / cierre / auditoría / sync, permisos, >3 MB → 422, retención, `require_open_photo`), B6 (settings: PUT, tipo
+inválido, audit log, umbral de caja en cierre y en la regla con/sin override, ventana de cancelación, tolerancia de
+inventario, purga de GPS) y B8 (venta offline con versión desactivada hace 1 h aceptada con `price_version_stale`, 4
+días rechazada, `reports/daily.stale_price_sales`, `PATCH price-versions`). El storage de pruebas es `local` en un
+directorio temporal.
 
 ## Docker
 
@@ -186,12 +272,16 @@ app/
           cases (casos, alertas, acciones, auditorías, mantenimiento, aprobaciones, ai_recommendations, rules)
           system (idempotency_keys, events, audit_log)
   schemas/ operator.py, backoffice.py (Pydantic v2)
-  routers/ auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor, cases, control_tower, rules,
-           approvals, reports (daily, attendance, audit-log), assets (activos, mantenimiento, lotes), admin, health
-  services/ auth (rate limiting, refresh tokens, política de contraseña), shifts, sales, cash, inventory, cases, rules_engine, priority, geo, events, audit, idempotency, sync, control_tower
+  routers/ auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor (+ audits), cases, control_tower, rules,
+           approvals, reports (daily, attendance, audit-log), assets (activos, mantenimiento, lotes), admin (+ settings,
+           price-versions), evidence, health
+  services/ auth (rate limiting, refresh tokens, política de contraseña), shifts, sales, cash, inventory, cases, rules_engine
+           (+ purgas), priority, geo, events, audit, idempotency, sync, control_tower, storage (s3|local|none),
+           evidence (validación, retención), settings (parámetros editables)
   ai/classifier.py        clasificador por palabras clave (interfaz `classify_help_text`)
   seed.py                 SEED_MODE demo | prod | none (idempotente)
-alembic/                  `0001_esquema_inicial.py` (todas las tablas + vista `inventory_balances`), `0002_auth_hardening.py`
+alembic/                  `0001_esquema_inicial.py` (todas las tablas + vista `inventory_balances`), `0002_auth_hardening.py`,
+                          `0003_gate_6_20.py` (evidence, settings, price_versions.deactivated_at, sales.price_version_stale)
 scripts/dev_db.sh         PostgreSQL local
 tests/                    pytest + httpx TestClient
 ```
@@ -205,12 +295,13 @@ tests/                    pytest + httpx TestClient
   `/v1/sync/batch` (mismos servicios; un error devuelve `status:"error"` en su resultado y sigue con los demás).
 - **Ledger append-only**: `sales` nunca se borra; cancelar crea `sale_cancellations`, marca `sales.status='cancelled'`,
   registra movimiento `return`, evento `SaleCancelled` y `audit_log`. Operador: sólo ventas propias, turno abierto y
-  dentro de `cancel_window_minutes` (5); supervisor (de su zona) / ops / admin siempre, con motivo.
+  dentro de `settings.cancel_window_minutes` (5); supervisor (de su zona) / ops / admin siempre, con motivo.
 - **Inventario**: `inventory_movements` es la fuente de verdad (tipos `receipt, sale, waste, count_adjustment,
   transfer_out, transfer_in, return, blocked`). Balance = `SUM(qty)` por punto/presentación; la vista SQL
   `inventory_balances` lo expone. Conteos generan `count_adjustment` (+ caso `inventory_inconsistent` si |dif| > `units`).
-- **Cierre**: esperado = pagos `cash` de ventas `recorded` del turno; `|dif| > threshold_cents` → caso (`review`, o
-  `urgent` si > `severe_cents`) + evento `CashDifferenceDetected`; si es grave también se crea una `Approval` para Finanzas.
+- **Cierre**: esperado = pagos `cash` de ventas `recorded` del turno; `|dif| > cash_difference_threshold_cents` → caso
+  (`review`, o `urgent` si > `cash_difference_severe_cents`) + evento `CashDifferenceDetected`; si es grave también se
+  crea una `Approval` para Finanzas. Umbrales: `rules.params` > `settings` > default (ver B6).
 - **Turnos**: índices únicos parciales `shifts(cart_id) WHERE status='open'` y `shifts(operator_id) WHERE status='open'`
   (→ `CART_IN_USE` / `SHIFT_ALREADY_OPEN`). La transferencia cierra el turno saliente (caja/conteo intermedio), abre uno
   para `to_operator_id` y registra `transfer_out`/`transfer_in`.
@@ -231,7 +322,8 @@ tests/                    pytest + httpx TestClient
 
 - `POST /v1/rules/run` lo puede ejecutar `admin` (`rules.run`) y también `ops` (`rules.update`); el contrato lo lista sólo
   para admin. `ops` también tiene `reports.read` para alimentar el Control Tower.
-- Fotos (`photos`, `photo_base64`) no se almacenan (no hay object storage en MVP); sólo se registra que se enviaron.
+- Fotos: con `STORAGE_BACKEND=none` se validan y se descartan (comportamiento previo al B4); con `local` el
+  directorio es efímero en Docker salvo que se monte un volumen. Producción: `s3`.
 - `maintenance_overdue` deduplica por activo (`rule_key:asset_id:fecha`) porque un activo no siempre tiene punto.
 - Los casos de auditoría (`audit_nonconformity`, `surprise_cash_count`) y de apertura con excepción (`open_<check>`) usan
   `rule_key` propios aunque no sean reglas del motor, para reutilizar el mismo mecanismo de alerta/caso.

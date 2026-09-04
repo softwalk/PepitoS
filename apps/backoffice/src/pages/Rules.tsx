@@ -3,9 +3,15 @@ import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
 import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
-import { Card, Loading, PageTitle, SeverityBadge } from '../components/ui';
-import type { Rule, Severity } from '../types';
+import { Badge, Card, Loading, PageTitle, SeverityBadge } from '../components/ui';
+import type { Rule, Setting, Severity } from '../types';
 import { fmtDateTime } from '../lib/format';
+
+/** Parámetros de regla que, si no tienen override en `rules.params`, se heredan de /admin → Parámetros (settings). */
+export const INHERITED_PARAMS: Record<string, Record<string, string>> = {
+  cash_difference: { threshold_cents: 'cash_difference_threshold_cents', severe_cents: 'cash_difference_severe_cents' },
+  inventory_inconsistent: { units: 'inventory_count_tolerance_units' },
+};
 
 const RULE_HELP: Record<string, string> = {
   no_open: 'Asignación de hoy sin apertura pasados N min de la hora planeada',
@@ -34,9 +40,10 @@ function parseValue(raw: string, previous: unknown): unknown {
   }
 }
 
-function RuleRow({ rule, onSaved, canEdit }: { rule: Rule; onSaved: (r: Rule) => void; canEdit: boolean }) {
+function RuleRow({ rule, onSaved, canEdit, settings }: { rule: Rule; onSaved: (r: Rule) => void; canEdit: boolean; settings: Record<string, Setting> }) {
   const toast = useToast();
   const [params, setParams] = useState<Record<string, string>>({});
+  const inheritable = INHERITED_PARAMS[rule.key] ?? {};
   const [severity, setSeverity] = useState<Severity>(rule.severity);
   const [newKey, setNewKey] = useState('');
   const [newVal, setNewVal] = useState('');
@@ -49,13 +56,13 @@ function RuleRow({ rule, onSaved, canEdit }: { rule: Rule; onSaved: (r: Rule) =>
 
   const dirty = severity !== rule.severity || Object.entries(params).some(([k, v]) => JSON.stringify(parseValue(v, rule.params[k])) !== JSON.stringify(rule.params[k])) || newKey.trim() !== '';
 
-  const save = async (patch?: Partial<{ enabled: boolean }>) => {
+  const save = async (patch?: Partial<{ enabled: boolean; params: Record<string, unknown> }>) => {
     setBusy(true);
     try {
       const body: Record<string, unknown> = { ...patch };
       if (!patch) {
         const p: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(params)) p[k] = parseValue(v, rule.params[k]);
+        for (const [k, v] of Object.entries(params)) p[k] = parseValue(v, rule.params[k] ?? settings[inheritable[k]]?.value);
         if (newKey.trim()) p[newKey.trim()] = parseValue(newVal, undefined);
         body.params = p;
         body.severity = severity;
@@ -86,15 +93,47 @@ function RuleRow({ rule, onSaved, canEdit }: { rule: Rule; onSaved: (r: Rule) =>
       </td>
       <td>
         <div className="stack" style={{ gap: 4 }}>
-          {Object.keys(params).length === 0 && <span className="muted small">Sin parámetros</span>}
+          {Object.keys(params).length === 0 && Object.keys(inheritable).length === 0 && <span className="muted small">Sin parámetros</span>}
           {Object.entries(params).map(([k, v]) => (
-            <label key={k} className="row" style={{ gap: 6 }}>
+            <label key={k} className="row" style={{ gap: 6 }} data-testid={`param-${rule.key}-${k}`}>
               <span className="mono" style={{ minWidth: 120 }}>
                 {k}
               </span>
               <input value={v} disabled={!canEdit} onChange={(e) => setParams({ ...params, [k]: e.target.value })} style={{ width: 110, minHeight: 28, padding: '3px 6px' }} />
+              {inheritable[k] && (
+                <>
+                  <Badge tone="amber" title={`Override: ignora ${inheritable[k]} de Parámetros`}>
+                    override
+                  </Badge>
+                  {canEdit && (
+                    <button type="button" className="btn small btn-ghost" disabled={busy} title={`Volver a heredar ${inheritable[k]} de Parámetros`} onClick={() => save({ params: { [k]: null } })} data-testid={`clear-override-${rule.key}-${k}`}>
+                      Quitar override
+                    </button>
+                  )}
+                </>
+              )}
             </label>
           ))}
+          {Object.entries(inheritable)
+            .filter(([k]) => !(k in params))
+            .map(([k, settingKey]) => (
+              <div key={k} className="row" style={{ gap: 6 }} data-testid={`param-${rule.key}-${k}`}>
+                <span className="mono" style={{ minWidth: 120 }}>
+                  {k}
+                </span>
+                <span className="inherited" title={`Heredado de Parámetros (${settingKey})`}>
+                  {settings[settingKey] ? String(settings[settingKey].value) : '…'}
+                </span>
+                <Badge tone="light" title={`Sin override: usa ${settingKey} de /admin → Parámetros`}>
+                  heredado de Parámetros
+                </Badge>
+                {canEdit && (
+                  <button type="button" className="btn small btn-ghost" disabled={busy} onClick={() => setParams({ ...params, [k]: String(settings[settingKey]?.value ?? '') })} data-testid={`set-override-${rule.key}-${k}`}>
+                    Definir override
+                  </button>
+                )}
+              </div>
+            ))}
           {canEdit && (
             <div className="row" style={{ gap: 6 }}>
               <input placeholder="nuevo_param" value={newKey} onChange={(e) => setNewKey(e.target.value)} style={{ width: 120, minHeight: 28, padding: '3px 6px' }} />
@@ -131,6 +170,8 @@ export function RulesPage() {
   const { hasRole } = useAuth();
   const canEdit = hasRole('ops', 'admin');
   const { data, loading, setData, reload } = useFetch<Rule[]>(() => api.get('/v1/rules'), []);
+  const settingsList = useFetch<Setting[]>(() => api.get('/v1/admin/settings'), [], { silent: true });
+  const settings = Object.fromEntries((settingsList.data ?? []).map((s) => [s.key, s]));
   const [running, setRunning] = useState(false);
   const run = async () => {
     setRunning(true);
@@ -147,7 +188,7 @@ export function RulesPage() {
     <div>
       <PageTitle
         title="Reglas determinísticas"
-        subtitle="Cada regla evalúa y, si dispara y no hay caso abierto igual (regla:punto:día), crea alerta + caso. Cambios quedan en audit log."
+        subtitle="Cada regla evalúa y, si dispara y no hay caso abierto igual (regla:punto:día), crea alerta + caso. Cambios quedan en audit log. Umbrales de caja e inventario se heredan de /admin → Parámetros salvo override aquí."
         actions={
           <>
             <button type="button" className="btn" onClick={() => reload()}>
@@ -178,7 +219,7 @@ export function RulesPage() {
               </thead>
               <tbody>
                 {data.map((r) => (
-                  <RuleRow key={r.key} rule={r} canEdit={canEdit} onSaved={(nr) => setData(data.map((x) => (x.key === nr.key ? nr : x)))} />
+                  <RuleRow key={r.key} rule={r} canEdit={canEdit} settings={settings} onSaved={(nr) => setData(data.map((x) => (x.key === nr.key ? nr : x)))} />
                 ))}
               </tbody>
             </table>

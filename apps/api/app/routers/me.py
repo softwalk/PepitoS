@@ -1,15 +1,18 @@
 """Asignación del operador, catálogo y precios vigentes."""
+import hashlib
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.deps import CurrentUser, require
 from app.core.timeutil import iso, local_today
 from app.models.catalog import Flavor, Presentation
 from app.models.ops import Checklist, Shift
 from app.models.org import Assignment
-from app.services.cases import get_rule_params
-from app.services.sales import OPERATOR_CONFIG_DEFAULTS, current_price_version, price_map
+from app.services import settings as settings_svc
+from app.services.sales import current_price_version, price_map
 
 router = APIRouter(prefix="/v1", tags=["operador"])
 
@@ -47,10 +50,30 @@ def build_catalog(db: Session) -> dict:
     }
 
 
-def operator_config(db: Session) -> dict:
-    cfg = dict(OPERATOR_CONFIG_DEFAULTS)
-    cfg["cash_difference_threshold_cents"] = int(get_rule_params(db, "cash_difference").get("threshold_cents", cfg["cash_difference_threshold_cents"]))
-    return cfg
+def require_open_photo(assignment_id, sampling_pct: int) -> bool:
+    """Muestreo determinístico: hash del assignment_id → [0,100). Estable durante el día para esa asignación."""
+    pct = max(0, min(100, int(sampling_pct)))
+    if pct <= 0:
+        return False
+    if pct >= 100:
+        return True
+    bucket = int(hashlib.sha256(str(assignment_id).encode("utf-8")).hexdigest()[:8], 16) % 100
+    return bucket < pct
+
+
+def operator_config(db: Session, assignment=None) -> dict:
+    """Parámetros del operador leídos de `settings` (B6). El umbral de caja respeta rules.params > settings."""
+    threshold, severe = settings_svc.cash_thresholds(db)
+    sampling = settings_svc.get_int(db, "photo_sampling_pct")
+    return {
+        "cash_difference_threshold_cents": threshold,
+        "cash_difference_severe_cents": severe,
+        "cancel_window_minutes": settings_svc.get_int(db, "cancel_window_minutes"),
+        "gps_interval_seconds": settings_svc.get_int(db, "gps_interval_seconds"),
+        "photo_sampling_pct": sampling,
+        "require_open_photo": require_open_photo(assignment.id, sampling) if assignment is not None else False,
+        "evidence_max_bytes": settings.EVIDENCE_MAX_BYTES,
+    }
 
 
 @router.get("/me/assignment")
@@ -74,7 +97,7 @@ def my_assignment(current: CurrentUser = Depends(require("me.read")), db: Sessio
         "assignment": assignment,
         "active_shift": {"id": str(active.id), "opened_at": iso(active.opened_at), "status": active.status, "ready": active.ready, "exceptions": active.open_exceptions} if active else None,
         "catalog": build_catalog(db),
-        "config": operator_config(db),
+        "config": operator_config(db, a),
     }
 
 

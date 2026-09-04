@@ -24,7 +24,6 @@ from app.services import inventory as inv_svc
 from app.services import sales as sales_svc
 from app.services import shifts as shifts_svc
 from app.services.idempotency import IdemResult, run_idempotent
-from app.services.sales import OPERATOR_CONFIG_DEFAULTS
 
 
 def _open_shift_checked(db: Session, current, shift_id: uuid.UUID):
@@ -38,11 +37,12 @@ def cmd_shift_open(db: Session, current, data: ShiftOpenIn) -> IdemResult:
     def fn():
         return shifts_svc.open_shift(db, current, data), 201
 
-    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json"), fn)
+    # Las fotos (base64) no entran en el hash de idempotencia: el reintento con la foto recomprimida sigue siendo el mismo comando.
+    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json", exclude={"photos"}), fn)
 
 
 def cmd_shift_close(db: Session, current, shift_id: uuid.UUID, data: ShiftCloseIn) -> IdemResult:
-    payload = {"shift_id": str(shift_id), **data.model_dump(mode="json")}
+    payload = {"shift_id": str(shift_id), **data.model_dump(mode="json", exclude={"photos"})}
 
     def fn():
         shift = _open_shift_checked(db, current, shift_id)
@@ -79,7 +79,7 @@ def cmd_sale_cancel(db: Session, current, sale_id: uuid.UUID, data: SaleCancelIn
             raise ApiError("NOT_FOUND", "Venta no encontrada")
         if current.role == "supervisor":
             _open_shift_checked(db, current, sale.shift_id)
-        sales_svc.cancel_sale(db, sale, current, data, OPERATOR_CONFIG_DEFAULTS["cancel_window_minutes"], ip=ip)
+        sales_svc.cancel_sale(db, sale, current, data, ip=ip)  # ventana desde settings (cancel_window_minutes)
         return {"sale_id": str(sale.id), "status": "cancelled"}, 200
 
     return run_idempotent(db, data.idempotency_key, current.id, payload, fn)

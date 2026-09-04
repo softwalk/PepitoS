@@ -1,7 +1,17 @@
 # Revisión prepublicación — PEPITO OS v1.0
 
 > **Actualización rama `fix/prepublicacion` (v1.1):** B1, B2, B3 y B5 quedaron resueltos (ver sección "Resuelto en v1.1").
-> Siguen abiertos B4, B6, B7 y B8 para antes del gate 6–20 puntos.
+> **Actualización rama `feat/gate-6-20` (v1.2):** B4, B6 y B8 resueltos de punta a punta (API con migración `0003_gate_6_20`,
+> PWA y backoffice) más HTTPS con Caddy y MinIO en el compose. Queda **B7** (clave de cifrado local), que depende de la decisión
+> teléfono corporativo vs BYOD; hoy la cola cifrada protege contra lectura casual y la sesión se puede revocar por dispositivo.
+>
+> | # | v1.2 | Verificación |
+> |---|---|---|
+> | B4 | Tabla `evidence` + storage `s3\|local\|none` (MinIO en compose, servido por la API con permisos); fotos de ayuda, apertura/cierre por muestreo (`require_open_photo` estable por asignación) y auditorías (hasta 3); galería en casos y `/auditorias/:id`; retención `evidence_retention_days` con purga | 13 tests API; `smoke_photo.py` (apertura sin red con foto → evidencia en API); smoke backoffice (auditoría con foto → galería); CI sube una foto a MinIO y la descarga |
+> | B6 | Tabla `settings` (9 parámetros) editable en `/admin → Parámetros`, con audit log; `/me/assignment.config`, cierre, regla `cash_difference`, arqueo sorpresa y `cancel_window` leen de ahí; precedencia `rules.params > settings > default` visible en `/reglas` con "Quitar override"; purga de GPS por `gps_retention_days` | tests: cambiar umbral cambia el resultado del cierre siguiente; smoke backoffice |
+> | B8 | `price_versions.deactivated_at`; venta offline con versión desactivada se acepta hasta `PRICE_OFFLINE_GRACE_HOURS=72` y queda marcada `price_version_stale` (columna "Precio vencido" en `/ventas`); Desactivar/Reactivar en `/admin` con aviso | tests: 1 h → aceptada y marcada; 4 días → rechazada |
+> | HTTPS | Caddy con `tls internal` (LAN, CA descargable en `:8446/ca.crt`) o Let's Encrypt con dominio; `docs/HTTPS.md` | CI comprueba `https://localhost:8443/8444/8445` |
+> | UI | Icono de carrito = render V5-B Food Bike; icono de producto = mascota Pepito (PWA: cabecera, checklist, ayuda) | capturas |
 
 Revisión independiente del sistema generado (backend, PWA operador, backoffice, infra) contra el PRD v2 y el OpenSpec v2,
 hecha después de construirlo. Se divide en: lo que **ya corregí** durante la revisión, lo que **corregiría antes de publicar**

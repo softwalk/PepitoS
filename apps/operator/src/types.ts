@@ -52,9 +52,32 @@ export interface Catalog {
 
 export interface OperatorConfig {
   cash_difference_threshold_cents: number;
+  cash_difference_severe_cents: number;
   cancel_window_minutes: number;
   gps_interval_seconds: number;
   photo_sampling_pct: number;
+  /** Muestreo determinístico por asignación: si es true, apertura/cierre piden foto del puesto. */
+  require_open_photo: boolean;
+  /** Tamaño máximo por foto (bytes) aceptado por el servidor. */
+  evidence_max_bytes: number;
+}
+
+/** Foto de evidencia: base64 puro (sin prefijo data:) JPEG/PNG/WebP ≤ evidence_max_bytes. */
+export interface Photo {
+  key: string;
+  base64: string;
+}
+
+export interface Evidence {
+  id: string;
+  kind: string;
+  entity: 'case' | 'shift' | 'audit';
+  entity_id: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  taken_at: string;
+  url: string | null;
 }
 
 export interface Point {
@@ -118,7 +141,7 @@ export interface ShiftOpenPayload {
   opened_at: string;
   checklist: OpenChecklist;
   gps: GPS | null;
-  photos?: { key: string; base64: string }[];
+  photos?: Photo[];
 }
 
 export interface ShiftOpenResponse {
@@ -145,6 +168,7 @@ export interface ShiftClosePayload {
   product_counts: Record<string, number>;
   checklist: CloseChecklist;
   gps: GPS | null;
+  photos?: Photo[];
 }
 
 export interface ShiftCloseResponse {

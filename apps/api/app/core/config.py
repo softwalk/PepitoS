@@ -31,6 +31,19 @@ class Settings(BaseSettings):
     # Refresh tokens rotativos (B3)
     REFRESH_EXPIRES_DAYS: int = 30
     PASSWORD_MIN_LENGTH: int = 8
+    # Evidencias / object storage (B4): s3 | local | none
+    STORAGE_BACKEND: str = "local"
+    STORAGE_ENDPOINT_URL: str | None = None
+    STORAGE_BUCKET: str = "pepito-evidence"
+    STORAGE_ACCESS_KEY: str | None = None
+    STORAGE_SECRET_KEY: str | None = None
+    STORAGE_REGION: str = "us-east-1"
+    STORAGE_PUBLIC_URL: str | None = None
+    STORAGE_LOCAL_DIR: str = "./evidence"
+    EVIDENCE_MAX_BYTES: int = 3 * 1024 * 1024
+    EVIDENCE_RETENTION_DAYS: int = 180
+    # Ventana de gracia para ventas offline con versión de precio desactivada (B8)
+    PRICE_OFFLINE_GRACE_HOURS: int = 72
 
     @property
     def tz(self) -> ZoneInfo:

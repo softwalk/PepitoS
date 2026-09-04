@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
@@ -6,7 +6,11 @@ import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { Badge, Card, Field, Loading, PageTitle } from '../components/ui';
 import type { Point, User } from '../types';
-import { money, todayLocalISO } from '../lib/format';
+import { fmtBytes, money, todayLocalISO } from '../lib/format';
+import { base64Bytes, compressImage } from '../lib/image';
+
+export const MAX_PHOTOS = 3;
+interface PhotoDraft { key: string; base64: string; name: string }
 
 const CHECKLIST: { key: string; label: string }[] = [
   { key: 'clean_ok', label: 'Limpieza del punto y carrito' },
@@ -49,6 +53,8 @@ export function AuditFormPage() {
   const [notes, setNotes] = useState('');
   const [actions, setActions] = useState<Corrective[]>([]);
   const [draft, setDraft] = useState<Corrective>({ description: '', owner_id: '', due_date: todayLocalISO() });
+  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const recRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
@@ -80,6 +86,34 @@ export function AuditFormPage() {
     setListening(true);
   };
 
+  const addPhotos = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (!files.length) return;
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) {
+      toast.toast(`Máximo ${MAX_PHOTOS} fotos por auditoría`, 'error');
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      const next: PhotoDraft[] = [];
+      for (const f of files.slice(0, room)) {
+        try {
+          // Reducida en el cliente (≤1280 px, JPEG 0.8) para no exceder el máximo del servidor (3 MB).
+          const base64 = await compressImage(f);
+          next.push({ key: `foto_${photos.length + next.length + 1}`, base64, name: f.name });
+        } catch (err) {
+          toast.error(err, `No se pudo procesar ${f.name}`);
+        }
+      }
+      if (files.length > room) toast.toast(`Sólo se agregaron ${room} foto(s): máximo ${MAX_PHOTOS}`, 'info');
+      setPhotos((xs) => [...xs, ...next]);
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
   const addAction = () => {
     if (!draft.description.trim()) return;
     setActions((xs) => [...xs, { ...draft, description: draft.description.trim() }]);
@@ -102,6 +136,7 @@ export function AuditFormPage() {
         checklist: Object.fromEntries(CHECKLIST.map((c) => [c.key, !!checks[c.key]])),
         cash_counted_cents: cash === '' ? null : Math.round(parseFloat(cash) * 100),
         notes: notes || null,
+        photos: photos.map((p) => ({ key: p.key, base64: p.base64 })),
         corrective_actions: actions.map((a) => ({ description: a.description, owner_id: a.owner_id || user?.id || null, due_date: a.due_date || null })),
       };
       const r = await api.post<{ audit_id: string; case_ids: string[]; cash_expected_cents: number | null }>('/v1/audits', body);
@@ -161,6 +196,29 @@ export function AuditFormPage() {
         }
       >
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones, coaching en sitio, hallazgos…" rows={4} style={{ width: '100%' }} />
+      </Card>
+
+      <Card title={`Fotos (${photos.length}/${MAX_PHOTOS})`} actions={<span className="muted small">Se reducen en el navegador antes de enviar</span>}>
+        <div className="photo-picker" data-testid="audit-photos">
+          {photos.map((p, i) => (
+            <div className="evidence-thumb" key={p.key} data-testid="audit-photo">
+              <img src={`data:image/jpeg;base64,${p.base64}`} alt={p.name} />
+              <span className="evidence-meta">
+                <span>{p.key}</span>
+                <span>{fmtBytes(base64Bytes(p.base64))}</span>
+              </span>
+              <button type="button" className="remove" aria-label={`Quitar ${p.name}`} onClick={() => setPhotos((xs) => xs.filter((_, j) => j !== i))}>
+                ×
+              </button>
+            </div>
+          ))}
+          {photos.length < MAX_PHOTOS && (
+            <label className="btn" style={{ cursor: photoBusy ? 'wait' : 'pointer' }}>
+              {photoBusy ? 'Procesando…' : '📷 Agregar foto'}
+              <input type="file" accept="image/*" capture="environment" multiple onChange={addPhotos} disabled={photoBusy} style={{ display: 'none' }} data-testid="audit-photo-input" />
+            </label>
+          )}
+        </div>
       </Card>
 
       <Card title={`Acciones correctivas (${actions.length})`}>

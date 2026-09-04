@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, qs } from '../api/client';
 import { useFetch } from '../lib/useFetch';
-import { Card, Empty, LightDot, Loading, PageTitle, StatusBadge } from '../components/ui';
+import { Badge, Card, Empty, LightDot, Loading, PageTitle, StatusBadge } from '../components/ui';
 import type { DailyReport } from '../types';
 import { fmtTime, money, salesLight, ticketLight, todayLocalISO, wasteLight } from '../lib/format';
 
@@ -52,6 +52,11 @@ export function SalesPage() {
               <div className="kpi-value">{totalWaste} u</div>
               <div className="kpi-sub">{wastePctTotal.toFixed(1)}% de unidades</div>
             </div>
+            <div className={`kpi tone-${(data.totals.stale_price_sales ?? 0) > 0 ? 'amber' : 'green'}`} data-testid="kpi-stale-price">
+              <div className="kpi-label">Ventas con precio vencido</div>
+              <div className="kpi-value">{data.totals.stale_price_sales ?? 0}</div>
+              <div className="kpi-sub">versión desactivada · gracia offline 72 h</div>
+            </div>
           </div>
           <Card title="Ventas por punto">
             {rows.length === 0 ? (
@@ -92,6 +97,9 @@ export function SalesPage() {
                       <th className="num">Diferencia</th>
                       <th className="num">Cancel.</th>
                       <th className="num">Merma</th>
+                      <th className="num" title="Ventas registradas con una versión de precio ya desactivada (gracia offline)">
+                        Precio vencido
+                      </th>
                       <th>Estado</th>
                     </tr>
                   </thead>
@@ -123,6 +131,7 @@ export function SalesPage() {
                           <td className="num">
                             {r.waste_units} u · {r.waste_pct}% <LightDot light={wasteLight(r.waste_pct)} text="" />
                           </td>
+                          <td className="num">{(r.stale_price_sales ?? 0) > 0 ? <Badge tone="amber" title="Ventas con versión de precio desactivada">{r.stale_price_sales} vencido</Badge> : <span className="muted">0</span>}</td>
                           <td>
                             <StatusBadge status={r.status} />
                           </td>
@@ -142,6 +151,7 @@ export function SalesPage() {
                       <td className="num">{money(data.totals.difference_cents)}</td>
                       <td className="num">{rows.reduce((s, r) => s + r.cancelled_count, 0)}</td>
                       <td className="num">{data.totals.waste_units} u</td>
+                      <td className="num">{(data.totals.stale_price_sales ?? 0) > 0 ? <Badge tone="amber">{data.totals.stale_price_sales}</Badge> : 0}</td>
                       <td></td>
                     </tr>
                   </tfoot>

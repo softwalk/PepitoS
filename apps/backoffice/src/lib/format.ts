@@ -142,3 +142,10 @@ export function label(map: Record<string, string>, key: string | null | undefine
   if (!key) return '—';
   return map[key] ?? key;
 }
+
+export function fmtBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}

@@ -9,14 +9,15 @@ excepciones; Dirección decide.*
 | API + motor de reglas + seeds | `apps/api` | Python 3.11 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16 · APScheduler | 8000 |
 | PWA Operador (ABRIR · VENDER · AYUDA · CERRAR, offline-first) | `apps/operator` | React 18 · Vite · TS · vite-plugin-pwa · IndexedDB cifrado | 5173 (dev) / 4173 (preview) |
 | Backoffice + Supervisor (Control Tower) | `apps/backoffice` | React 18 · Vite · TS · leaflet · recharts | 5174 / 4174 |
-| Infra | `docker-compose.yml`, `infra/`, Dockerfiles | Docker Compose · nginx | 8081 operador · 8082 backoffice |
+| Infra | `docker-compose.yml`, `infra/`, Dockerfiles | Docker Compose · nginx · Caddy (HTTPS) · MinIO (evidencias) | 8081/8082 HTTP · 8443/8444/8445 HTTPS |
 | Documentación | `docs/` | Contratos, arquitectura, trazabilidad con el OpenSpec, runbook, revisión prepublicación | — |
 
 ## Arranque rápido (Docker)
 
 ```bash
 cp .env.example .env            # ajusta JWT_SECRET y POSTGRES_PASSWORD
-docker compose up --build -d    # db + api (migra y siembra) + operador :8081 + backoffice :8082
+docker compose up --build -d    # db + minio + api (migra y siembra) + operador :8081 + backoffice :8082 + caddy https :8443/:8444/:8445
+# PWA desde un teléfono: usa https://<PUBLIC_HOST>:8443 e instala la CA (docs/HTTPS.md)
 ```
 
 ## Arranque en desarrollo (sin Docker)

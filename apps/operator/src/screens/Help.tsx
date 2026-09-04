@@ -1,41 +1,25 @@
 import { useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Icon from '../components/Icon';
 import { getPosition } from '../offline/gps';
+import { compressImage } from '../offline/image';
 import { speak } from '../offline/speech';
 import { requestHelp } from '../state/actions';
 import { useApp } from '../state/store';
 import type { HelpCategory } from '../types';
 
 const CARDS: { code: HelpCategory; icon: string; label: string }[] = [
-  { code: 'cart', icon: '🛒', label: 'Carrito' },
+  { code: 'cart', icon: 'img:/icon-cart.png', label: 'Carrito' },
   { code: 'battery', icon: '🔋', label: 'Batería' },
-  { code: 'product', icon: '🥜', label: 'Producto' },
+  { code: 'product', icon: 'img:/icon-product.png', label: 'Producto' },
   { code: 'payment', icon: '💳', label: 'Cobro' },
   { code: 'security', icon: '🚨', label: 'Seguridad' },
   { code: 'other', icon: '❓', label: 'Otro' },
 ];
 
-async function fileToBase64(file: File): Promise<string> {
-  // Reduce la foto a ≤1024 px para no saturar la cola.
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) {
-    return new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-      r.readAsDataURL(file);
-    });
-  }
-  const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.7).split(',')[1] ?? '';
-}
-
 export default function Help() {
   const nav = useNavigate();
-  const { catalog, reload } = useApp();
+  const { catalog, config, reload } = useApp();
   const [sent, setSent] = useState<HelpCategory | null>(null);
   const [other, setOther] = useState(false);
   const [note, setNote] = useState('');
@@ -58,9 +42,19 @@ export default function Help() {
     }
   };
 
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const onPhoto = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) setPhoto(await fileToBase64(f));
+    e.target.value = '';
+    if (!f) return;
+    setPhotoError(null);
+    try {
+      // ≤1280 px / JPEG 0.8 y validación contra config.evidence_max_bytes (3 MB por defecto).
+      setPhoto(await compressImage(f, { maxBytes: config?.evidence_max_bytes }));
+    } catch (err) {
+      setPhoto(null);
+      setPhotoError(err instanceof Error ? err.message : 'No se pudo procesar la foto');
+    }
   };
 
   if (sent) {
@@ -90,6 +84,14 @@ export default function Help() {
           {photo ? 'Foto lista ✓' : 'Tomar foto (opcional)'}
           <input className="sr" type="file" accept="image/*" capture="environment" onChange={onPhoto} />
         </label>
+        {photoError && (
+          <div className="exception" role="alert">
+            <span className="ico" aria-hidden>
+              ⚠️
+            </span>
+            <div>{photoError}</div>
+          </div>
+        )}
         <button className="btn btn-blue" disabled={busy} onClick={() => send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined })}>
           <span className="ico" aria-hidden>
             📨
@@ -115,9 +117,7 @@ export default function Help() {
             onClick={() => (c.code === 'other' ? setOther(true) : send(c.code))}
             aria-label={c.code === 'security' ? 'Seguridad: envía ayuda prioritaria de inmediato' : labels.get(c.code) ?? c.label}
           >
-            <span className="ico" aria-hidden>
-              {c.icon}
-            </span>
+            <Icon icon={c.icon} />
             {labels.get(c.code) ?? c.label}
             {c.code === 'security' && <small style={{ fontSize: '0.6em' }}>Envío inmediato</small>}
           </button>

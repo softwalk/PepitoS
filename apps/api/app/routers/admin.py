@@ -23,14 +23,20 @@ from app.schemas.backoffice import (
     PresentationIn,
     PresentationPatch,
     PriceVersionIn,
+    PriceVersionPatch,
     ResetPasswordIn,
+    SettingPut,
     RevokeIn,
     UserIn,
     UserPatch,
     ZoneIn,
 )
+from sqlalchemy import func, select
+
+from app.models.sales import Sale
 from app.services import audit
 from app.services import auth as auth_svc
+from app.services import settings as settings_svc
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 ADMIN = require("admin.users")  # sólo admin (comodín "*")
@@ -64,8 +70,11 @@ def ser_presentation(p: Presentation) -> dict:
     return {"id": _u(p.id), "name": p.name, "grams": p.grams, "sort": p.sort, "is_active": p.is_active, "product_id": _u(p.product_id)}
 
 
-def ser_price_version(v: PriceVersion) -> dict:
-    return {"id": _u(v.id), "name": v.name, "valid_from": iso(v.valid_from), "valid_to": iso(v.valid_to), "is_active": v.is_active, "prices": {str(i.presentation_id): i.amount_cents for i in v.items}}
+def ser_price_version(v: PriceVersion, sales_count: int | None = None) -> dict:
+    out = {"id": _u(v.id), "name": v.name, "valid_from": iso(v.valid_from), "valid_to": iso(v.valid_to), "is_active": v.is_active, "deactivated_at": iso(v.deactivated_at), "prices": {str(i.presentation_id): i.amount_cents for i in v.items}}
+    if sales_count is not None:
+        out["sales_count"] = sales_count
+    return out
 
 
 def ser_device(d: Device) -> dict:
@@ -163,13 +172,19 @@ def _assignment_create(db, values):
     return values
 
 
+def _point_create(db, values):
+    if values.get("daily_target_cents") is None:
+        values["daily_target_cents"] = settings_svc.get_int(db, "daily_sales_target_default_cents")
+    return values
+
+
 def _presentation_create(db, values):
     return values
 
 
 crud("zones", Zone, ser_zone, ZoneIn, ZoneIn, "Zona", Zone.name)
 crud("users", User, ser_user, UserIn, UserPatch, "Usuario", User.username, _user_create, _user_patch)
-crud("points", Point, ser_point, PointIn, PointPatch, "Punto", Point.name)
+crud("points", Point, ser_point, PointIn, PointPatch, "Punto", Point.name, _point_create)
 crud("carts", Cart, ser_cart, CartIn, CartPatch, "Carrito", Cart.code)
 crud("assignments", Assignment, ser_assignment, AssignmentIn, AssignmentPatch, "Asignación", Assignment.shift_date.desc(), _assignment_create)
 crud("presentations", Presentation, ser_presentation, PresentationIn, PresentationPatch, "Presentación", Presentation.sort)
@@ -196,7 +211,49 @@ def reset_password(user_id: uuid.UUID, request: Request, data: ResetPasswordIn |
 
 @router.get("/price-versions")
 def list_price_versions(_: CurrentUser = Depends(require("admin.users", "reports.read")), db: Session = Depends(get_db)):
-    return [ser_price_version(v) for v in db.query(PriceVersion).order_by(PriceVersion.valid_from.desc()).all()]
+    counts = dict(db.execute(select(Sale.price_version_id, func.count(Sale.id)).group_by(Sale.price_version_id)).all())
+    return [ser_price_version(v, int(counts.get(v.id, 0))) for v in db.query(PriceVersion).order_by(PriceVersion.valid_from.desc()).all()]
+
+
+@router.patch("/price-versions/{version_id}")
+def patch_price_version(version_id: uuid.UUID, data: PriceVersionPatch, request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Activa/desactiva una versión (los precios no se editan). Al desactivar se fija `deactivated_at`; las ventas
+    offline con esa versión se aceptan `PRICE_OFFLINE_GRACE_HOURS` más y quedan marcadas `price_version_stale` (B8)."""
+    v = _get(db, PriceVersion, version_id, "Versión de precio")
+    values = data.model_dump(exclude_unset=True)
+    before = ser_price_version(v)
+    if "is_active" in values and values["is_active"] is not None and values["is_active"] != v.is_active:
+        v.is_active = values["is_active"]
+        v.deactivated_at = None if v.is_active else utcnow()
+    if values.get("name"):
+        v.name = values["name"]
+    if "valid_to" in values:
+        v.valid_to = values["valid_to"]
+    audit.log(db, actor_id=current.id, action="price_version.update", entity="price_version", entity_id=v.id, before=before, after=ser_price_version(v), reason="Cambio de estado de versión de precio", ip=client_ip(request))
+    db.commit()
+    sales_count = int(db.execute(select(func.count(Sale.id)).where(Sale.price_version_id == v.id)).scalar_one())
+    return ser_price_version(v, sales_count)
+
+
+# ---- Parámetros operativos (B6) ----
+@router.get("/settings")
+def list_settings(_: CurrentUser = Depends(require("admin.users", "rules.read", "reports.read")), db: Session = Depends(get_db)):
+    return settings_svc.list_settings(db)
+
+
+@router.get("/settings/{key}")
+def get_setting(key: str, _: CurrentUser = Depends(require("admin.users", "rules.read", "reports.read")), db: Session = Depends(get_db)):
+    for item in settings_svc.list_settings(db):
+        if item["key"] == key:
+            return item
+    raise ApiError("NOT_FOUND", "Parámetro no encontrado", details={"key": key})
+
+
+@router.put("/settings/{key}")
+def put_setting(key: str, data: SettingPut, request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    out = settings_svc.set_setting(db, key, data.value, current.id, ip=client_ip(request))
+    db.commit()
+    return out
 
 
 @router.post("/price-versions", status_code=201)

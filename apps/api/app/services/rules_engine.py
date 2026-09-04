@@ -22,6 +22,7 @@ from app.models.sales import Sale, SaleCancellation, SaleLine
 from app.models.system import Event
 from app.services import events
 from app.services.cases import DEFAULT_RULE_PARAMS, open_case_if_new
+from app.services.settings import cash_thresholds, get_int, inventory_tolerance
 from app.services.geo import haversine_m
 from app.services.inventory import balances_all
 
@@ -63,7 +64,9 @@ def _last_ping(db: Session, shift_id: uuid.UUID) -> GpsPing | None:
 
 def _target_cents(db: Session, point: Point, day) -> int:
     t = db.query(DailyTarget).filter(DailyTarget.point_id == point.id, DailyTarget.target_date == day).first()
-    return t.target_cents if t else point.daily_target_cents
+    if t:
+        return t.target_cents
+    return point.daily_target_cents or get_int(db, "daily_sales_target_default_cents")
 
 
 # ---------------- Reglas ----------------
@@ -157,8 +160,8 @@ def rule_high_waste(ctx: Ctx) -> None:
 
 
 def rule_cash_difference(ctx: Ctx) -> None:
-    threshold = int(ctx.params.get("threshold_cents", 2000))
-    severe = int(ctx.params.get("severe_cents", 10000))
+    # Precedencia: rules.params (si está definido explícitamente) > settings > default
+    threshold, severe = cash_thresholds(ctx.db)
     shifts = ctx.db.query(Shift).filter(
         Shift.status.in_(("closed", "transferred")), Shift.closed_at >= ctx.day_start, Shift.closed_at < ctx.day_end,
         Shift.difference_cents.isnot(None),
@@ -175,7 +178,7 @@ def rule_cash_difference(ctx: Ctx) -> None:
 
 
 def rule_inventory_inconsistent(ctx: Ctx) -> None:
-    units = int(ctx.params.get("units", 3))
+    units = inventory_tolerance(ctx.db)  # rules.params.units > settings > default
     counts = ctx.db.query(InventoryCount).filter(InventoryCount.occurred_at >= ctx.day_start, InventoryCount.occurred_at < ctx.day_end).all()
     for ic in counts:
         worst = max((abs(int(v)) for v in (ic.differences or {}).values()), default=0)
@@ -352,13 +355,40 @@ def run_rules(db: Session, now: datetime | None = None) -> dict:
     return {"alerts_created": alerts_created, "cases_created": cases_created, "cases_resolved": cases_resolved}
 
 
+def purge_old_gps(db: Session, now: datetime | None = None) -> int:
+    """Borra `gps_pings` más antiguos que `settings.gps_retention_days`."""
+    now = now or utcnow()
+    days = get_int(db, "gps_retention_days")
+    limit = now - timedelta(days=days)
+    n = db.query(GpsPing).filter(GpsPing.at < limit).delete(synchronize_session=False)
+    db.flush()
+    return int(n or 0)
+
+
+def run_maintenance(db: Session, now: datetime | None = None) -> dict:
+    """Purgas periódicas (evidencias vencidas y GPS antiguo). Cada una en su propia transacción."""
+    from app.services.evidence import purge_expired_evidence
+
+    now = now or utcnow()
+    out = {"evidence_purged": 0, "gps_purged": 0}
+    for name, fn in (("evidence_purged", purge_expired_evidence), ("gps_purged", purge_old_gps)):
+        try:
+            out[name] = fn(db, now)
+            db.commit()
+        except Exception:  # noqa: BLE001
+            log.exception("Fallo en purga %s", name)
+            db.rollback()
+    return out
+
+
 def run_rules_job() -> None:
-    """Job de APScheduler: sesión propia."""
+    """Job de APScheduler: sesión propia. Corre las reglas y las purgas de retención."""
     from app.core.db import SessionLocal
 
     db = SessionLocal()
     try:
         result = run_rules(db)
+        result.update(run_maintenance(db))
         log.info("rules run: %s", result)
     finally:
         db.close()

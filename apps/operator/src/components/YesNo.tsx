@@ -6,13 +6,13 @@ interface Props {
 }
 
 /** Fila de checklist Sí/No: icono + color + texto. */
+import Icon from './Icon';
+
 export default function YesNo({ icon, label, value, onChange }: Props) {
   return (
     <div className="check-item">
       <div className="label">
-        <span className="ico" aria-hidden>
-          {icon}
-        </span>
+        <Icon icon={icon} />
         <span>{label}</span>
       </div>
       <div className="yn" role="group" aria-label={label}>

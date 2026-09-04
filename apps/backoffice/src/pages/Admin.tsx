@@ -1,23 +1,29 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
+import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
+import { SettingsTab } from './SettingsTab';
 import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } from '../components/ui';
 import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, User, Zone } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 import { ROLE_LABEL } from '../components/Layout';
 
-type Tab = 'users' | 'points' | 'carts' | 'assignments' | 'presentations' | 'prices' | 'devices' | 'zones';
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'users', label: 'Usuarios' },
-  { key: 'points', label: 'Puntos' },
-  { key: 'carts', label: 'Carritos' },
-  { key: 'assignments', label: 'Asignaciones' },
-  { key: 'presentations', label: 'Presentaciones' },
+type Tab = 'users' | 'points' | 'carts' | 'assignments' | 'presentations' | 'prices' | 'devices' | 'zones' | 'settings';
+/** ops/finance sólo ven Parámetros y Precios (lectura). */
+const TABS: { key: Tab; label: string; adminOnly?: boolean }[] = [
+  { key: 'users', label: 'Usuarios', adminOnly: true },
+  { key: 'points', label: 'Puntos', adminOnly: true },
+  { key: 'carts', label: 'Carritos', adminOnly: true },
+  { key: 'assignments', label: 'Asignaciones', adminOnly: true },
+  { key: 'presentations', label: 'Presentaciones', adminOnly: true },
   { key: 'prices', label: 'Precios' },
-  { key: 'devices', label: 'Dispositivos' },
-  { key: 'zones', label: 'Zonas' },
+  { key: 'devices', label: 'Dispositivos', adminOnly: true },
+  { key: 'zones', label: 'Zonas', adminOnly: true },
+  { key: 'settings', label: 'Parámetros' },
 ];
+/** Horas de gracia en las que el servidor sigue aceptando ventas offline con una versión desactivada (B8). */
+export const PRICE_OFFLINE_GRACE_HOURS = 72;
 
 type FieldDef = { key: string; label: string; type?: 'text' | 'number' | 'select' | 'checkbox' | 'password' | 'date' | 'datetime'; options?: { value: string; label: string }[]; required?: boolean; createOnly?: boolean };
 
@@ -228,16 +234,19 @@ function ResetPasswordModal({ user, onClose, onDone }: { user: User; onClose: ()
 
 export function AdminPage() {
   const toast = useToast();
-  const [tab, setTab] = useState<Tab>('users');
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const tabs = TABS.filter((t) => isAdmin || !t.adminOnly);
+  const [tab, setTab] = useState<Tab>(isAdmin ? 'users' : 'settings');
   const [resetting, setResetting] = useState<User | null>(null);
-  const zones = useFetch<Zone[]>(() => api.get('/v1/admin/zones'), []);
-  const users = useFetch<User[]>(() => api.get('/v1/admin/users'), []);
-  const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), []);
-  const carts = useFetch<Cart[]>(() => api.get('/v1/admin/carts'), []);
-  const assignments = useFetch<Assignment[]>(() => api.get('/v1/admin/assignments'), []);
-  const presentations = useFetch<Presentation[]>(() => api.get('/v1/admin/presentations'), []);
+  const zones = useFetch<Zone[]>(() => api.get('/v1/admin/zones'), [], { enabled: isAdmin });
+  const users = useFetch<User[]>(() => api.get('/v1/admin/users'), [], { enabled: isAdmin });
+  const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), [], { enabled: isAdmin });
+  const carts = useFetch<Cart[]>(() => api.get('/v1/admin/carts'), [], { enabled: isAdmin });
+  const assignments = useFetch<Assignment[]>(() => api.get('/v1/admin/assignments'), [], { enabled: isAdmin });
+  const presentations = useFetch<Presentation[]>(() => api.get('/v1/admin/presentations'), [], { silent: !isAdmin });
   const priceVersions = useFetch<PriceVersion[]>(() => api.get('/v1/admin/price-versions'), []);
-  const devices = useFetch<Device[]>(() => api.get('/v1/admin/devices'), []);
+  const devices = useFetch<Device[]>(() => api.get('/v1/admin/devices'), [], { enabled: isAdmin });
 
   const zoneOpts = useMemo(() => (zones.data ?? []).map((z) => ({ value: z.id, label: z.name })), [zones.data]);
   const zoneName = (id: string | null) => zones.data?.find((z) => z.id === id)?.name ?? '—';
@@ -260,6 +269,21 @@ export function AdminPage() {
       await priceVersions.reload(true);
     } catch (err) {
       toast.error(err);
+    }
+  };
+
+  /** Desactivar / reactivar una versión (PATCH). Aviso: gracia de 72 h para ventas offline con la versión desactivada. */
+  const togglePriceVersion = async (v: PriceVersion) => {
+    const question = v.is_active
+      ? `¿Desactivar la versión "${v.name}"?\n\nLos operadores sin señal seguirán vendiendo con estos precios hasta sincronizar: el servidor acepta esas ventas durante ${PRICE_OFFLINE_GRACE_HOURS} h de gracia y las marca como "precio vencido" en el reporte diario. Asegúrate de que exista otra versión activa.`
+      : `¿Reactivar la versión "${v.name}"? Volverá a ser una versión vigente.`;
+    if (!confirm(question)) return;
+    try {
+      await api.patch<PriceVersion>(`/v1/admin/price-versions/${v.id}`, { is_active: !v.is_active });
+      toast.toast(v.is_active ? 'Versión desactivada' : 'Versión reactivada', 'success');
+      await priceVersions.reload(true);
+    } catch (e) {
+      toast.error(e);
     }
   };
 
@@ -288,7 +312,7 @@ export function AdminPage() {
     <div>
       <PageTitle title="Administración" subtitle="Altas y cambios quedan en el audit log. Las bajas son lógicas: el ledger nunca pierde referencias." />
       <div className="tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.key} type="button" className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
@@ -425,9 +449,13 @@ export function AdminPage() {
         />
       )}
 
+      {tab === 'settings' && <SettingsTab canEdit={isAdmin} />}
+
       {tab === 'prices' && (
-        <Card title="Versiones de precio" actions={<button type="button" className="btn btn-primary small" onClick={() => setNewPrice({ name: `Precios ${todayLocalISO()}`, prices: Object.fromEntries((presentations.data ?? []).map((p) => [p.id, String(((priceVersions.data?.[0]?.prices[p.id] ?? 0) / 100).toFixed(2))])) })}>+ Nueva versión</button>}>
-          <p className="muted small">Los precios nunca se editan in-place: cada cambio es una nueva versión con vigencia; las ventas guardan la versión usada.</p>
+        <Card title="Versiones de precio" actions={isAdmin ? <button type="button" className="btn btn-primary small" onClick={() => setNewPrice({ name: `Precios ${todayLocalISO()}`, prices: Object.fromEntries((presentations.data ?? []).map((p) => [p.id, String(((priceVersions.data?.[0]?.prices[p.id] ?? 0) / 100).toFixed(2))])) })}>+ Nueva versión</button> : undefined}>
+          <p className="muted small">
+            Los precios nunca se editan in-place: cada cambio es una nueva versión con vigencia; las ventas guardan la versión usada. Al desactivar una versión, las ventas offline con ella se aceptan {PRICE_OFFLINE_GRACE_HOURS} h más y quedan marcadas como "precio vencido".
+          </p>
           {!priceVersions.data && <Loading />}
           {priceVersions.data && (
             <div className="table-wrap">
@@ -442,12 +470,15 @@ export function AdminPage() {
                         {p.name}
                       </th>
                     ))}
+                    <th className="num">Ventas</th>
                     <th>Activa</th>
+                    <th>Desactivada</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {priceVersions.data.map((v) => (
-                    <tr key={v.id}>
+                    <tr key={v.id} data-testid={`price-version-${v.id}`} style={{ opacity: v.is_active ? 1 : 0.7 }}>
                       <td>
                         <b>{v.name}</b>
                       </td>
@@ -458,7 +489,16 @@ export function AdminPage() {
                           {money(v.prices[p.id] ?? null)}
                         </td>
                       ))}
+                      <td className="num">{v.sales_count ?? '—'}</td>
                       <td>{v.is_active ? <Badge tone="green">Sí</Badge> : <Badge tone="gray">No</Badge>}</td>
+                      <td className="nowrap small muted">{fmtDateTime(v.deactivated_at)}</td>
+                      <td className="nowrap">
+                        {isAdmin && (
+                          <button type="button" className={`btn small ${v.is_active ? 'btn-danger' : ''}`} onClick={() => togglePriceVersion(v)} data-testid={`toggle-price-version-${v.id}`}>
+                            {v.is_active ? 'Desactivar' : 'Reactivar'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

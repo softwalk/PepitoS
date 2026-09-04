@@ -15,6 +15,7 @@ from app.routers import (
     auth,
     cases,
     control_tower,
+    evidence,
     gps,
     health,
     help,
@@ -68,7 +69,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     install_error_handlers(app)
-    for r in (health, auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor, cases, control_tower, rules, approvals, reports, assets, admin):
+    for r in (health, auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor, cases, control_tower, rules, approvals, reports, assets, admin, evidence):
         app.include_router(r.router)
     return app
 

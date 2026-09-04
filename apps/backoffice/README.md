@@ -32,18 +32,19 @@ Los operadores (`op1..op3`) no entran aquí: usan la PWA `apps/operator`.
 | `/ct` | ops, finance, admin | KPIs (puntos abiertos/tarde/cerrados/sin señal, ventas vs meta con barra, transacciones, ticket, forecast) con semáforos PRD §15, contador URGENTE/REVISAR/NORMAL, mapa leaflet con marcador por estado y popup, tabla de puntos, alertas recientes. Auto-refresh 60 s. Botón **Ejecutar reglas ahora** (ops/admin) |
 | `/ct/briefing` | ops, finance, admin | Headline, decisiones con recomendación y enlace al caso, números |
 | `/excepciones` | supervisor, ops, finance, admin | Casos con filtros (estado, severidad, punto) ordenados por `priority_score` |
-| `/casos/:id` | supervisor, ops, finance, admin | Detalle: línea de tiempo (apertura, IA, acciones, audit log), cambio de estado/severidad/categoría/asignación, resolución, acciones correctivas (responsable + fecha, marcar hecha), sugerencia IA con botón *Aceptar* |
+| `/casos/:id` | supervisor, ops, finance, admin | Detalle: línea de tiempo (apertura, IA, acciones, audit log), cambio de estado/severidad/categoría/asignación, resolución, acciones correctivas (responsable + fecha, marcar hecha), sugerencia IA con botón *Aceptar*, **galería de evidencias** (`Case.evidence[]` + fotos de la auditoría origen si `payload.audit_id`) |
+| `/auditorias/:id` | supervisor, ops, admin | Detalle de una auditoría (`GET /v1/audits/{id}`): checklist, arqueo, notas, casos abiertos y galería de evidencias |
 | `/supervisor` | supervisor, ops, admin | Tres bloques URGENTE / REVISAR / NORMAL con tarjetas táctiles y botón **Atender** |
 | `/supervisor/ruta` | supervisor, ops, admin | Paradas ordenadas con motivo, distancia, mini-mapa numerado y enlace a navegación |
-| `/supervisor/auditoria/:pointId` | supervisor, ops, admin | Checklist Sí/No grande (limpieza, uniforme, producto, exhibición, precios visibles, carrito seguro, POS), arqueo sorpresa, notas con dictado (Web Speech API, fallback textarea), acciones correctivas → `POST /v1/audits` |
-| `/ventas` | supervisor, ops, finance, admin | Reporte diario con selector de fecha, KPIs, gráfica por punto (recharts), tabla por turno y totales |
+| `/supervisor/auditoria/:pointId` | supervisor, ops, admin | Checklist Sí/No grande (limpieza, uniforme, producto, exhibición, precios visibles, carrito seguro, POS), arqueo sorpresa, notas con dictado (Web Speech API, fallback textarea), acciones correctivas, hasta **3 fotos** (input capture/archivo, reducidas en el navegador a ≤1280 px JPEG 0.8) → `POST /v1/audits` con `photos:[{key,base64}]` |
+| `/ventas` | supervisor, ops, finance, admin | Reporte diario con selector de fecha, KPIs, gráfica por punto (recharts), tabla por turno y totales; columna y KPI **Precio vencido** (`stale_price_sales`: ventas con versión de precio desactivada, badge ámbar cuando > 0) |
 | `/inventario` | supervisor, ops, admin | Stock por punto/presentación con riesgo; lotes con **Bloquear** (motivo) y puntos afectados (ops/admin) |
 | `/personas` | supervisor, ops, admin | Asistencia del día |
 | `/activos` | ops, admin | Activos con preventivos; tickets de mantenimiento (crear, iniciar, resolver, cerrar) |
-| `/reglas` | ops, admin | Toggle `enabled`, edición de `params` campo por campo (+ alta de parámetro), severidad; guarda con `PUT /v1/rules/{key}` |
+| `/reglas` | ops, admin | Toggle `enabled`, edición de `params` campo por campo (+ alta de parámetro), severidad; guarda con `PUT /v1/rules/{key}`. Los umbrales de `cash_difference` (`threshold_cents`, `severe_cents`) e `inventory_inconsistent` (`units`) muestran *heredado de Parámetros* con el valor vigente cuando no hay override, o badge *override* + **Quitar override** (`PUT` con `null`); precedencia `rules.params` > Parámetros > default |
 | `/aprobaciones` | ops, finance, admin | Pendientes con aprobar/rechazar + nota (decide finance/admin) |
 | `/auditoria` | ops, finance, admin | Audit log con filtros por entidad, id, acción y límite; diff antes/después |
-| `/admin` | admin | CRUD de usuarios (con **Restablecer contraseña**: muestra la temporal en un modal con botón copiar; badge *Debe cambiar contraseña*), puntos, carritos, asignaciones (crear la de hoy), presentaciones, versiones de precio (nueva versión, nunca in-place), dispositivos (revocar/reactivar), zonas |
+| `/admin` | admin (ops y finance sólo lectura de *Parámetros* y *Precios*) | CRUD de usuarios (con **Restablecer contraseña**: muestra la temporal en un modal con botón copiar; badge *Debe cambiar contraseña*), puntos, carritos, asignaciones (crear la de hoy), presentaciones, versiones de precio (nueva versión, nunca in-place; columnas `sales_count` y `deactivated_at`; **Desactivar / Reactivar** con `PATCH` y confirmación que avisa la gracia de 72 h para ventas offline), dispositivos (revocar/reactivar), zonas, y pestaña **Parámetros** (`GET/PUT /v1/admin/settings`: descripción, valor editable según `type`, valor por defecto + *Restaurar*, última actualización, guardar por fila; 422 del servidor como toast) |
 
 Semáforos (PRD §15): ventas/día ≥60 verde · 45–59 ámbar · <45 rojo; ticket ≥$39 · $36–38.99 · <$36; merma ≤2% · 2–4% · >4%.
 Estados en mapa: abierto verde · tarde ámbar · sin señal gris · cerrado azul · no programado gris claro.
@@ -86,19 +87,21 @@ src/
   api/client.ts        fetch con bearer, refresh rotativo con lock, reintento único ante 401, hooks onUnauthorized/onSessionChanged
   state/session.ts     sesión (access + refresh token, mustChangePassword) + device_id en localStorage
   state/auth.tsx       AuthProvider (login/logout/refresh/changePassword/hasRole/mustChangePassword)
-  lib/format.ts        dinero, fechas, semáforos, etiquetas
+  lib/format.ts        dinero, fechas, bytes, semáforos, etiquetas
   lib/useFetch.ts      fetch declarativo con auto-refresh
-  components/          Layout, Toast, PointsMap (leaflet), ui (badges, cards, modal)
-  pages/               una página por ruta
-test/                  vitest: format.test.ts, control-tower.test.tsx, auth.test.tsx
+  lib/evidence.ts      resuelve `url` de evidencia: absoluta (presignada) directa; relativa → fetch con Bearer → blob URL (se revoca al desmontar)
+  lib/image.ts         reducción de fotos en el navegador (≤1280 px, JPEG 0.8) y validación de tamaño (3 MB)
+  components/          Layout, Toast, PointsMap (leaflet), ui (badges, cards, modal), EvidenceGallery (miniaturas 120 px → visor modal con fecha/tamaño)
+  pages/               una página por ruta (+ SettingsTab para /admin → Parámetros, AuditDetail para /auditorias/:id)
+test/                  vitest: format.test.ts, control-tower.test.tsx, auth.test.tsx, evidence-gallery.test.tsx, settings-tab.test.tsx
 scripts/smoke.py       smoke Playwright (chromium en /opt/pw-browsers)
 screenshots/           ct, excepciones, supervisor, ventas, caso-auditoria
 ```
 
 ## Tests
 
-- `npm test`: semáforos y formatos de dinero; render del Control Tower con `fetch` mockeado (mapa sustituido por stub en jsdom); sesión (refresh rota tokens, lock, 401→refresh→reintento, refresh proactivo, refresh fallido limpia sesión, DEVICE_REVOKED, 403 PASSWORD_CHANGE_REQUIRED, 429 con cuenta regresiva, Guard a `/cambiar-contrasena`).
-- `npm run smoke` (requiere API en :8000 y `npm run preview` en :4174): login ops → `/ct` con puntos y KPIs → `/excepciones` → `/ventas` → login sup1 en viewport móvil → `/supervisor` con bloques → auditoría con una no conformidad y acción correctiva → verifica que el caso y la acción existan vía API → invalida el access token en `localStorage` y comprueba que la app refresca sola (refresh rotado, el anterior ya no sirve) → admin restablece la contraseña de un usuario temporal, lee la temporal del modal, entra con ella, es forzado a `/cambiar-contrasena`, la cambia y llega a `/ct`. Guarda capturas en `screenshots/`.
+- `npm test`: semáforos y formatos de dinero; render del Control Tower con `fetch` mockeado (mapa sustituido por stub en jsdom); sesión (refresh rota tokens, lock, 401→refresh→reintento, refresh proactivo, refresh fallido limpia sesión, DEVICE_REVOKED, 403 PASSWORD_CHANGE_REQUIRED, 429 con cuenta regresiva, Guard a `/cambiar-contrasena`); `EvidenceGallery` (URL relativa → fetch con Bearer → blob URL revocado al desmontar, URL absoluta directa, visor modal, error); Parámetros (render, PUT por fila, 422 como toast, sólo lectura para ops/finance).
+- `npm run smoke` (requiere API en :8000 y `npm run preview` en :4174): login ops → `/ct` con puntos y KPIs → `/excepciones` → `/ventas` → login sup1 en viewport móvil → `/supervisor` con bloques → auditoría con una no conformidad, acción correctiva y 1 foto (PNG generado, reducido a 1280×960) → verifica que el caso, la acción y la evidencia (`GET /v1/evidence?entity=audit`) existan vía API, que el caso muestre la miniatura (blob URL) y el visor, y `/auditorias/:id` → invalida el access token en `localStorage` y comprueba que la app refresca sola (refresh rotado, el anterior ya no sirve) → admin restablece la contraseña de un usuario temporal, lee la temporal del modal, entra con ella, es forzado a `/cambiar-contrasena`, la cambia y llega a `/ct` → admin en `/admin → Parámetros` cambia `cash_difference_threshold_cents` (PUT), lo verifica en la API y en `config` de la PWA, provoca un 422 (toast) y lo restaura; Precios muestra `Ventas`/`Desactivada`; `/reglas` muestra *heredado de Parámetros*; `/ventas` la columna *Precio vencido*; ops ve `/admin` sólo lectura. Guarda capturas en `screenshots/`.
 
 ## Notas
 

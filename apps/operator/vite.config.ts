@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
+        includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'icon-cart.png', 'icon-product.png'],
         manifest: {
           name: 'PEPITO OS — Operador',
           short_name: 'PEPITO',

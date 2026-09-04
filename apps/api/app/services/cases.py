@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.ai.classifier import classify_help_text
 from app.core.config import settings
@@ -12,15 +12,19 @@ from app.models.cases import Action, AIRecommendation, Alert, Case, Rule
 from app.models.ops import Shift
 from app.models.org import Point, User
 from app.services import audit, events
+from app.services import evidence as evidence_svc
 from app.services.priority import age_minutes, priority_score
 
+# Umbrales de caja e inventario viven en `settings` (B6): cash_difference_threshold_cents,
+# cash_difference_severe_cents, inventory_count_tolerance_units. Si se definen explícitamente en
+# rules.params (`threshold_cents`, `severe_cents`, `units`) tienen precedencia sobre settings.
 DEFAULT_RULE_PARAMS = {
     "no_open": {"grace_minutes": 20},
     "out_of_geofence": {"minutes": 10},
     "low_sales_trajectory": {"pct": 60, "min_hours": 2},
     "high_waste": {"pct": 4},
-    "cash_difference": {"threshold_cents": 2000, "severe_cents": 10000},
-    "inventory_inconsistent": {"units": 3},
+    "cash_difference": {},
+    "inventory_inconsistent": {},
     "low_battery": {"warn": 25, "critical": 10},
     "anomalous_cancellations": {"count": 3, "pct": 10},
     "sync_stale": {"minutes": 30},
@@ -156,6 +160,13 @@ def create_help_case(db: Session, user: User, data, shift: Shift | None) -> Case
             case.severity = HELP_SEVERITY[ai_info["category"]]
     db.add(case)
     db.flush()
+    if data.photo_base64:
+        ev = evidence_svc.store_photo(
+            db, data.photo_base64, kind="help_case", entity="case", entity_id=case.id, uploaded_by=user.id,
+            point_id=point_id, shift_id=case.shift_id, taken_at=occurred, field="photo_base64",
+        )
+        if ev is not None:
+            case.payload = {**case.payload, "evidence_ids": [str(ev.id)]}
     if ai_info is not None:
         rec = AIRecommendation(
             entity="case", entity_id=case.id, model_version=ai_info["model_version"],
@@ -218,7 +229,15 @@ def serialize_case(c: Case, now: datetime | None = None) -> dict:
         else None,
         "resolution": c.resolution,
         "payload": c.payload,
+        "evidence": _case_evidence(c),
     }
+
+
+def _case_evidence(c: Case) -> list[dict]:
+    db = object_session(c)
+    if db is None:
+        return []
+    return evidence_svc.serialize_for(db, "case", c.id)
 
 
 def update_case(db: Session, case: Case, actor_id: uuid.UUID, patch: dict, ip: str | None = None) -> Case:

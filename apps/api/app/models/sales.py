@@ -25,6 +25,7 @@ class Sale(UUIDMixin, TimestampMixin, Base):
     total_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="recorded", nullable=False)  # recorded|cancelled
     offline_created: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    price_version_stale: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     gps: Mapped[dict | None] = mapped_column(JSONB)
 
     lines: Mapped[list["SaleLine"]] = relationship(back_populates="sale", cascade="all, delete-orphan")

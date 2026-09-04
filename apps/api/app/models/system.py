@@ -48,3 +48,35 @@ class AuditLog(Base):
     reason: Mapped[str | None] = mapped_column(Text)
     ip: Mapped[str | None] = mapped_column(String(60))
     device_id: Mapped[str | None] = mapped_column(String(120))
+
+
+class Setting(Base):
+    """Parámetros operativos editables (B6)."""
+
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[dict | list | int | str | bool | None] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"))
+
+
+class Evidence(Base):
+    """Foto/archivo de evidencia en object storage (B4). Sólo se guarda la referencia."""
+
+    __tablename__ = "evidence"
+    __table_args__ = (Index("ix_evidence_entity", "entity", "entity_id"), Index("ix_evidence_point", "point_id"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # help_case|shift_open|shift_close|audit|case_note
+    entity: Mapped[str] = mapped_column(String(40), nullable=False)  # case|shift|audit
+    entity_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    point_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("points.id"))
+    shift_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("shifts.id"))
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"))
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

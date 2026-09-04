@@ -1,10 +1,13 @@
 """Fixtures: base de datos de pruebas aislada (pepito_test) migrada con Alembic y sembrada con datos demo."""
 import os
+import tempfile
 import uuid
 
 os.environ.setdefault("TEST_DATABASE_URL", "postgresql+psycopg://pepito:pepito@localhost:5433/pepito_test")
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ["RUN_SCHEDULER"] = "false"
+os.environ.setdefault("STORAGE_BACKEND", "local")
+os.environ.setdefault("STORAGE_LOCAL_DIR", os.path.join(tempfile.gettempdir(), f"pepito-evidence-test-{os.getpid()}"))
 os.environ.setdefault("JWT_SECRET", "secreto-de-pruebas-suficientemente-largo-32b")
 
 import psycopg  # noqa: E402

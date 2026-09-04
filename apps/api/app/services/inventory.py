@@ -12,7 +12,8 @@ from app.models.catalog import Presentation
 from app.models.inventory import MOVEMENT_TYPES, InventoryCount, InventoryMovement, Lot, Receipt, Waste
 from app.models.ops import Shift
 from app.services import audit, events
-from app.services.cases import get_rule_params, open_case_if_new
+from app.services.cases import open_case_if_new
+from app.services.settings import inventory_tolerance
 
 
 def add_movement(
@@ -228,8 +229,7 @@ def apply_count(
     )
     case_id = None
     if create_case:
-        params = get_rule_params(db, "inventory_inconsistent")
-        units = int(params.get("units", 3))
+        units = inventory_tolerance(db)  # rules.params.units > settings.inventory_count_tolerance_units > default
         worst = max((abs(d) for d in differences.values()), default=0)
         if worst > units:
             rule = db.get(Rule, "inventory_inconsistent")

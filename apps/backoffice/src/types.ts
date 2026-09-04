@@ -59,6 +59,35 @@ export interface Case {
   ai: { suggested_category: string; confidence: number } | null;
   resolution: string | null;
   payload: Record<string, unknown>;
+  /** Fotos asociadas (B4). `url` puede ser presignada (absoluta) o `/v1/evidence/{id}/file` (requiere Bearer). */
+  evidence?: Evidence[];
+}
+
+export interface Evidence {
+  id: string;
+  kind: 'help_case' | 'shift_open' | 'shift_close' | 'audit' | 'case_note' | string;
+  entity: 'case' | 'shift' | 'audit';
+  entity_id: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  taken_at: string | null;
+  url: string | null;
+}
+
+export interface Audit {
+  id: string;
+  point_id: string;
+  shift_id: string | null;
+  auditor_id: string;
+  checklist: Record<string, boolean>;
+  non_conformities: string[];
+  cash_counted_cents: number | null;
+  cash_expected_cents: number | null;
+  notes: string | null;
+  performed_at: string;
+  photos: { evidence_id: string; key: string | null }[];
+  evidence: Evidence[];
 }
 
 export interface PointStatus {
@@ -152,12 +181,14 @@ export interface DailyRow {
   waste_units: number;
   waste_pct: number;
   status: string;
+  /** Ventas registradas con una versión de precio ya desactivada (gracia offline de 72 h). */
+  stale_price_sales: number;
 }
 
 export interface DailyReport {
   date: string;
   rows: DailyRow[];
-  totals: { sales_cents: number; tx: number; difference_cents: number; waste_units: number };
+  totals: { sales_cents: number; tx: number; difference_cents: number; waste_units: number; stale_price_sales: number };
 }
 
 export interface Rule {
@@ -267,5 +298,7 @@ export interface Point { id: string; name: string; address: string | null; lat: 
 export interface Cart { id: string; code: string; description: string | null; is_active: boolean }
 export interface Assignment { id: string; operator_id: string; point_id: string; cart_id: string; shift_date: string; planned_start: string | null; planned_end: string | null; status: string }
 export interface Presentation { id: string; name: string; grams: number; sort: number; is_active: boolean; product_id: string | null }
-export interface PriceVersion { id: string; name: string; valid_from: string | null; valid_to: string | null; is_active: boolean; prices: Record<string, number> }
+export interface PriceVersion { id: string; name: string; valid_from: string | null; valid_to: string | null; is_active: boolean; deactivated_at: string | null; sales_count?: number; prices: Record<string, number> }
+/** Parámetro operativo (B6): `GET /v1/admin/settings`. */
+export interface Setting { key: string; value: unknown; type: 'int' | 'float' | 'bool' | 'str'; default: unknown; description: string; updated_at: string | null; updated_by: string | null }
 export interface Device { id: string; device_id: string; user_id: string | null; name: string | null; platform: string | null; revoked: boolean; revoked_at: string | null; revoked_reason: string | null; last_login_at: string | null; last_seen_at: string | null }

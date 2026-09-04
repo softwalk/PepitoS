@@ -12,6 +12,7 @@ from app.models.ops import GpsPing, Shift
 from app.models.org import Assignment, Point, User
 from app.models.sales import Sale
 from app.services.cases import get_rule_params, serialize_case
+from app.services.settings import get_int
 from app.services.inventory import balances_all
 from app.services.priority import priority_score
 
@@ -92,7 +93,7 @@ def point_statuses(db: Session, day: date, zone_id: uuid.UUID | None = None, now
                 battery = ping.battery_pct
         tx, cents = sales.get(s.id, (0, 0)) if s else (0, 0)
         t = targets.get(p.id)
-        target_cents = t.target_cents if t else p.daily_target_cents
+        target_cents = t.target_cents if t else (p.daily_target_cents or get_int(db, "daily_sales_target_default_cents"))
         cash_status = "pending"
         if s is not None and s.status in ("closed", "transferred"):
             cash_status = "ok" if s.close_status == "reconciled" else "difference"

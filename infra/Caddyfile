@@ -1,0 +1,36 @@
+# PEPITO OS — HTTPS delante de los contenedores operator/backoffice/api.
+# Variables (docker-compose): SITE_OPERATOR, SITE_BACKOFFICE, SITE_API, CADDY_TLS.
+#  - Sin dominio (LAN): https://<IP>:8443 / :8444 / :8445 con "tls internal" (CA propia de Caddy).
+#  - Con dominio: SITE_*=https://operador.tudominio.mx … y CADDY_TLS="" (Let's Encrypt automático, puertos 80/443).
+{
+	admin off
+}
+
+{$SITE_OPERATOR} {
+	{$CADDY_TLS}
+	encode gzip
+	reverse_proxy operator:80
+}
+
+{$SITE_BACKOFFICE} {
+	{$CADDY_TLS}
+	encode gzip
+	reverse_proxy backoffice:80
+}
+
+{$SITE_API} {
+	{$CADDY_TLS}
+	encode gzip
+	reverse_proxy api:8000
+}
+
+# Descarga del certificado raíz de la CA interna para instalarlo en los teléfonos (solo modo LAN).
+:8446 {
+	handle /ca.crt {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		file_server
+		header Content-Type application/x-x509-ca-cert
+	}
+	respond "PEPITO OS — descarga el certificado raíz en /ca.crt" 200
+}

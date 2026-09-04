@@ -32,7 +32,7 @@ def get_sale(sale_id: uuid.UUID, current: CurrentUser = Depends(require("sale.cr
     shifts_svc.check_shift_access(shift, current, db)
     return {
         "id": str(sale.id), "folio": sale.folio, "shift_id": str(sale.shift_id), "status": sale.status, "total_cents": sale.total_cents,
-        "occurred_at": iso(sale.occurred_at), "price_version_id": str(sale.price_version_id), "offline_created": sale.offline_created,
+        "occurred_at": iso(sale.occurred_at), "price_version_id": str(sale.price_version_id), "offline_created": sale.offline_created, "price_version_stale": sale.price_version_stale,
         "lines": [{"presentation_id": str(l.presentation_id), "flavor_id": str(l.flavor_id) if l.flavor_id else None, "qty": l.qty, "unit_price_cents": l.unit_price_cents, "line_total_cents": l.line_total_cents} for l in sale.lines],
         "payments": [{"method": p.method, "amount_cents": p.amount_cents} for p in sale.payments],
         "cancellation": {"reason_code": sale.cancellation.reason_code, "note": sale.cancellation.note, "cancelled_at": iso(sale.cancellation.cancelled_at), "actor_id": str(sale.cancellation.actor_id)} if sale.cancellation else None,

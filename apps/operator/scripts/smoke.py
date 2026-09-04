@@ -32,6 +32,15 @@ def shot(page, name):
         page.screenshot(path=f"{SHOTS}/{name}.png", full_page=True)
 
 
+
+def skip_photo_if_asked(page):
+    """Si hoy toca foto de muestreo (config.require_open_photo), continúa sin foto: la apertura/cierre nunca se bloquea."""
+    try:
+        page.wait_for_selector("[data-testid=photo-continue]", timeout=1500)
+        page.click("[data-testid=photo-continue]")
+    except Exception:
+        pass
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, geolocation={"latitude": 19.4235, "longitude": -99.163}, permissions=["geolocation"], locale="es-MX")
@@ -71,7 +80,8 @@ with sync_playwright() as p:
         for i in range(yes.count()):
             yes.nth(i).click()
         shot(page, "04-abrir-checklist")
-        page.click("button:has-text('LISTO')")
+        page.click("button:has-text('LISTO'), button:has-text('SIGUIENTE: FOTO')")
+        skip_photo_if_asked(page)
         page.wait_for_selector("text=LISTO PARA VENDER", timeout=20000)
         shot(page, "05-listo")
         page.click("button:has-text('VENDER')")
@@ -123,7 +133,8 @@ with sync_playwright() as p:
     for i in range(yes.count()):
         yes.nth(i).click()
     shot(page, "10-cerrar-checklist")
-    page.click("button:has-text('CERRAR PUESTO')")
+    page.click("button:has-text('CERRAR PUESTO'), button:has-text('SIGUIENTE: FOTO')")
+    skip_photo_if_asked(page)
     page.wait_for_selector("text=Cierre conciliado", timeout=20000)
     shot(page, "11-cierre-ok")
     page.click("button:has-text('Terminar')")

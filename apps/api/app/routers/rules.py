@@ -40,7 +40,9 @@ def put_rule(key: str, data: RulePut, request: Request, current: CurrentUser = D
     if data.enabled is not None:
         r.enabled = data.enabled
     if data.params is not None:
-        r.params = {**(r.params or {}), **data.params}
+        # merge; un valor null elimina la clave (vuelve a aplicar settings/default, p. ej. threshold_cents)
+        merged = {**(r.params or {}), **data.params}
+        r.params = {k: v for k, v in merged.items() if v is not None}
     if data.severity is not None:
         r.severity = data.severity
     r.updated_at = utcnow()

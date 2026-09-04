@@ -13,7 +13,9 @@ from app.models.catalog import Presentation
 from app.models.ops import CashSession, ChecklistResult, GpsPing, Shift
 from app.models.org import Assignment, Attendance, Point, User
 from app.services import audit, events
-from app.services.cases import get_rule_params, open_case_if_new
+from app.services import evidence as evidence_svc
+from app.services.cases import open_case_if_new
+from app.services.settings import cash_thresholds
 from app.services.cash import sales_summary
 from app.services.geo import in_geofence
 from app.services.inventory import add_movement, apply_count, balances_for_point, shift_units
@@ -134,6 +136,10 @@ def open_shift(db: Session, current, data) -> dict:
                 in_geofence=in_geofence(data.gps.lat, data.gps.lng, point.lat, point.lng, point.geofence_radius_m),
             )
         )
+    photos = evidence_svc.store_photos(
+        db, data.photos, kind="shift_open", entity="shift", entity_id=shift.id, uploaded_by=current.id,
+        point_id=shift.point_id, shift_id=shift.id, taken_at=opened_at,
+    )
     for e in critical:
         open_case_if_new(
             db, rule_key=f"open_{e['code']}", point_id=shift.point_id, shift_id=shift.id,
@@ -142,7 +148,7 @@ def open_shift(db: Session, current, data) -> dict:
         )
     events.emit(
         db, "ShiftOpened", actor_id=current.id, point_id=shift.point_id, shift_id=shift.id, entity="shift", entity_id=shift.id,
-        payload={"assignment_id": assignment.id, "cart_id": assignment.cart_id, "exceptions": exceptions, "ready": ready, "photos": len(data.photos or [])},
+        payload={"assignment_id": assignment.id, "cart_id": assignment.cart_id, "exceptions": exceptions, "ready": ready, "photos": len(data.photos or []), "evidence_ids": [ev.id for ev in photos]},
         occurred_at=opened_at,
     )
     return {
@@ -150,6 +156,7 @@ def open_shift(db: Session, current, data) -> dict:
         "status": "open" if not exceptions else "open_with_exception",
         "exceptions": exceptions,
         "ready": ready,
+        "evidence_ids": [str(ev.id) for ev in photos],
     }
 
 
@@ -171,9 +178,7 @@ def _settle_cash(db: Session, shift: Shift, actor_id: uuid.UUID, counted: int, c
     s = sales_summary(db, shift.id)
     exp = s["cash_expected_cents"]
     diff = counted - exp
-    params = get_rule_params(db, "cash_difference")
-    threshold = int(params.get("threshold_cents", 2000))
-    severe = int(params.get("severe_cents", 10000))
+    threshold, severe = cash_thresholds(db)  # rules.params > settings > default
     case_id = None
     if abs(diff) > threshold:
         severity = "urgent" if abs(diff) > severe else "review"
@@ -212,8 +217,7 @@ def _settle_cash(db: Session, shift: Shift, actor_id: uuid.UUID, counted: int, c
 
 
 def _finish_shift(db: Session, shift: Shift, closed_at: datetime, status: str, exp: int, counted: int, diff: int, product_diff: dict, gps: dict | None) -> None:
-    params = get_rule_params(db, "cash_difference")
-    threshold = int(params.get("threshold_cents", 2000))
+    threshold, _ = cash_thresholds(db)
     shift.status = status
     shift.closed_at = closed_at
     shift.cash_expected_cents = exp
@@ -244,10 +248,14 @@ def close_shift(db: Session, current, shift: Shift, data) -> dict:
     for key, ok in data.checklist.model_dump().items():
         db.add(ChecklistResult(shift_id=shift.id, kind="close", key=key, value=ok, at=closed_at))
     gps = data.gps.model_dump(mode="json") if data.gps else None
+    photos = evidence_svc.store_photos(
+        db, getattr(data, "photos", None), kind="shift_close", entity="shift", entity_id=shift.id, uploaded_by=current.id,
+        point_id=shift.point_id, shift_id=shift.id, taken_at=closed_at,
+    )
     _finish_shift(db, shift, closed_at, "closed", exp, data.cash_counted_cents, diff, product_diff, gps)
     events.emit(
         db, "ShiftClosed", actor_id=current.id, point_id=shift.point_id, shift_id=shift.id, entity="shift", entity_id=shift.id,
-        payload={"cash_expected_cents": exp, "cash_counted_cents": data.cash_counted_cents, "difference_cents": diff, "close_status": shift.close_status, "product_diff": product_diff},
+        payload={"cash_expected_cents": exp, "cash_counted_cents": data.cash_counted_cents, "difference_cents": diff, "close_status": shift.close_status, "product_diff": product_diff, "evidence_ids": [ev.id for ev in photos]},
         occurred_at=closed_at,
     )
     case_id = cash_case_id or inv_case_id
@@ -259,6 +267,7 @@ def close_shift(db: Session, current, shift: Shift, data) -> dict:
         "difference_cents": diff,
         "product_diff": {str(k): v for k, v in product_diff.items()},
         "case_id": str(case_id) if case_id else None,
+        "evidence_ids": [str(ev.id) for ev in photos],
     }
 
 

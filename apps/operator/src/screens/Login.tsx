@@ -85,7 +85,7 @@ export default function Login() {
             </p>
             {welcome.cart && (
               <p className="h2">
-                <span aria-hidden>🛒</span> Carrito {welcome.cart}
+                <img src="/icon-cart.png" alt="" aria-hidden className="icon-img icon-inline" /> Carrito {welcome.cart}
               </p>
             )}
           </div>

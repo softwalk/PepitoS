@@ -7,18 +7,20 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import CurrentUser, require
 from app.core.errors import ApiError
-from app.core.timeutil import local_today, utcnow
+from app.core.timeutil import iso, local_today, utcnow
 from app.models.cases import Action, Audit, Case
 from app.models.ops import Shift
 from app.models.org import Point, User
 from app.schemas.backoffice import AuditIn
 from app.services import audit as audit_log
 from app.services import events
+from app.services import evidence as evidence_svc
 from app.services.cases import open_case_if_new, scope_cases_query, serialize_case
 from app.services.cash import sales_summary
 from app.services.control_tower import point_statuses, serialize_cases
 from app.services.geo import haversine_m
 from app.services.priority import priority_score
+from app.services.settings import cash_thresholds
 
 AUDIT_CHECK_LABELS = {
     "clean_ok": "limpieza", "uniform_ok": "uniforme", "product_ok": "producto", "display_ok": "exhibición",
@@ -100,11 +102,16 @@ def create_audit(data: AuditIn, current: CurrentUser = Depends(require("audits.c
     failed = [k for k, v in data.checklist.items() if not v]
     a = Audit(
         point_id=point.id, shift_id=shift.id if shift else None, auditor_id=current.id, checklist=data.checklist,
-        cash_counted_cents=data.cash_counted_cents, cash_expected_cents=expected, notes=data.notes, photos=data.photos or [],
+        cash_counted_cents=data.cash_counted_cents, cash_expected_cents=expected, notes=data.notes, photos=[],
         non_conformities=failed, performed_at=now,
     )
     db.add(a)
     db.flush()
+    # Fotos → object storage (B4). En `audits.photos` sólo quedan referencias {evidence_id, key}.
+    photos_in = data.photos or []
+    stored = evidence_svc.store_photos(db, [p if isinstance(p, str) else p.base64 for p in photos_in], kind="audit", entity="audit", entity_id=a.id, uploaded_by=current.id, point_id=point.id, shift_id=a.shift_id, taken_at=now)
+    keys = [None if isinstance(p, str) else p.key for p in photos_in]
+    a.photos = [{"evidence_id": str(ev.id), "key": keys[i] if i < len(keys) else None} for i, ev in enumerate(stored)]
     case_ids = []
     if failed:
         c = open_case_if_new(
@@ -115,10 +122,11 @@ def create_audit(data: AuditIn, current: CurrentUser = Depends(require("audits.c
         if c is not None:
             c.dedupe_key = f"audit_nonconformity:{a.id}"
             case_ids.append(str(c.id))
-    if data.cash_counted_cents is not None and expected is not None and abs(data.cash_counted_cents - expected) > 2000:
+    threshold, severe = cash_thresholds(db)  # mismos umbrales que el cierre (settings / rules.params)
+    if data.cash_counted_cents is not None and expected is not None and abs(data.cash_counted_cents - expected) > threshold:
         diff = data.cash_counted_cents - expected
         c = open_case_if_new(
-            db, rule_key="surprise_cash_count", point_id=point.id, shift_id=a.shift_id, severity="urgent" if abs(diff) > 10000 else "review",
+            db, rule_key="surprise_cash_count", point_id=point.id, shift_id=a.shift_id, severity="urgent" if abs(diff) > severe else "review",
             title=f"Arqueo sorpresa con diferencia de ${abs(diff) / 100:,.2f}", description=f"Esperado ${expected / 100:,.2f}, contado ${data.cash_counted_cents / 100:,.2f}",
             impact_score=min(abs(diff) / 100, 50), source="supervisor", actor_id=current.id, payload={"audit_id": str(a.id), "difference_cents": diff}, category="cash", dedupe_date=now,
         )
@@ -132,4 +140,35 @@ def create_audit(data: AuditIn, current: CurrentUser = Depends(require("audits.c
     events.emit(db, "AuditCompleted", actor_id=current.id, point_id=point.id, shift_id=a.shift_id, entity="audit", entity_id=a.id, payload={"failed": failed, "case_ids": case_ids, "cash_counted_cents": data.cash_counted_cents})
     audit_log.log(db, actor_id=current.id, action="audit.create", entity="audit", entity_id=a.id, after={"checklist": data.checklist, "failed": failed, "cash_counted_cents": data.cash_counted_cents}, reason=data.notes)
     db.commit()
-    return {"audit_id": str(a.id), "case_ids": case_ids, "cash_expected_cents": expected}
+    return {"audit_id": str(a.id), "case_ids": case_ids, "cash_expected_cents": expected, "evidence": evidence_svc.serialize_for(db, "audit", a.id)}
+
+
+def serialize_audit(db: Session, a: Audit) -> dict:
+    return {
+        "id": str(a.id), "point_id": str(a.point_id), "shift_id": str(a.shift_id) if a.shift_id else None, "auditor_id": str(a.auditor_id),
+        "checklist": a.checklist, "non_conformities": a.non_conformities, "cash_counted_cents": a.cash_counted_cents,
+        "cash_expected_cents": a.cash_expected_cents, "notes": a.notes, "performed_at": iso(a.performed_at),
+        "photos": a.photos, "evidence": evidence_svc.serialize_for(db, "audit", a.id),
+    }
+
+
+@router.get("/audits")
+def list_audits(point_id: uuid.UUID | None = None, current: CurrentUser = Depends(require("audits.create", "reports.read")), db: Session = Depends(get_db)):
+    q = db.query(Audit)
+    if current.role == "supervisor":
+        q = q.join(Point, Point.id == Audit.point_id).filter(Point.zone_id == current.zone_id)
+    if point_id:
+        q = q.filter(Audit.point_id == point_id)
+    return [serialize_audit(db, a) for a in q.order_by(Audit.performed_at.desc()).limit(200).all()]
+
+
+@router.get("/audits/{audit_id}")
+def get_audit(audit_id: uuid.UUID, current: CurrentUser = Depends(require("audits.create", "reports.read")), db: Session = Depends(get_db)):
+    a = db.get(Audit, audit_id)
+    if a is None:
+        raise ApiError("NOT_FOUND", "Auditoría no encontrada")
+    if current.role == "supervisor":
+        point = db.get(Point, a.point_id)
+        if point is None or point.zone_id != current.zone_id:
+            raise ApiError("FORBIDDEN", "El punto no pertenece a tu zona")
+    return serialize_audit(db, a)

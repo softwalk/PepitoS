@@ -1,16 +1,20 @@
 """Smoke end-to-end del backoffice contra `vite preview` y la API real.
 
 Flujo: login ops → /ct (KPIs + puntos) → /excepciones (casos) → logout → login sup1 → /supervisor (bloques)
-→ /supervisor/auditoria/<punto> envía auditoría con una no conformidad y una acción correctiva → aparece el caso con la acción
-→ sesión: access token inválido en localStorage → la app refresca sola (tokens rotados) → admin restablece la contraseña de un
-usuario temporal (modal con contraseña temporal) → ese usuario entra, es forzado a /cambiar-contrasena y, tras cambiarla, llega a su home.
+→ /supervisor/auditoria/<punto> envía auditoría con una no conformidad, una acción correctiva y 1 foto → aparece el caso con la acción
+y la galería de evidencias (miniatura → visor modal) → /auditorias/<id> muestra la foto → sesión: access token inválido en localStorage → la app refresca sola (tokens rotados) → admin restablece la contraseña de un
+usuario temporal (modal con contraseña temporal) → ese usuario entra, es forzado a /cambiar-contrasena y, tras cambiarla, llega a su home
+→ admin → /admin Parámetros: cambia cash_difference_threshold_cents (PUT), verifica en la API y lo restaura; 422 como toast; /reglas muestra
+"heredado de Parámetros" y /ventas la columna "Precio vencido".
 
 Uso:  PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke.py [http://localhost:4174] [http://localhost:8000] [dir_screenshots]
 """
 import json
+import struct
 import sys
 import urllib.request
 import uuid
+import zlib
 
 from playwright.sync_api import sync_playwright
 
@@ -29,6 +33,16 @@ def api(method, path, body=None, token=None):
             return r.status, json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read() or b"{}")
+
+
+def make_png(width=1600, height=1200, color=(31, 78, 121)):
+    """PNG RGB sin dependencias (> 1280 px para forzar la reducción en el navegador)."""
+    raw = b"".join(b"\x00" + bytes(color) * width for _ in range(height))
+
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b"")
 
 
 def shot(page, name, full=True):
@@ -106,6 +120,13 @@ with sync_playwright() as p:
     page.fill("input[placeholder='Qué debe corregirse']", "Colocar letrero de precios")
     page.click("button:has-text('+ Agregar')")
     assert page.locator("text=Colocar letrero de precios").count() >= 1
+    # 1 foto (PNG generado) → se reduce en el navegador y viaja en `photos`
+    page.set_input_files("[data-testid=audit-photo-input]", {"name": "auditoria.png", "mimeType": "image/png", "buffer": make_png()})
+    page.wait_for_selector("[data-testid=audit-photo]", timeout=15000)
+    assert page.locator("[data-testid=audit-photo]").count() == 1
+    dims = page.evaluate("() => { const i = document.querySelector('[data-testid=audit-photo] img'); return [i.naturalWidth, i.naturalHeight]; }")
+    assert dims == [1280, 960], dims
+    shot(page, "auditoria-foto", full=False)
     page.click("button:has-text('Enviar auditoría')")
     page.wait_for_url("**/casos/**", timeout=20000)
     page.wait_for_selector("text=Acciones correctivas", timeout=15000)
@@ -116,7 +137,25 @@ with sync_playwright() as p:
     assert new_ids, "La API debe reportar el caso nuevo"
     case = api("GET", f"/v1/cases/{list(new_ids)[0]}", token=tok)[1]
     assert any(a["description"] == "Colocar letrero de precios" for a in case["actions"]), "Acción correctiva persistida"
+    audit_id = case["payload"]["audit_id"]
+    st, ev = api("GET", f"/v1/evidence?entity=audit&entity_id={audit_id}", token=tok)
+    assert st == 200 and len(ev) == 1 and ev[0]["kind"] == "audit" and ev[0]["content_type"] == "image/jpeg", ev
+    # El caso muestra la galería: miniatura de la foto de la auditoría (URL relativa → fetch con Bearer → blob) y visor modal
+    page.wait_for_selector(f"[data-testid=evidence-thumb-{ev[0]['id']}]:not([disabled])", timeout=15000)
+    src = page.locator(f"[data-testid=evidence-thumb-{ev[0]['id']}] img").get_attribute("src")
+    assert src and src.startswith("blob:"), src
+    page.click(f"[data-testid=evidence-thumb-{ev[0]['id']}]")
+    page.wait_for_selector("[data-testid=evidence-viewer] img", timeout=10000)
+    assert "Tamaño:" in page.locator("[data-testid=evidence-viewer]").inner_text()
+    shot(page, "caso-evidencia", full=False)
+    page.click("[role=dialog] button[aria-label=Cerrar]")
     shot(page, "caso-auditoria", full=False)
+    # Detalle de auditoría con su galería
+    page.click("a:has-text('Ver auditoría')")
+    page.wait_for_url("**/auditorias/**", timeout=15000)
+    page.wait_for_selector("[data-testid=evidence-gallery]", timeout=15000)
+    assert page.locator("text=Precios visibles").count() >= 1
+    shot(page, "auditoria-detalle", full=False)
 
     # 6) Refresh: el access token guardado se invalida → la siguiente navegación refresca y rota tokens sin login
     page.set_viewport_size({"width": 1366, "height": 900})
@@ -179,6 +218,72 @@ with sync_playwright() as p:
     finally:
         api("DELETE", f"/v1/admin/users/{tmp_user['id']}", token=adm)
 
+    # 8) admin → /admin Parámetros: cambia cash_difference_threshold_cents con PUT y lo restaura
+    st, setting0 = api("GET", "/v1/admin/settings/cash_difference_threshold_cents", token=adm)
+    original = setting0["value"]
+    login(page, "admin", "admin123")
+    page.wait_for_selector("[data-testid=points-table]", timeout=20000)
+    page.goto(APP + "/admin")
+    page.click(".tabs >> text=Parámetros")
+    page.wait_for_selector("[data-testid=settings-table]", timeout=15000)
+    row = page.locator("[data-testid=setting-cash_difference_threshold_cents]")
+    assert "Diferencia de caja" in row.inner_text()
+    try:
+        row.locator("input").fill(str(original + 500))
+        row.locator("[data-testid=save-cash_difference_threshold_cents]").click()
+        page.wait_for_selector("text=Parámetro cash_difference_threshold_cents guardado", timeout=15000)
+        st, s1 = api("GET", "/v1/admin/settings/cash_difference_threshold_cents", token=adm)
+        assert s1["value"] == original + 500 and s1["updated_by"], s1
+        # la PWA lo recibe en config
+        op = api("POST", "/v1/auth/login", {"username": "op1", "password": "op123", "device_id": "smoke-bo-op1"})[1]["access_token"]
+        assert api("GET", "/v1/me/assignment", token=op)[1]["config"]["cash_difference_threshold_cents"] == original + 500
+        # 422 → toast
+        prow = page.locator("[data-testid=setting-photo_sampling_pct]")
+        prow.locator("input").fill("150")
+        prow.locator("[data-testid=save-photo_sampling_pct]").click()
+        page.wait_for_selector(".toast-error", timeout=10000)
+        assert "100" in page.locator(".toast-error").first.inner_text()
+        assert api("GET", "/v1/admin/settings/photo_sampling_pct", token=adm)[1]["value"] != 150
+        shot(page, "admin-parametros")
+        # restaurar desde la UI
+        row.locator("input").fill(str(original))
+        row.locator("[data-testid=save-cash_difference_threshold_cents]").click()
+        page.wait_for_selector("text=Parámetro cash_difference_threshold_cents guardado", timeout=15000)
+    finally:
+        st, r = api("PUT", "/v1/admin/settings/cash_difference_threshold_cents", {"value": original}, token=adm)
+        assert st == 200 and r["value"] == original, r
+
+    # Versiones de precio: columnas deactivated_at / sales_count y botón Desactivar
+    page.click(".tabs >> text=Precios")
+    page.wait_for_selector("[data-testid^=price-version-]", timeout=15000)
+    assert page.locator("th", has_text="Ventas").count() >= 1 and page.locator("th", has_text="Desactivada").count() >= 1
+    assert page.locator("button:has-text('Desactivar')").count() >= 1
+    shot(page, "admin-precios")
+
+    # /reglas: cash_difference hereda umbrales de Parámetros (sin override)
+    page.goto(APP + "/reglas")
+    page.wait_for_selector("[data-testid=param-cash_difference-threshold_cents]", timeout=15000)
+    assert "heredado de Parámetros" in page.locator("[data-testid=param-cash_difference-threshold_cents]").inner_text()
+    assert str(original) in page.locator("[data-testid=param-cash_difference-threshold_cents]").inner_text()
+    shot(page, "reglas-heredado")
+
+    # /ventas: columna "Precio vencido" + KPI
+    page.goto(APP + "/ventas")
+    page.wait_for_selector("[data-testid=kpi-stale-price]", timeout=15000)
+    assert page.locator("th", has_text="Precio vencido").count() == 1
+    logout(page)
+
+    # ops: /admin sólo lectura (Parámetros y Precios)
+    login(page, "ops", "ops123")
+    page.wait_for_selector("[data-testid=points-table]", timeout=20000)
+    page.goto(APP + "/admin")
+    page.wait_for_selector("[data-testid=settings-table]", timeout=15000)
+    assert page.locator(".tabs button").count() == 2, "ops sólo ve Parámetros y Precios"
+    assert page.locator("[data-testid=save-cash_difference_threshold_cents]").count() == 0, "ops no edita"
+    assert page.locator("text=Sólo lectura para tu rol").count() == 1
+    shot(page, "admin-parametros-ops")
+    logout(page)
+
     assert not errors, f"Errores JS en página: {errors}"
-    print("SMOKE OK · casos listados:", n_cases, "· caso de auditoría:", case["id"], "·", case["title"], "· refresh + reset-password OK")
+    print("SMOKE OK · casos listados:", n_cases, "· caso de auditoría:", case["id"], "·", case["title"], "· evidencia:", ev[0]["id"], "· refresh + reset-password + parámetros OK")
     browser.close()

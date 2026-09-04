@@ -34,13 +34,18 @@ class CorrectiveActionIn(BaseModel):
     due_date: date | None = None
 
 
+class AuditPhoto(BaseModel):
+    key: str | None = None
+    base64: str
+
+
 class AuditIn(BaseModel):
     point_id: uuid.UUID
     shift_id: uuid.UUID | None = None
     checklist: dict[str, bool]
     cash_counted_cents: int | None = None
     notes: str | None = None
-    photos: list[str] | None = None
+    photos: list[str | AuditPhoto] | None = None  # base64/data URL o {key, base64}
     corrective_actions: list[CorrectiveActionIn] = Field(default_factory=list)
 
 
@@ -129,7 +134,7 @@ class PointIn(BaseModel):
     zone_id: uuid.UUID | None = None
     open_time: str | None = "08:00"
     close_time: str | None = "18:00"
-    daily_target_cents: int = 234000
+    daily_target_cents: int | None = None  # None → settings.daily_sales_target_default_cents
     daily_target_tx: int = 60
     is_active: bool = True
 
@@ -197,6 +202,16 @@ class PriceVersionIn(BaseModel):
     name: str
     valid_from: datetime | None = None
     prices: dict[uuid.UUID, int]
+
+
+class PriceVersionPatch(BaseModel):
+    is_active: bool | None = None
+    name: str | None = None
+    valid_to: datetime | None = None
+
+
+class SettingPut(BaseModel):
+    value: int | float | bool | str
 
 
 class DevicePatch(BaseModel):

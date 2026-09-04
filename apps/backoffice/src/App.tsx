@@ -19,6 +19,7 @@ import { RulesPage } from './pages/Rules';
 import { ApprovalsPage } from './pages/Approvals';
 import { AuditLogPage } from './pages/AuditLog';
 import { AdminPage } from './pages/Admin';
+import { AuditDetailPage } from './pages/AuditDetail';
 import { ChangePasswordPage } from './pages/ChangePassword';
 
 const CT: Role[] = ['ops', 'finance', 'admin'];
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/supervisor" element={<Guard roles={SUP}><SupervisorPage /></Guard>} />
         <Route path="/supervisor/ruta" element={<Guard roles={SUP}><SupervisorRoutePage /></Guard>} />
         <Route path="/supervisor/auditoria/:pointId" element={<Guard roles={SUP}><AuditFormPage /></Guard>} />
+        <Route path="/auditorias/:id" element={<Guard roles={SUP}><AuditDetailPage /></Guard>} />
         <Route path="/ventas" element={<Guard roles={CASES}><SalesPage /></Guard>} />
         <Route path="/inventario" element={<Guard roles={SUP}><InventoryPage /></Guard>} />
         <Route path="/personas" element={<Guard roles={SUP}><PeoplePage /></Guard>} />
@@ -71,7 +73,7 @@ export default function App() {
         <Route path="/reglas" element={<Guard roles={OPS}><RulesPage /></Guard>} />
         <Route path="/aprobaciones" element={<Guard roles={CT}><ApprovalsPage /></Guard>} />
         <Route path="/auditoria" element={<Guard roles={CT}><AuditLogPage /></Guard>} />
-        <Route path="/admin" element={<Guard roles={['admin']}><AdminPage /></Guard>} />
+        <Route path="/admin" element={<Guard roles={CT}><AdminPage /></Guard>} />
         <Route path={CHANGE_PASSWORD_PATH} element={<Guard roles={STAFF}><ChangePasswordPage /></Guard>} />
       </Route>
       <Route path="*" element={<Home />} />
