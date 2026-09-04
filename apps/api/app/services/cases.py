@@ -215,7 +215,7 @@ def serialize_case(c: Case, now: datetime | None = None) -> dict:
         "description": c.description,
         "source": c.source,
         "rule_key": c.rule_key,
-        "point": {"id": str(point.id), "name": point.name} if point else None,
+        "point": {"id": str(point.id), "name": point.display_name} if point else None,
         "shift_id": str(c.shift_id) if c.shift_id else None,
         "opened_at": iso(c.opened_at),
         "resolved_at": iso(c.resolved_at),

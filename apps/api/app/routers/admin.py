@@ -55,12 +55,15 @@ def ser_zone(z: Zone) -> dict:
 
 
 def ser_user(u: User) -> dict:
-    return {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active, "must_change_password": u.must_change_password}
+    out = {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active, "must_change_password": u.must_change_password}
+    if u.role == "operator":
+        out["ranking"] = {"day": u.sales_rank_day, "month": u.sales_rank_month, "year": u.sales_rank_year, "day_cents": u.sales_day_cents, "month_cents": u.sales_month_cents, "year_cents": u.sales_year_cents}
+    return out
 
 
 def ser_point(p: Point) -> dict:
     return {
-        "id": _u(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "zone_id": _u(p.zone_id),
+        "id": _u(p.id), "name": p.name, "display_name": p.display_name, "score": p.score, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "zone_id": _u(p.zone_id),
         "open_time": p.open_time, "close_time": p.close_time, "daily_target_cents": p.daily_target_cents, "daily_target_tx": p.daily_target_tx, "is_active": p.is_active,
         "geo_verified": bool(p.geo_verified), "meta": p.meta or {},
     }

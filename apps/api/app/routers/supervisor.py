@@ -81,7 +81,7 @@ def route(current: CurrentUser = Depends(require("supervisor.read", "cases.read"
             p = points[pid]
             order += 1
             stops.append({
-                "order": order, "point": {"id": str(p.id), "name": p.name, "lat": p.lat, "lng": p.lng},
+                "order": order, "point": {"id": str(p.id), "name": p.display_name, "lat": p.lat, "lng": p.lng},
                 "reason": "; ".join(e["reasons"][:3]), "severity": e["severity"], "priority_score": round(e["score"], 2),
                 "case_ids": e["case_ids"], "distance_from_previous_m": int(haversine_m(last.lat, last.lng, p.lat, p.lng)) if last else 0,
             })

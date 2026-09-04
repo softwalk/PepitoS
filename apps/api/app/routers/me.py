@@ -10,8 +10,9 @@ from app.core.deps import CurrentUser, require
 from app.core.timeutil import iso, local_today
 from app.models.catalog import Flavor, Presentation
 from app.models.ops import Checklist, Shift
-from app.models.org import Assignment
+from app.models.org import User, Assignment
 from app.services import settings as settings_svc
+from app.services.ranking import serialize_ranking
 from app.services.sales import current_price_version, price_map
 
 router = APIRouter(prefix="/v1", tags=["operador"])
@@ -91,11 +92,13 @@ def my_assignment(current: CurrentUser = Depends(require("me.read")), db: Sessio
             "planned_start": iso(a.planned_start),
             "planned_end": iso(a.planned_end),
             "status": a.status,
-            "point": {"id": str(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "geo_verified": bool(p.geo_verified)},
+            "point": {"id": str(p.id), "name": p.display_name, "score": p.score, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "geo_verified": bool(p.geo_verified)},
             "cart": {"id": str(a.cart.id), "code": a.cart.code},
         }
+    total_ops = db.query(User).filter(User.role == "operator", User.is_active.is_(True)).count()
     return {
         "assignment": assignment,
+        "ranking": serialize_ranking(current.user, total_ops),
         "active_shift": {"id": str(active.id), "opened_at": iso(active.opened_at), "status": active.status, "ready": active.ready, "exceptions": active.open_exceptions} if active else None,
         "catalog": build_catalog(db),
         "config": operator_config(db, a),

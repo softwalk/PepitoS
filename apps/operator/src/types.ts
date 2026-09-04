@@ -91,6 +91,8 @@ export interface Point {
   geofence_radius_m: number;
   /** Coordenadas validadas en campo; si es false la tolerancia de apertura es geofence_radius_m. */
   geo_verified?: boolean;
+  /** Score estratégico (/100) del catálogo; `name` ya viene como «Nombre - Score». */
+  score?: number | null;
 }
 
 export interface Assignment {
@@ -111,11 +113,25 @@ export interface ActiveShift {
   exceptions?: ShiftException[];
 }
 
+export interface RankingPeriod {
+  rank: number | null;
+  total_cents: number;
+}
+/** Ranking de ventas del vendedor (1 = mejor) por día, mes y año; lo calcula el servidor. */
+export interface SalesRanking {
+  day: RankingPeriod;
+  month: RankingPeriod;
+  year: RankingPeriod;
+  of: number | null;
+  computed_at: string | null;
+}
+
 export interface AssignmentResponse {
   assignment: Assignment | null;
   active_shift: ActiveShift | null;
   catalog: Catalog;
   config: OperatorConfig;
+  ranking?: SalesRanking;
 }
 
 export interface OpenChecklist {

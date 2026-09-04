@@ -42,5 +42,5 @@ def status(current: CurrentUser = Depends(require("inventory.read", "supervisor.
         items = [{"presentation_id": str(pr.id), "name": pr.name, "balance": pb.get(pr.id, 0), "theoretical": pb.get(pr.id, 0), "min_units": min_units} for pr in presentations]
         lowest = min((i["balance"] for i in items), default=0)
         risk = "critical" if lowest < min_units else ("low" if lowest < min_units * 2 else "ok")
-        rows.append({"point": {"id": str(p.id), "name": p.name}, "stock_risk": risk, "items": items, "total_units": sum(i["balance"] for i in items)})
+        rows.append({"point": {"id": str(p.id), "name": p.display_name}, "stock_risk": risk, "items": items, "total_units": sum(i["balance"] for i in items)})
     return {"points": rows, "min_units": min_units}

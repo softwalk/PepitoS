@@ -81,7 +81,7 @@ def rule_no_open(ctx: Ctx) -> None:
         late_min = int((ctx.now - a.planned_start).total_seconds() // 60)
         point = ctx.db.get(Point, a.point_id)
         ctx.case(
-            point_id=a.point_id, title=f"Punto sin abrir: {point.name if point else ''}",
+            point_id=a.point_id, title=f"Punto sin abrir: {point.display_name if point else ''}",
             description=f"El operador {a.operator.name} no ha abierto; {late_min} min después de la hora planeada",
             impact=min(late_min / 10, 30), payload={"assignment_id": str(a.id), "operator_id": str(a.operator_id), "late_minutes": late_min},
             event="PointLate",
@@ -105,7 +105,7 @@ def rule_out_of_geofence(ctx: Ctx) -> None:
             point = ctx.db.get(Point, shift.point_id)
             dist = haversine_m(pings[0].lat, pings[0].lng, point.lat, point.lng) if point else 0
             ctx.case(
-                point_id=shift.point_id, shift_id=shift.id, title=f"Fuera de geocerca: {point.name if point else ''}",
+                point_id=shift.point_id, shift_id=shift.id, title=f"Fuera de geocerca: {point.display_name if point else ''}",
                 description=f"Último GPS a {int(dist)} m del punto por más de {minutes} min", impact=20,
                 payload={"distance_m": int(dist), "since": streak_start.isoformat(), "mocked": pings[0].mocked},
             )
@@ -129,7 +129,7 @@ def rule_low_sales_trajectory(ctx: Ctx) -> None:
         sales = ctx.db.execute(select(func.coalesce(func.sum(Sale.total_cents), 0)).where(Sale.shift_id == shift.id, Sale.status == "recorded")).scalar_one()
         if prorated > 0 and sales < prorated * pct / 100:
             ctx.case(
-                point_id=shift.point_id, shift_id=shift.id, title=f"Ventas bajo trayectoria: {point.name}",
+                point_id=shift.point_id, shift_id=shift.id, title=f"Ventas bajo trayectoria: {point.display_name}",
                 description=f"${sales / 100:,.0f} vs ${prorated / 100:,.0f} esperados a esta hora ({int(sales * 100 / prorated)}%)",
                 impact=min((prorated - sales) / 1000, 30), payload={"sales_cents": int(sales), "prorated_target_cents": int(prorated)},
             )
@@ -153,7 +153,7 @@ def rule_high_waste(ctx: Ctx) -> None:
         if ratio > pct:
             point = ctx.db.get(Point, point_id)
             ctx.case(
-                point_id=point_id, title=f"Merma alta: {point.name if point else ''}",
+                point_id=point_id, title=f"Merma alta: {point.display_name if point else ''}",
                 description=f"Merma {ratio:.1f}% del día ({waste_units} unidades sobre {total})", impact=min(ratio, 30),
                 payload={"waste_units": int(waste_units), "sold_units": int(sold), "pct": round(ratio, 1)},
             )
@@ -200,7 +200,7 @@ def rule_low_battery(ctx: Ctx) -> None:
         point = ctx.db.get(Point, shift.point_id)
         ctx.case(
             point_id=shift.point_id, shift_id=shift.id, severity="urgent" if ping.battery_pct < critical else ctx.rule.severity,
-            title=f"Batería baja ({ping.battery_pct}%): {point.name if point else ''}",
+            title=f"Batería baja ({ping.battery_pct}%): {point.display_name if point else ''}",
             description=f"Último reporte {ping.battery_pct}% de batería", impact=max(0, warn - ping.battery_pct),
             payload={"battery_pct": ping.battery_pct, "at": ping.at.isoformat()},
         )
@@ -219,7 +219,7 @@ def rule_anomalous_cancellations(ctx: Ctx) -> None:
         if cancels > max_count or pct > max_pct:
             point = ctx.db.get(Point, shift.point_id)
             ctx.case(
-                point_id=shift.point_id, shift_id=shift.id, title=f"Cancelaciones anómalas: {point.name if point else ''}",
+                point_id=shift.point_id, shift_id=shift.id, title=f"Cancelaciones anómalas: {point.display_name if point else ''}",
                 description=f"{cancels} cancelaciones sobre {total_sales} ventas ({pct:.0f}%)", impact=min(cancels * 5, 30),
                 payload={"cancellations": int(cancels), "sales": int(total_sales), "pct": round(pct, 1)},
             )
@@ -246,7 +246,7 @@ def rule_sync_stale(ctx: Ctx) -> None:
             point = ctx.db.get(Point, shift.point_id)
             stale_min = int((ctx.now - last_seen).total_seconds() // 60)
             ctx.case(
-                point_id=shift.point_id, shift_id=shift.id, title=f"Sin sincronizar: {point.name if point else ''}",
+                point_id=shift.point_id, shift_id=shift.id, title=f"Sin sincronizar: {point.display_name if point else ''}",
                 description=f"Turno abierto sin eventos ni GPS desde hace {stale_min} min", impact=min(stale_min / 10, 20),
                 payload={"last_seen_at": last_seen.isoformat(), "stale_minutes": stale_min}, event="PointOffline",
             )
@@ -283,7 +283,7 @@ def rule_stock_critical(ctx: Ctx) -> None:
             continue
         point = ctx.db.get(Point, shift.point_id)
         ctx.case(
-            point_id=shift.point_id, shift_id=shift.id, title=f"Stock crítico: {point.name if point else ''}",
+            point_id=shift.point_id, shift_id=shift.id, title=f"Stock crítico: {point.display_name if point else ''}",
             description=f"{len(low)} presentación(es) por debajo de {min_units} unidades", impact=10 * len(low),
             payload={"low": low, "min_units": min_units},
         )
@@ -352,7 +352,17 @@ def run_rules(db: Session, now: datetime | None = None) -> dict:
             continue
         cases_created += ctx.created
         alerts_created += ctx.created
-    return {"alerts_created": alerts_created, "cases_created": cases_created, "cases_resolved": cases_resolved}
+    # Ranking de vendedores (día/mes/año) guardado en users.
+    from app.services.ranking import recompute_rankings
+
+    try:
+        ranking = recompute_rankings(db, now)
+        db.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("Fallo recalculando ranking de vendedores")
+        db.rollback()
+        ranking = {}
+    return {"alerts_created": alerts_created, "cases_created": cases_created, "cases_resolved": cases_resolved, "ranking": ranking}
 
 
 def purge_old_gps(db: Session, now: datetime | None = None) -> int:
