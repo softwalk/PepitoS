@@ -77,7 +77,7 @@ src/
     queue.ts           enqueue / flush → POST /v1/sync/batch; ok/duplicate/error; resolución de shift_id local
     sync.ts            dispara en `online`, cada 30 s y tras cada acción; lock; backoff; aplica ACKs al estado local
     expected.ts        efectivo y producto esperados calculados en el teléfono (cierre sin red)
-    gps.ts             posición con timeout (fallback null) y pings cada gps_interval_seconds con el turno abierto
+    gps.ts             posición con diagnóstico (unsupported/insecure/denied/unavailable/timeout), reintento en baja precisión, último fix reciente; pings con watchPosition + temporizador de respaldo cada gps_interval_seconds con el turno abierto; estado observable (pastilla 'Sin GPS' en la barra y panel 'Ubicación (GPS)' con 'Probar GPS' en Ajustes)
     battery.ts · speech.ts · device.ts
   state/
     actions.ts         login, refreshSession, changePassword, abrir, vender, deshacer/cancelar, merma, ayuda, esperado, cerrar

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Numpad, { pesosToCents } from '../components/Numpad';
 import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
-import { getPosition } from '../offline/gps';
+import { getPosition, recentPosition } from '../offline/gps';
 import { speak } from '../offline/speech';
 import { closeShift, finishClosedShift, getExpected, type ExpectedView } from '../state/actions';
 import { money, useApp } from '../state/store';
@@ -63,7 +63,7 @@ export default function CloseShift() {
     if (!expected || !checksComplete || busy) return;
     setBusy(true);
     try {
-      const gps = await getPosition(6000);
+      const gps = (await getPosition(6000)) ?? recentPosition();
       const checklist = Object.fromEntries(CHECKS.map((c) => [c.key, checks[c.key] === true])) as unknown as CloseChecklist;
       const r = await closeShift({ cash_counted_cents: cashCents, product_counts: counts, checklist, gps, expected_cash_cents: expected.cash_expected_cents, photos });
       const pending = r.status === 'pending';

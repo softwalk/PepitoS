@@ -18,6 +18,17 @@ instalarla ni entrega GPS. El `docker-compose.yml` incluye un contenedor `caddy`
 La CA es única por instalación (vive en el volumen `caddydata`); si se borra el volumen, hay que reinstalarla en los teléfonos.
 Para producción real conviene el modo con dominio: evita distribuir la CA y funciona fuera de la LAN.
 
+## Si el GPS "no funciona" en el teléfono
+
+La app lo diagnostica sola: pastilla roja **Sin GPS** en la barra superior y, en *Ajustes → Ubicación (GPS) → Probar GPS*, el motivo con la acción a tomar.
+
+| Motivo mostrado | Causa | Qué hacer |
+|---|---|---|
+| *La app no está en modo seguro (https)* | Se abrió por `http://IP:8081` o por `https` con la CA **sin instalar** (el navegador la trata como insegura y no expone GPS aunque se "acepte" la advertencia) | Instalar la CA (arriba) y abrir `https://IP:8443`; volver a "Añadir a pantalla de inicio" desde esa dirección |
+| *Ubicación bloqueada para esta app* | El operador pulsó "Bloquear" o la app instalada no tiene permiso | Android: Ajustes → Apps → Chrome (o la app instalada) → Permisos → Ubicación → Permitir. iOS: Ajustes → Safari → Ubicación → Permitir |
+| *El teléfono no entrega ubicación* | Ubicación del sistema desactivada / modo ahorro extremo | Activar Ubicación en los ajustes rápidos; en Android usar precisión "Alta" |
+| *Sin señal GPS por ahora* | Interior, cielo cubierto | Se reintenta solo (alta y luego baja precisión); el último fix reciente se reutiliza para ventas/ayuda/cierre |
+
 ## Notas
 
 - Los puertos HTTP `8081/8082/8000` siguen expuestos para pruebas y scripts; se pueden quitar del compose en producción.
