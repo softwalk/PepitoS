@@ -1,0 +1,58 @@
+# PEPITO OS — entorno completo (dev/staging). Producción: misma composición con secretos reales y TLS delante.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pepito
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pepito}
+      POSTGRES_DB: pepito
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pepito -d pepito"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5433:5432"
+
+  api:
+    build: ./apps/api
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgresql+psycopg://pepito:${POSTGRES_PASSWORD:-pepito}@db:5432/pepito
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-por-uno-largo-y-aleatorio-de-32-bytes}
+      TZ_NAME: America/Mexico_City
+      RULES_INTERVAL_SECONDS: 300
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      RUN_SCHEDULER: "true"
+      SEED: ${SEED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/v1/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  operator:
+    build: ./apps/operator
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8081:80"
+
+  backoffice:
+    build: ./apps/backoffice
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8082:80"
+
+volumes:
+  pgdata:

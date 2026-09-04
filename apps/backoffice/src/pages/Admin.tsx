@@ -1,0 +1,496 @@
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { api } from '../api/client';
+import { useFetch } from '../lib/useFetch';
+import { useToast } from '../components/Toast';
+import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } from '../components/ui';
+import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, User, Zone } from '../types';
+import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
+import { ROLE_LABEL } from '../components/Layout';
+
+type Tab = 'users' | 'points' | 'carts' | 'assignments' | 'presentations' | 'prices' | 'devices' | 'zones';
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'users', label: 'Usuarios' },
+  { key: 'points', label: 'Puntos' },
+  { key: 'carts', label: 'Carritos' },
+  { key: 'assignments', label: 'Asignaciones' },
+  { key: 'presentations', label: 'Presentaciones' },
+  { key: 'prices', label: 'Precios' },
+  { key: 'devices', label: 'Dispositivos' },
+  { key: 'zones', label: 'Zonas' },
+];
+
+type FieldDef = { key: string; label: string; type?: 'text' | 'number' | 'select' | 'checkbox' | 'password' | 'date' | 'datetime'; options?: { value: string; label: string }[]; required?: boolean; createOnly?: boolean };
+
+function EntityForm<T extends { id: string }>({ title, fields, initial, onSubmit, onClose }: { title: string; fields: FieldDef[]; initial: Partial<T> | null; onSubmit: (values: Record<string, unknown>) => Promise<void>; onClose: () => void }) {
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const v: Record<string, unknown> = {};
+    for (const f of fields) v[f.key] = initial ? (initial as Record<string, unknown>)[f.key] ?? (f.type === 'checkbox' ? true : '') : f.type === 'checkbox' ? true : '';
+    return v;
+  });
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const out: Record<string, unknown> = {};
+      for (const f of fields) {
+        if (initial && f.createOnly) continue;
+        let v = values[f.key];
+        if (f.type === 'number') v = v === '' || v === null ? null : Number(v);
+        if ((f.type === 'text' || f.type === 'select' || f.type === 'password') && v === '') v = null;
+        if (f.type === 'password' && !v) continue;
+        if (v === null && !initial && !f.required) continue;
+        out[f.key] = v;
+      }
+      await onSubmit(out);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={title} onClose={onClose}>
+      <form onSubmit={submit} className="stack">
+        <div className="form-grid">
+          {fields
+            .filter((f) => !(initial && f.createOnly))
+            .map((f) => (
+              <Field key={f.key} label={f.label}>
+                {f.type === 'select' ? (
+                  <select value={String(values[f.key] ?? '')} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} required={f.required}>
+                    <option value="">—</option>
+                    {(f.options ?? []).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : f.type === 'checkbox' ? (
+                  <input type="checkbox" checked={!!values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.checked })} style={{ width: 20, minHeight: 20 }} />
+                ) : (
+                  <input
+                    type={f.type === 'number' ? 'number' : f.type === 'password' ? 'password' : f.type === 'date' ? 'date' : f.type === 'datetime' ? 'datetime-local' : 'text'}
+                    step={f.type === 'number' ? 'any' : undefined}
+                    value={String(values[f.key] ?? '')}
+                    onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                    required={f.required && !(initial && f.type === 'password')}
+                  />
+                )}
+              </Field>
+            ))}
+        </div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {initial ? 'Guardar' : 'Crear'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function Crud<T extends { id: string; is_active?: boolean }>({ path, label: entityLabel, fields, columns, data, reload, extra }: { path: string; label: string; fields: FieldDef[]; columns: { h: string; r: (x: T) => ReactNode }[]; data: T[] | null; reload: () => Promise<void>; extra?: (x: T) => ReactNode }) {
+  const toast = useToast();
+  const [editing, setEditing] = useState<Partial<T> | null | 'new'>(null);
+  const save = async (values: Record<string, unknown>) => {
+    try {
+      if (editing === 'new') await api.post(`/v1/admin/${path}`, values);
+      else if (editing) await api.patch(`/v1/admin/${path}/${editing.id}`, values);
+      toast.toast('Guardado', 'success');
+      await reload();
+    } catch (e) {
+      toast.error(e);
+      throw e;
+    }
+  };
+  const deactivate = async (x: T) => {
+    if (!confirm(`¿Dar de baja ${entityLabel.toLowerCase()}?`)) return;
+    try {
+      await api.del(`/v1/admin/${path}/${x.id}`);
+      toast.toast('Baja registrada', 'success');
+      await reload();
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+  return (
+    <Card title={`${entityLabel} (${data?.length ?? 0})`} actions={<button type="button" className="btn btn-primary small" onClick={() => setEditing('new')}>+ Nuevo</button>}>
+      {!data && <Loading />}
+      {data && data.length === 0 && <Empty />}
+      {data && data.length > 0 && (
+        <div className="table-wrap">
+          <table className="table compact">
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <th key={c.h}>{c.h}</th>
+                ))}
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((x) => (
+                <tr key={x.id} style={{ opacity: x.is_active === false ? 0.55 : 1 }}>
+                  {columns.map((c) => (
+                    <td key={c.h}>{c.r(x)}</td>
+                  ))}
+                  <td className="nowrap">
+                    <button type="button" className="btn small" onClick={() => setEditing(x)}>
+                      Editar
+                    </button>{' '}
+                    {x.is_active !== false && (
+                      <button type="button" className="btn small btn-ghost" onClick={() => deactivate(x)}>
+                        Baja
+                      </button>
+                    )}{' '}
+                    {extra?.(x)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && <EntityForm<T> title={editing === 'new' ? `Nuevo · ${entityLabel}` : `Editar · ${entityLabel}`} fields={fields} initial={editing === 'new' ? null : editing} onSubmit={save} onClose={() => setEditing(null)} />}
+    </Card>
+  );
+}
+
+export function AdminPage() {
+  const toast = useToast();
+  const [tab, setTab] = useState<Tab>('users');
+  const zones = useFetch<Zone[]>(() => api.get('/v1/admin/zones'), []);
+  const users = useFetch<User[]>(() => api.get('/v1/admin/users'), []);
+  const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), []);
+  const carts = useFetch<Cart[]>(() => api.get('/v1/admin/carts'), []);
+  const assignments = useFetch<Assignment[]>(() => api.get('/v1/admin/assignments'), []);
+  const presentations = useFetch<Presentation[]>(() => api.get('/v1/admin/presentations'), []);
+  const priceVersions = useFetch<PriceVersion[]>(() => api.get('/v1/admin/price-versions'), []);
+  const devices = useFetch<Device[]>(() => api.get('/v1/admin/devices'), []);
+
+  const zoneOpts = useMemo(() => (zones.data ?? []).map((z) => ({ value: z.id, label: z.name })), [zones.data]);
+  const zoneName = (id: string | null) => zones.data?.find((z) => z.id === id)?.name ?? '—';
+  const userName = (id: string | null) => users.data?.find((u) => u.id === id)?.name ?? '—';
+  const pointName = (id: string) => points.data?.find((p) => p.id === id)?.name ?? id.slice(0, 8);
+  const cartCode = (id: string) => carts.data?.find((c) => c.id === id)?.code ?? id.slice(0, 8);
+  const operators = (users.data ?? []).filter((u) => u.role === 'operator' && u.is_active);
+
+  // Precios
+  const [newPrice, setNewPrice] = useState<{ name: string; prices: Record<string, string> } | null>(null);
+  const createPrice = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newPrice) return;
+    try {
+      const prices: Record<string, number> = {};
+      for (const [k, v] of Object.entries(newPrice.prices)) if (v !== '') prices[k] = Math.round(parseFloat(v) * 100);
+      await api.post('/v1/admin/price-versions', { name: newPrice.name, prices });
+      toast.toast('Versión de precio creada', 'success');
+      setNewPrice(null);
+      await priceVersions.reload(true);
+    } catch (err) {
+      toast.error(err);
+    }
+  };
+
+  const revoke = async (d: Device) => {
+    const reason = prompt(`Motivo para revocar ${d.name ?? d.device_id}:`, 'Dispositivo perdido');
+    if (reason === null) return;
+    try {
+      await api.post(`/v1/admin/devices/${d.device_id}/revoke`, { reason });
+      toast.toast('Dispositivo revocado', 'success');
+      await devices.reload(true);
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+  const unrevoke = async (d: Device) => {
+    try {
+      await api.post(`/v1/admin/devices/${d.device_id}/unrevoke`);
+      toast.toast('Dispositivo reactivado', 'success');
+      await devices.reload(true);
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+
+  return (
+    <div>
+      <PageTitle title="Administración" subtitle="Altas y cambios quedan en el audit log. Las bajas son lógicas: el ledger nunca pierde referencias." />
+      <div className="tabs">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'users' && (
+        <Crud<User>
+          path="users"
+          label="Usuarios"
+          data={users.data}
+          reload={() => users.reload(true)}
+          fields={[
+            { key: 'username', label: 'Usuario', required: true, createOnly: true },
+            { key: 'name', label: 'Nombre', required: true },
+            { key: 'role', label: 'Rol', type: 'select', required: true, options: (['operator', 'supervisor', 'ops', 'finance', 'admin'] as const).map((r) => ({ value: r, label: ROLE_LABEL[r] })) },
+            { key: 'password', label: 'Contraseña', type: 'password', required: true },
+            { key: 'zone_id', label: 'Zona', type: 'select', options: zoneOpts },
+            { key: 'phone', label: 'Teléfono' },
+            { key: 'is_active', label: 'Activo', type: 'checkbox' },
+          ]}
+          columns={[
+            { h: 'Usuario', r: (u) => <span className="mono">{u.username}</span> },
+            { h: 'Nombre', r: (u) => <b>{u.name}</b> },
+            { h: 'Rol', r: (u) => <Badge tone="blue">{ROLE_LABEL[u.role]}</Badge> },
+            { h: 'Zona', r: (u) => zoneName(u.zone_id) },
+            { h: 'Teléfono', r: (u) => u.phone ?? '—' },
+            { h: 'Activo', r: (u) => <StatusBadge status={u.is_active ? 'active' : 'blocked'} /> },
+          ]}
+        />
+      )}
+
+      {tab === 'points' && (
+        <Crud<Point>
+          path="points"
+          label="Puntos"
+          data={points.data}
+          reload={() => points.reload(true)}
+          fields={[
+            { key: 'name', label: 'Nombre', required: true },
+            { key: 'address', label: 'Dirección' },
+            { key: 'lat', label: 'Latitud', type: 'number', required: true },
+            { key: 'lng', label: 'Longitud', type: 'number', required: true },
+            { key: 'geofence_radius_m', label: 'Geocerca (m)', type: 'number' },
+            { key: 'zone_id', label: 'Zona', type: 'select', options: zoneOpts },
+            { key: 'open_time', label: 'Apertura (HH:MM)' },
+            { key: 'close_time', label: 'Cierre (HH:MM)' },
+            { key: 'daily_target_cents', label: 'Meta diaria (centavos)', type: 'number' },
+            { key: 'daily_target_tx', label: 'Meta ventas/día', type: 'number' },
+            { key: 'is_active', label: 'Activo', type: 'checkbox' },
+          ]}
+          columns={[
+            { h: 'Punto', r: (p) => <b>{p.name}</b> },
+            { h: 'Dirección', r: (p) => p.address ?? '—' },
+            { h: 'Zona', r: (p) => zoneName(p.zone_id) },
+            { h: 'GPS', r: (p) => <span className="mono">{p.lat.toFixed(4)}, {p.lng.toFixed(4)} · r{p.geofence_radius_m}m</span> },
+            { h: 'Horario', r: (p) => `${p.open_time ?? '—'}–${p.close_time ?? '—'}` },
+            { h: 'Meta', r: (p) => `${money(p.daily_target_cents, { decimals: 0 })} · ${p.daily_target_tx} tx` },
+            { h: 'Activo', r: (p) => <StatusBadge status={p.is_active ? 'active' : 'blocked'} /> },
+          ]}
+        />
+      )}
+
+      {tab === 'carts' && (
+        <Crud<Cart>
+          path="carts"
+          label="Carritos"
+          data={carts.data}
+          reload={() => carts.reload(true)}
+          fields={[
+            { key: 'code', label: 'Código', required: true },
+            { key: 'description', label: 'Descripción' },
+            { key: 'is_active', label: 'Activo', type: 'checkbox' },
+          ]}
+          columns={[
+            { h: 'Código', r: (c) => <b className="mono">{c.code}</b> },
+            { h: 'Descripción', r: (c) => c.description ?? '—' },
+            { h: 'Activo', r: (c) => <StatusBadge status={c.is_active ? 'active' : 'blocked'} /> },
+          ]}
+        />
+      )}
+
+      {tab === 'assignments' && (
+        <Crud<Assignment>
+          path="assignments"
+          label="Asignaciones"
+          data={assignments.data ? [...assignments.data].sort((a, b) => b.shift_date.localeCompare(a.shift_date)).slice(0, 200) : null}
+          reload={() => assignments.reload(true)}
+          fields={[
+            { key: 'operator_id', label: 'Operador', type: 'select', required: true, options: operators.map((u) => ({ value: u.id, label: u.name })) },
+            { key: 'point_id', label: 'Punto', type: 'select', required: true, options: (points.data ?? []).filter((p) => p.is_active).map((p) => ({ value: p.id, label: p.name })) },
+            { key: 'cart_id', label: 'Carrito', type: 'select', required: true, options: (carts.data ?? []).filter((c) => c.is_active).map((c) => ({ value: c.id, label: c.code })) },
+            { key: 'shift_date', label: 'Fecha', type: 'date', required: true, createOnly: true },
+            { key: 'status', label: 'Estado', type: 'select', options: ['planned', 'open', 'closed', 'absent', 'cancelled'].map((s) => ({ value: s, label: s })) },
+          ]}
+          columns={[
+            { h: 'Fecha', r: (a) => <b>{a.shift_date}</b> },
+            { h: 'Operador', r: (a) => userName(a.operator_id) },
+            { h: 'Punto', r: (a) => pointName(a.point_id) },
+            { h: 'Carrito', r: (a) => <span className="mono">{cartCode(a.cart_id)}</span> },
+            { h: 'Horario', r: (a) => `${fmtTime(a.planned_start)}–${fmtTime(a.planned_end)}` },
+            { h: 'Estado', r: (a) => <StatusBadge status={a.status} /> },
+          ]}
+        />
+      )}
+      {tab === 'assignments' && <p className="muted small">Al crear sin horario, se usa el horario de apertura/cierre del punto. Fecha sugerida: {todayLocalISO()}.</p>}
+
+      {tab === 'presentations' && (
+        <Crud<Presentation>
+          path="presentations"
+          label="Presentaciones"
+          data={presentations.data}
+          reload={() => presentations.reload(true)}
+          fields={[
+            { key: 'name', label: 'Nombre', required: true },
+            { key: 'grams', label: 'Gramos', type: 'number', required: true },
+            { key: 'sort', label: 'Orden', type: 'number' },
+            { key: 'is_active', label: 'Activa', type: 'checkbox' },
+          ]}
+          columns={[
+            { h: 'Nombre', r: (p) => <b>{p.name}</b> },
+            { h: 'Gramos', r: (p) => `${p.grams} g` },
+            { h: 'Orden', r: (p) => p.sort },
+            { h: 'Precio vigente', r: (p) => money(priceVersions.data?.find((v) => v.is_active)?.prices[p.id] ?? null) },
+            { h: 'Activa', r: (p) => <StatusBadge status={p.is_active ? 'active' : 'blocked'} /> },
+          ]}
+        />
+      )}
+
+      {tab === 'prices' && (
+        <Card title="Versiones de precio" actions={<button type="button" className="btn btn-primary small" onClick={() => setNewPrice({ name: `Precios ${todayLocalISO()}`, prices: Object.fromEntries((presentations.data ?? []).map((p) => [p.id, String(((priceVersions.data?.[0]?.prices[p.id] ?? 0) / 100).toFixed(2))])) })}>+ Nueva versión</button>}>
+          <p className="muted small">Los precios nunca se editan in-place: cada cambio es una nueva versión con vigencia; las ventas guardan la versión usada.</p>
+          {!priceVersions.data && <Loading />}
+          {priceVersions.data && (
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Vigente desde</th>
+                    <th>Hasta</th>
+                    {(presentations.data ?? []).map((p) => (
+                      <th key={p.id} className="num">
+                        {p.name}
+                      </th>
+                    ))}
+                    <th>Activa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceVersions.data.map((v) => (
+                    <tr key={v.id}>
+                      <td>
+                        <b>{v.name}</b>
+                      </td>
+                      <td className="nowrap">{fmtDateTime(v.valid_from)}</td>
+                      <td className="nowrap">{fmtDateTime(v.valid_to)}</td>
+                      {(presentations.data ?? []).map((p) => (
+                        <td key={p.id} className="num">
+                          {money(v.prices[p.id] ?? null)}
+                        </td>
+                      ))}
+                      <td>{v.is_active ? <Badge tone="green">Sí</Badge> : <Badge tone="gray">No</Badge>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {newPrice && (
+            <Modal title="Nueva versión de precio" onClose={() => setNewPrice(null)}>
+              <form onSubmit={createPrice} className="stack">
+                <Field label="Nombre">
+                  <input value={newPrice.name} onChange={(e) => setNewPrice({ ...newPrice, name: e.target.value })} required />
+                </Field>
+                {(presentations.data ?? []).map((p) => (
+                  <Field key={p.id} label={`${p.name} (MXN)`}>
+                    <input type="number" step="0.01" min="0" value={newPrice.prices[p.id] ?? ''} onChange={(e) => setNewPrice({ ...newPrice, prices: { ...newPrice.prices, [p.id]: e.target.value } })} required />
+                  </Field>
+                ))}
+                <div className="row" style={{ justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn" onClick={() => setNewPrice(null)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Crear versión (vigente ahora)
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          )}
+        </Card>
+      )}
+
+      {tab === 'devices' && (
+        <Card title={`Dispositivos (${devices.data?.length ?? 0})`}>
+          <p className="muted small">Revocar un dispositivo invalida su sesión de inmediato (401 DEVICE_REVOKED) sin tocar ledger ni turnos históricos.</p>
+          {!devices.data && <Loading />}
+          {devices.data && (
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead>
+                  <tr>
+                    <th>Dispositivo</th>
+                    <th>Usuario</th>
+                    <th>Plataforma</th>
+                    <th>Último login</th>
+                    <th>Visto</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devices.data.map((d) => (
+                    <tr key={d.id}>
+                      <td>
+                        {d.name ?? <span className="muted">sin nombre</span>}
+                        <div className="mono muted">{d.device_id}</div>
+                      </td>
+                      <td>{userName(d.user_id)}</td>
+                      <td>{d.platform ?? '—'}</td>
+                      <td className="nowrap">{fmtDateTime(d.last_login_at)}</td>
+                      <td className="nowrap">{fmtDateTime(d.last_seen_at)}</td>
+                      <td>
+                        {d.revoked ? (
+                          <>
+                            <Badge tone="red">Revocado</Badge> <span className="small muted">{d.revoked_reason}</span>
+                          </>
+                        ) : (
+                          <Badge tone="green">Activo</Badge>
+                        )}
+                      </td>
+                      <td>
+                        {d.revoked ? (
+                          <button type="button" className="btn small" onClick={() => unrevoke(d)}>
+                            Reactivar
+                          </button>
+                        ) : (
+                          <button type="button" className="btn small btn-danger" onClick={() => revoke(d)}>
+                            Revocar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {tab === 'zones' && (
+        <Crud<Zone>
+          path="zones"
+          label="Zonas"
+          data={zones.data}
+          reload={() => zones.reload(true)}
+          fields={[
+            { key: 'name', label: 'Nombre', required: true },
+            { key: 'is_active', label: 'Activa', type: 'checkbox' },
+          ]}
+          columns={[
+            { h: 'Zona', r: (z) => <b>{z.name}</b> },
+            { h: 'Supervisores', r: (z) => (users.data ?? []).filter((u) => u.zone_id === z.id && u.role === 'supervisor').map((u) => u.name).join(', ') || '—' },
+            { h: 'Puntos', r: (z) => (points.data ?? []).filter((p) => p.zone_id === z.id).length },
+            { h: 'Activa', r: (z) => <StatusBadge status={z.is_active ? 'active' : 'blocked'} /> },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
