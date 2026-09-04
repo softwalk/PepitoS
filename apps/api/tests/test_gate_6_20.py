@@ -131,8 +131,8 @@ def test_retention_purges_expired_evidence(fresh_operator, ops, db_session):
     ev_id = ops.get("/v1/evidence", params={"entity": "case", "entity_id": case_id}).json()[0]["id"]
     ev = db_session.get(Evidence, uuid.UUID(ev_id))
     assert ev.retention_until is not None and ev.retention_until > utcnow() + timedelta(days=170)
-    path = get_storage().get_path(ev.storage_key)
-    assert os.path.isfile(path)
+    st = get_storage()
+    assert st.exists(ev.storage_key)
     # aún no vence: no se purga
     assert purge_expired_evidence(db_session, utcnow()) == 0
     db_session.commit()
@@ -141,7 +141,7 @@ def test_retention_purges_expired_evidence(fresh_operator, ops, db_session):
     db_session.commit()
     assert n >= 1
     db_session.refresh(ev)
-    assert ev.deleted_at is not None and not os.path.exists(path)
+    assert ev.deleted_at is not None and not st.exists(ev.storage_key)
     assert ops.get("/v1/evidence", params={"entity": "case", "entity_id": case_id}).json() == []
     assert ops.get(f"/v1/evidence/{ev_id}/file").status_code == 404
     assert ops.get(f"/v1/cases/{case_id}").json()["evidence"] == []
