@@ -192,6 +192,8 @@ export default function Sell() {
     );
   }
 
+  const flavorName = flavor ? catalog?.flavors.find((f) => f.id === flavor)?.name ?? '' : null;
+
   return (
     <div className="stack" style={{ paddingBottom: toast ? 130 : 0 }}>
       <div className="counter" aria-live="polite">
@@ -199,7 +201,7 @@ export default function Sell() {
           <div className="muted">Ventas del turno</div>
           <div className="n">{active.length}</div>
         </div>
-        <div className="center">
+        <div style={{ textAlign: 'right' }}>
           <div className="muted">Total</div>
           <div className="n">{money(total)}</div>
         </div>
@@ -217,25 +219,33 @@ export default function Sell() {
         </div>
       )}
 
+      {/* Forma de pago: control segmentado, siempre visible. Vuelve a efectivo tras cada venta digital. */}
+      <div className="segmented" role="group" aria-label="Forma de pago">
+        <button type="button" className={`cash ${method === 'cash' ? 'active' : ''}`} aria-pressed={method === 'cash'} onClick={() => setMethod('cash')}>
+          <span aria-hidden>💵</span> Efectivo
+        </button>
+        <button type="button" className={`qr method-toggle-seg ${method !== 'cash' ? 'active' : ''}`} aria-pressed={method !== 'cash'} onClick={() => setMethod('qr')}>
+          <span aria-hidden>📱</span> QR / Tarjeta
+        </button>
+      </div>
+
       <div className="stack" role="group" aria-label="Registrar venta">
         {presentations.map((p) => (
           <button key={p.id} className={`sale-btn ${method !== 'cash' ? 'qr' : ''}`} disabled={busy} onClick={() => sell(p)}>
             <span className="g">{p.grams} g</span>
             <span className="p">{money(p.price_cents ?? 0)}</span>
-            <span className="btn-sub">{method === 'cash' ? '💵 Efectivo' : '📱 QR / Tarjeta'}</span>
+            <span className="btn-sub">{method === 'cash' ? '💵 Efectivo' : '📱 QR / Tarjeta'}{flavorName ? ` · ${flavorName}` : ''}</span>
           </button>
         ))}
       </div>
 
-      <button className={`btn method-toggle ${method !== 'cash' ? 'active' : ''}`} aria-pressed={method !== 'cash'} onClick={() => setMethod(method === 'cash' ? 'qr' : 'cash')}>
-        <span className="ico" aria-hidden>
-          📱
+      <button type="button" className="disclosure" onClick={() => setShowFlavors((v) => !v)} aria-expanded={showFlavors}>
+        <span>
+          <span aria-hidden>🌶️</span> Sabor{flavorName ? `: ${flavorName}` : ' (opcional)'}
         </span>
-        {method === 'cash' ? 'Pago QR / Tarjeta' : 'Siguiente venta: QR / Tarjeta ✓'}
-      </button>
-
-      <button className="btn btn-ghost" onClick={() => setShowFlavors((v) => !v)} aria-expanded={showFlavors}>
-        {showFlavors ? '▲ Ocultar sabor' : `▼ Sabor${flavor ? ': ' + (catalog?.flavors.find((f) => f.id === flavor)?.name ?? '') : ' (opcional)'}`}
+        <span className="chev" aria-hidden>
+          ▼
+        </span>
       </button>
       {showFlavors && (
         <div className="flavor-chips" role="group" aria-label="Sabor">
@@ -250,15 +260,20 @@ export default function Sell() {
         </div>
       )}
 
-      <button className="btn btn-outline" onClick={() => setWaste({ step: 'pres' })}>
-        <span className="ico" aria-hidden>
-          🗑️
-        </span>
-        MERMA
-      </button>
-      <button className="btn btn-ghost" onClick={() => nav('/')}>
-        Inicio
-      </button>
+      <div className="btn-row">
+        <button className="btn btn-outline" onClick={() => setWaste({ step: 'pres' })}>
+          <span className="ico" aria-hidden>
+            🗑️
+          </span>
+          MERMA
+        </button>
+        <button className="btn btn-outline" onClick={() => nav('/')}>
+          <span className="ico" aria-hidden>
+            🏠
+          </span>
+          Inicio
+        </button>
+      </div>
 
       {toast && (toast.text || showUndo) && (
         <div className="toast" role="status" aria-live="assertive">

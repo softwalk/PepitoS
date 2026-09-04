@@ -10,7 +10,7 @@ import Icon from './Icon';
 
 export default function YesNo({ icon, label, value, onChange }: Props) {
   return (
-    <div className="check-item">
+    <div className={`check-item ${value === true ? 'is-yes' : value === false ? 'is-no' : ''}`}>
       <div className="label">
         <Icon icon={icon} />
         <span>{label}</span>

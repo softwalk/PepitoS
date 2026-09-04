@@ -2,19 +2,20 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../state/store';
 
+/** Estado de sincronía: texto + color; el fondo de la tira de estado sigue este mismo estado. */
 function SyncPill() {
   const { sync } = useApp();
   if (sync.visible === 'help') {
     return (
       <span className="pill pill-red" role="status">
-        <span aria-hidden>⚠️</span> Requiere ayuda
+        <span className="dot" aria-hidden /> Requiere ayuda
       </span>
     );
   }
   if (sync.visible === 'pending') {
     return (
       <span className="pill pill-amber" role="status">
-        <span aria-hidden>⏳</span> Pendiente de enviar ({sync.pending})
+        <span className="dot" aria-hidden /> Pendiente de enviar ({sync.pending})
       </span>
     );
   }
@@ -41,22 +42,22 @@ export default function Layout({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const point = shift?.point_name || assignment?.assignment?.point.name || 'Sin punto asignado';
   const cart = shift?.cart_code || assignment?.assignment?.cart.code || '';
+  const stripState = !sync.online ? 'is-offline' : sync.visible === 'help' ? 'is-help' : sync.visible === 'pending' ? 'is-pending' : '';
   return (
     <div className="app">
       <header className="topbar">
         <div className="topbar-row">
           <div className="point" title={point}>
-            <span aria-hidden>📍</span> {point}
+            <span aria-hidden>📍</span>
+            <span>{point}</span>
           </div>
-          <div className="cart">
-            {cart && (
-              <>
-                <img src="/icon-cart.png" alt="" aria-hidden className="icon-img icon-inline" /> {cart}
-              </>
-            )}
-          </div>
+          {cart && (
+            <div className="cart">
+              <img src="/icon-cart.png" alt="" aria-hidden className="icon-img icon-inline" /> {cart}
+            </div>
+          )}
         </div>
-        <div className="topbar-row">
+        <div className={`status-strip ${stripState}`}>
           <div className="row">
             <SyncPill />
             {!sync.online && (

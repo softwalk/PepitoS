@@ -34,7 +34,8 @@ export default function OpenShift() {
   }, []);
 
   const labels = new Map((catalog?.checklist_open ?? []).map((c) => [c.key, c.label]));
-  const complete = ITEMS.every((i) => typeof values[i.key] === 'boolean');
+  const answered = ITEMS.filter((i) => typeof values[i.key] === 'boolean').length;
+  const complete = answered === ITEMS.length;
 
   const submit = async (photos: Photo[] = []) => {
     if (!complete || busy) return;
@@ -117,6 +118,13 @@ export default function OpenShift() {
         {gps === 'loading' ? 'Buscando ubicación…' : gps ? 'Ubicación lista' : 'Sin ubicación (continúa igual)'}
       </div>
       <p className="h2">Revisa y marca Sí o No:</p>
+      <div className="progress-line" aria-hidden>
+        <span>{answered}/{ITEMS.length}</span>
+        <div className="bar">
+          <div style={{ width: `${(answered / ITEMS.length) * 100}%` }} />
+        </div>
+        <span>{complete ? 'Listo' : 'Faltan ' + (ITEMS.length - answered)}</span>
+      </div>
       {ITEMS.map((i) => (
         <YesNo key={i.key} icon={i.icon} label={labels.get(i.key) ?? i.label} value={values[i.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [i.key]: v }))} />
       ))}

@@ -100,20 +100,18 @@ export default function Login() {
   return (
     <div className="app">
       <div className="main" style={{ justifyContent: 'center' }}>
-        <div className="center">
-          <img src="/icons/icon-192.png" alt="" width={88} height={88} style={{ borderRadius: 22 }} />
-          <h1 className="h1" style={{ marginTop: 8 }}>
-            PEPITO OS
-          </h1>
-          <p className="muted">Operador</p>
+        <div className="login-brand">
+          <img src="/icons/icon-192.png" alt="" width={96} height={96} />
+          <h1 className="h1">PEPITO OS</h1>
+          <span className="tag">Operador</span>
         </div>
         <form className="stack" onSubmit={submit}>
           <label className="stack" style={{ gap: 6 }}>
-            <span className="h2">Usuario</span>
+            <span className="field-label">Usuario</span>
             <input className="input" autoComplete="username" autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} required />
           </label>
           <label className="stack" style={{ gap: 6 }}>
-            <span className="h2">Contraseña</span>
+            <span className="field-label">Contraseña</span>
             <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </label>
           {locked && (

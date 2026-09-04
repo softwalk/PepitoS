@@ -127,7 +127,7 @@ export default function CloseShift() {
       {step === 1 && (
         <>
           <h1 className="h1 center">Cerrar puesto</h1>
-          <div className="card center">
+          <div className="expected-card">
             <div className="muted">Debes tener</div>
             <div className="big-money">{expected ? money(expected.cash_expected_cents) : '…'}</div>
             {expected && (

@@ -8,6 +8,7 @@ import { PointsMap } from '../components/PointsMap';
 import { Badge, Card, Empty, LightDot, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
 import type { PointStatus, Summary } from '../types';
 import { fmtDateTime, fmtTime, money, ratioPct, salesLight, targetLight, ticketLight, todayLocalISO, type Light } from '../lib/format';
+import { Icon } from '../components/icons';
 
 function Kpi({ label, value, sub, tone, wide, children }: { label: string; value?: string; sub?: string; tone?: Light; wide?: boolean; children?: React.ReactNode }) {
   return (
@@ -72,7 +73,14 @@ function PointRow({ p }: { p: PointStatus }) {
         {p.open_cases.urgent + p.open_cases.review === 0 && <span className="muted">0</span>}
       </td>
       <td className="nowrap">
-        <Link to={`/excepciones?point_id=${p.point.id}`}>Casos</Link> · <Link to={`/supervisor/auditoria/${p.point.id}`}>Auditar</Link>
+        <span className="row-actions">
+          <Link to={`/excepciones?point_id=${p.point.id}`}>
+            <Icon name="flag" size={13} /> Casos
+          </Link>
+          <Link to={`/supervisor/auditoria/${p.point.id}`}>
+            <Icon name="search" size={13} /> Auditar
+          </Link>
+        </span>
       </td>
     </tr>
   );
@@ -109,23 +117,24 @@ export function ControlTowerPage() {
         title="Control Tower"
         subtitle={
           <>
-            Estado de la red · {updatedAt ? `actualizado ${updatedAt.toLocaleTimeString('es-MX')}` : '…'} · se refresca cada 60 s
+            <span className="live-dot" aria-hidden />
+            Estado de la red · {updatedAt ? `actualizado ${updatedAt.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })}` : '…'} · se refresca cada 60 s
           </>
         }
         actions={
           <>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Fecha" />
-            <button type="button" className="btn" onClick={() => reload()} disabled={loading}>
-              Actualizar
+            <button type="button" className="btn" onClick={() => reload()} disabled={loading} title="Actualizar ahora">
+              <Icon name="refresh" size={15} /> Actualizar
             </button>
+            <Link to="/ct/briefing" className="btn">
+              <Icon name="briefing" size={15} /> Briefing
+            </Link>
             {hasRole('admin', 'ops') && (
               <button type="button" className="btn btn-accent" onClick={runRules} disabled={running}>
-                {running ? 'Ejecutando…' : 'Ejecutar reglas ahora'}
+                <Icon name="play" size={15} /> {running ? 'Ejecutando…' : 'Ejecutar reglas ahora'}
               </button>
             )}
-            <Link to="/ct/briefing" className="btn">
-              Briefing
-            </Link>
           </>
         }
       />
@@ -134,7 +143,7 @@ export function ControlTowerPage() {
       {data && t && (
         <>
           <div className="kpis">
-            <Kpi label="Puntos" value={`${t.points}`} sub="programados hoy" wide>
+            <Kpi label="Puntos" value={`${t.points}`} sub="programados hoy">
               <div className="kpi-split">
                 <div>
                   <b style={{ color: 'var(--green)' }}>{t.open}</b>
@@ -150,7 +159,7 @@ export function ControlTowerPage() {
                 </div>
                 <div>
                   <b style={{ color: 'var(--gray)' }}>{t.offline}</b>
-                  <span>sin señal</span>
+                  <span>s/señal</span>
                 </div>
               </div>
             </Kpi>
@@ -191,9 +200,9 @@ export function ControlTowerPage() {
                 {data.alerts_recent.slice(0, 12).map((a) => (
                   <li key={a.id}>
                     <SeverityBadge severity={a.severity} />
-                    <span style={{ flex: 1 }}>{a.case_id ? <Link to={`/casos/${a.case_id}`}>{a.message}</Link> : a.message}</span>
-                    <span className="muted small nowrap">{fmtDateTime(a.raised_at)}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>{a.case_id ? <Link to={`/casos/${a.case_id}`}>{a.message}</Link> : a.message}</span>
                     {a.status === 'resolved' && <Badge tone="green">Resuelta</Badge>}
+                    <span className="muted small nowrap">{fmtDateTime(a.raised_at)}</span>
                   </li>
                 ))}
               </ul>

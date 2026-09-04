@@ -1,40 +1,58 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/auth';
 import type { Role } from '../types';
+import { Icon, type IconName } from './icons';
 
-interface NavItem { to: string; label: string; icon: string; roles: Role[]; mobile?: boolean }
+interface NavItem { to: string; label: string; icon: IconName; roles: Role[]; mobile?: boolean; group: string }
 
+/** Navegación agrupada por intención: monitorear → actuar en campo → negocio → sistema. */
 const NAV: NavItem[] = [
-  { to: '/ct', label: 'Control Tower', icon: '◎', roles: ['ops', 'finance', 'admin'] },
-  { to: '/ct/briefing', label: 'Briefing', icon: '☰', roles: ['ops', 'finance', 'admin'] },
-  { to: '/excepciones', label: 'Excepciones', icon: '⚑', roles: ['ops', 'finance', 'admin', 'supervisor'], mobile: true },
-  { to: '/supervisor', label: 'Supervisor', icon: '⚡', roles: ['supervisor', 'ops', 'admin'], mobile: true },
-  { to: '/supervisor/ruta', label: 'Ruta', icon: '➜', roles: ['supervisor', 'ops', 'admin'], mobile: true },
-  { to: '/ventas', label: 'Ventas', icon: '$', roles: ['ops', 'finance', 'admin', 'supervisor'] },
-  { to: '/inventario', label: 'Inventario', icon: '▤', roles: ['ops', 'admin', 'supervisor'], mobile: true },
-  { to: '/personas', label: 'Personas', icon: '☺', roles: ['ops', 'admin', 'supervisor'] },
-  { to: '/activos', label: 'Activos', icon: '⚙', roles: ['ops', 'admin'] },
-  { to: '/reglas', label: 'Reglas', icon: '⚖', roles: ['ops', 'admin'] },
-  { to: '/aprobaciones', label: 'Aprobaciones', icon: '✓', roles: ['ops', 'finance', 'admin'] },
-  { to: '/auditoria', label: 'Audit log', icon: '≡', roles: ['ops', 'finance', 'admin'] },
-  { to: '/admin', label: 'Administración', icon: '⚒', roles: ['admin', 'ops', 'finance'] },
+  { group: 'Monitoreo', to: '/ct', label: 'Control Tower', icon: 'tower', roles: ['ops', 'finance', 'admin'] },
+  { group: 'Monitoreo', to: '/ct/briefing', label: 'Briefing', icon: 'briefing', roles: ['ops', 'finance', 'admin'] },
+  { group: 'Monitoreo', to: '/excepciones', label: 'Excepciones', icon: 'flag', roles: ['ops', 'finance', 'admin', 'supervisor'], mobile: true },
+  { group: 'Campo', to: '/supervisor', label: 'Supervisor', icon: 'bolt', roles: ['supervisor', 'ops', 'admin'], mobile: true },
+  { group: 'Campo', to: '/supervisor/ruta', label: 'Ruta', icon: 'route', roles: ['supervisor', 'ops', 'admin'], mobile: true },
+  { group: 'Negocio', to: '/ventas', label: 'Ventas', icon: 'sales', roles: ['ops', 'finance', 'admin', 'supervisor'] },
+  { group: 'Negocio', to: '/inventario', label: 'Inventario', icon: 'inventory', roles: ['ops', 'admin', 'supervisor'], mobile: true },
+  { group: 'Negocio', to: '/personas', label: 'Personas', icon: 'people', roles: ['ops', 'admin', 'supervisor'] },
+  { group: 'Negocio', to: '/activos', label: 'Activos', icon: 'assets', roles: ['ops', 'admin'] },
+  { group: 'Sistema', to: '/reglas', label: 'Reglas', icon: 'rules', roles: ['ops', 'admin'] },
+  { group: 'Sistema', to: '/aprobaciones', label: 'Aprobaciones', icon: 'approvals', roles: ['ops', 'finance', 'admin'] },
+  { group: 'Sistema', to: '/auditoria', label: 'Audit log', icon: 'log', roles: ['ops', 'finance', 'admin'] },
+  { group: 'Sistema', to: '/admin', label: 'Administración', icon: 'admin', roles: ['admin', 'ops', 'finance'] },
 ];
 
 export const ROLE_LABEL: Record<Role, string> = { operator: 'Operador', supervisor: 'Supervisor', ops: 'Operaciones', finance: 'Finanzas', admin: 'Administrador' };
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
 export function Layout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => setDrawer(false), [loc.pathname]);
   if (!user) return null;
   const items = NAV.filter((n) => n.roles.includes(user.role));
-  const mobileItems = user.role === 'supervisor' ? items.filter((n) => n.mobile) : items.slice(0, 5);
+  const mobileItems = user.role === 'supervisor' ? items.filter((n) => n.mobile) : items.slice(0, 4);
+  const groups = Array.from(new Set(items.map((n) => n.group)));
   const doLogout = async () => {
     await logout();
     nav('/login');
   };
+  const isEnd = (to: string) => to === '/ct' || to === '/supervisor';
+
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${drawer ? 'open' : ''}`}>
         <div className="brand">
           <span className="brand-mark">P</span>
           <div>
@@ -42,29 +60,51 @@ export function Layout() {
             <div className="brand-sub">Backoffice</div>
           </div>
         </div>
-        <nav className="side-nav">
-          {items.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/ct' || n.to === '/supervisor'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="nav-icon" aria-hidden>{n.icon}</span>
-              {n.label}
-            </NavLink>
+        <nav className="side-nav" aria-label="Principal">
+          {groups.map((g) => (
+            <div key={g} className="nav-group">
+              <div className="nav-group-title">{g}</div>
+              {items
+                .filter((n) => n.group === g)
+                .map((n) => (
+                  <NavLink key={n.to} to={n.to} end={isEnd(n.to)} className={({ isActive }) => (isActive ? 'active' : '')}>
+                    <span className="nav-icon">
+                      <Icon name={n.icon} />
+                    </span>
+                    {n.label}
+                  </NavLink>
+                ))}
+            </div>
           ))}
         </nav>
         <div className="side-user">
-          <div className="side-user-name">{user.name}</div>
-          <div className="muted small">{ROLE_LABEL[user.role]}</div>
-          <Link to="/cambiar-contrasena" className="btn btn-ghost small">
-            Cambiar contraseña
-          </Link>
-          <button type="button" className="btn btn-ghost small" onClick={doLogout}>
-            Cerrar sesión
-          </button>
+          <div className="side-user-row">
+            <span className="avatar" aria-hidden>
+              {initials(user.name)}
+            </span>
+            <div className="side-user-meta">
+              <div className="side-user-name">{user.name}</div>
+              <div className="muted small">{ROLE_LABEL[user.role]}</div>
+            </div>
+          </div>
+          <div className="side-user-actions">
+            <Link to="/cambiar-contrasena" className="btn btn-ghost small" title="Cambiar contraseña">
+              <Icon name="key" size={15} /> Cambiar contraseña
+            </Link>
+            <button type="button" className="btn btn-ghost small" onClick={doLogout}>
+              <Icon name="logout" size={15} /> Cerrar sesión
+            </button>
+          </div>
         </div>
       </aside>
+      {drawer && <div className="drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden />}
       <div className="content">
         <header className="topbar">
+          <button type="button" className="btn btn-ghost icon-btn" aria-label="Menú" onClick={() => setDrawer((v) => !v)}>
+            <Icon name="menu" />
+          </button>
           <span className="brand-name">PEPITO OS</span>
-          <span className="muted small">
+          <span className="muted small topbar-user">
             {user.name} · {ROLE_LABEL[user.role]}
           </span>
           <button type="button" className="btn btn-ghost small" onClick={doLogout}>
@@ -74,10 +114,12 @@ export function Layout() {
         <main className="main">
           <Outlet />
         </main>
-        <nav className="bottom-nav">
+        <nav className="bottom-nav" aria-label="Principal (móvil)">
           {mobileItems.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/supervisor' || n.to === '/ct'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="nav-icon" aria-hidden>{n.icon}</span>
+            <NavLink key={n.to} to={n.to} end={isEnd(n.to)} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <span className="nav-icon">
+                <Icon name={n.icon} size={22} />
+              </span>
               <span>{n.label}</span>
             </NavLink>
           ))}

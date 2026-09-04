@@ -36,11 +36,16 @@ export default function Settings() {
   return (
     <div className="stack">
       <h1 className="h1">Ajustes</h1>
-      <div className="card">
-        <p className="h2">{session?.user.name}</p>
-        <p className="muted" style={{ margin: 0 }}>
-          Usuario: {session?.user.username ?? '—'}
-        </p>
+      <div className="card settings-user">
+        <div className="avatar" aria-hidden>
+          {(session?.user.name ?? '?').trim().charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p className="h2">{session?.user.name}</p>
+          <p className="muted" style={{ margin: 0 }}>
+            Usuario: {session?.user.username ?? '—'}
+          </p>
+        </div>
       </div>
 
       <div className="card stack">

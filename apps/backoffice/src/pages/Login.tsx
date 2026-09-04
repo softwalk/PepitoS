@@ -93,7 +93,9 @@ export function LoginPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy || locked}>
           {busy ? 'Entrando…' : locked ? `Espera ${formatWait(remaining)}` : 'Entrar'}
         </button>
-        <p className="muted small">Demo: ops/ops123 · finanzas/fin123 · sup1/sup123 · admin/admin123</p>
+        <p className="login-demo">
+          <b>Demo:</b> ops/ops123 · finanzas/fin123 · sup1/sup123 · admin/admin123
+        </p>
       </form>
     </div>
   );
