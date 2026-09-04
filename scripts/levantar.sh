@@ -54,7 +54,7 @@ ADMIN_TOKEN=$(curl -fsS -X POST "${API_URL}/v1/auth/login" \
 echo "   Token Admin emitido exitosamente (longitud: ${#ADMIN_TOKEN})"
 echo ""
 
-echo "--- [5/5] Ejecución de Pruebas Automatizadas (42 Tests Pytest) ---"
+echo "--- [5/5] Ejecución de Pruebas Automatizadas (55 Tests Pytest) ---"
 docker exec \
   -e DATABASE_URL=postgresql+psycopg://pepito:pepito@db:5432/pepito_test \
   -e TEST_DATABASE_URL=postgresql+psycopg://pepito:pepito@db:5432/pepito_test \
@@ -64,4 +64,15 @@ docker exec \
 echo ""
 echo "=========================================================="
 echo "          TODO EL SISTEMA ESTÁ OPERATIVO Y AL 100%        "
+echo "=========================================================="
+echo "Accesos HTTP directos:"
+echo "  • Operador PWA : ${OPERATOR_URL}"
+echo "  • Backoffice   : ${BACKOFFICE_URL}"
+echo "  • API Backend  : ${API_URL}/v1/health"
+echo ""
+echo "Accesos HTTPS (Caddy - Móviles / PWA con Offline + GPS):"
+echo "  • Operador PWA : https://${HOST}:8443"
+echo "  • Backoffice   : https://${HOST}:8444"
+echo "  • API Backend  : https://${HOST}:8445/v1/health"
+echo "  • Certificado CA: http://${HOST}:8446/ca.crt"
 echo "=========================================================="
