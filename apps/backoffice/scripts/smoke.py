@@ -1,13 +1,16 @@
 """Smoke end-to-end del backoffice contra `vite preview` y la API real.
 
 Flujo: login ops → /ct (KPIs + puntos) → /excepciones (casos) → logout → login sup1 → /supervisor (bloques)
-→ /supervisor/auditoria/<punto> envía auditoría con una no conformidad y una acción correctiva → aparece el caso con la acción.
+→ /supervisor/auditoria/<punto> envía auditoría con una no conformidad y una acción correctiva → aparece el caso con la acción
+→ sesión: access token inválido en localStorage → la app refresca sola (tokens rotados) → admin restablece la contraseña de un
+usuario temporal (modal con contraseña temporal) → ese usuario entra, es forzado a /cambiar-contrasena y, tras cambiarla, llega a su home.
 
 Uso:  PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke.py [http://localhost:4174] [http://localhost:8000] [dir_screenshots]
 """
 import json
 import sys
 import urllib.request
+import uuid
 
 from playwright.sync_api import sync_playwright
 
@@ -115,6 +118,67 @@ with sync_playwright() as p:
     assert any(a["description"] == "Colocar letrero de precios" for a in case["actions"]), "Acción correctiva persistida"
     shot(page, "caso-auditoria", full=False)
 
+    # 6) Refresh: el access token guardado se invalida → la siguiente navegación refresca y rota tokens sin login
+    page.set_viewport_size({"width": 1366, "height": 900})
+    sess0 = page.evaluate("JSON.parse(localStorage.getItem('pepito.backoffice.session'))")
+    assert sess0.get("refreshToken"), "La sesión debe guardar refreshToken"
+    page.evaluate("() => { const s = JSON.parse(localStorage.getItem('pepito.backoffice.session')); s.token = 'invalid.' + s.token.slice(0, 20); localStorage.setItem('pepito.backoffice.session', JSON.stringify(s)); }")
+    page.goto(APP + "/excepciones")
+    page.wait_for_selector("[data-testid=cases-table]", timeout=15000)
+    assert page.locator("input[autocomplete=username]").count() == 0, "No debe pedir login: refresca solo"
+    sess1 = page.evaluate("JSON.parse(localStorage.getItem('pepito.backoffice.session'))")
+    assert not sess1["token"].startswith("invalid."), "Access token reemplazado"
+    assert sess1["refreshToken"] != sess0["refreshToken"], "Refresh token rotado"
+    st, old = api("POST", "/v1/auth/refresh", {"refresh_token": sess0["refreshToken"], "device_id": page.evaluate("localStorage.getItem('pepito.device_id')")})
+    assert st == 401 and old["error"]["code"] == "AUTH_INVALID", old
+    logout(page)
+
+    # 7) admin: restablecer contraseña de un usuario temporal → contraseña temporal en modal → login forzado a cambiarla
+    adm = api("POST", "/v1/auth/login", {"username": "admin", "password": "admin123", "device_id": "smoke-admin"})[1]["access_token"]
+    uname = f"smoke_pw_{uuid.uuid4().hex[:6]}"
+    st, tmp_user = api("POST", "/v1/admin/users", {"username": uname, "name": "Smoke Reset", "role": "ops", "password": "inicial-123"}, token=adm)
+    assert st in (200, 201), tmp_user
+    try:
+        login(page, "admin", "admin123")
+        page.wait_for_selector("[data-testid=points-table]", timeout=20000)
+        page.click("aside >> text=Administración")
+        page.wait_for_selector(f"[data-testid=reset-password-{uname}]", timeout=15000)
+        page.click(f"[data-testid=reset-password-{uname}]")
+        page.click("[data-testid=reset-password-confirm]")
+        page.wait_for_selector("[data-testid=temporary-password]", timeout=15000)
+        temp_pw = page.locator("[data-testid=temporary-password]").inner_text().strip()
+        assert len(temp_pw) >= 8, temp_pw
+        page.click("button:has-text('Listo')")
+        page.wait_for_selector("text=Debe cambiar contraseña", timeout=15000)
+        shot(page, "admin-reset-password")
+        st, users = api("GET", "/v1/admin/users", token=adm)
+        assert next(u for u in users if u["username"] == uname)["must_change_password"] is True
+        logout(page)
+
+        login(page, uname, temp_pw)
+        page.wait_for_url("**/cambiar-contrasena", timeout=15000)
+        page.wait_for_selector("[data-testid=change-password-form]", timeout=15000)
+        page.goto(APP + "/ct")  # Guard redirige de vuelta mientras must_change_password
+        page.wait_for_url("**/cambiar-contrasena", timeout=15000)
+        form = page.locator("[data-testid=change-password-form]")
+        form.locator("input[autocomplete=current-password]").fill(temp_pw)
+        form.locator("input[autocomplete=new-password]").nth(0).fill("nueva-clave-456")
+        form.locator("input[autocomplete=new-password]").nth(1).fill("nueva-clave-456")
+        shot(page, "cambiar-contrasena")
+        page.click("button:has-text('Guardar contraseña')")
+        page.wait_for_selector("[data-testid=points-table]", timeout=20000)
+        assert "/ct" in page.url, page.url
+        st, users = api("GET", "/v1/admin/users", token=adm)
+        assert next(u for u in users if u["username"] == uname)["must_change_password"] is False
+        st, relog = api("POST", "/v1/auth/login", {"username": uname, "password": "nueva-clave-456", "device_id": "smoke-tmp"})
+        assert st == 200 and relog["must_change_password"] is False, relog
+        # Cambio voluntario accesible desde el menú de usuario
+        page.click("aside >> text=Cambiar contraseña")
+        page.wait_for_selector("[data-testid=change-password-form]", timeout=15000)
+        logout(page)
+    finally:
+        api("DELETE", f"/v1/admin/users/{tmp_user['id']}", token=adm)
+
     assert not errors, f"Errores JS en página: {errors}"
-    print("SMOKE OK · casos listados:", n_cases, "· caso de auditoría:", case["id"], "·", case["title"])
+    print("SMOKE OK · casos listados:", n_cases, "· caso de auditoría:", case["id"], "·", case["title"], "· refresh + reset-password OK")
     browser.close()

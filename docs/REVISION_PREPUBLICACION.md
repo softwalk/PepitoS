@@ -1,5 +1,8 @@
 # Revisión prepublicación — PEPITO OS v1.0
 
+> **Actualización rama `fix/prepublicacion` (v1.1):** B1, B2, B3 y B5 quedaron resueltos (ver sección "Resuelto en v1.1").
+> Siguen abiertos B4, B6, B7 y B8 para antes del gate 6–20 puntos.
+
 Revisión independiente del sistema generado (backend, PWA operador, backoffice, infra) contra el PRD v2 y el OpenSpec v2,
 hecha después de construirlo. Se divide en: lo que **ya corregí** durante la revisión, lo que **corregiría antes de publicar**
 (bloqueante), y lo que **puede esperar** al piloto.
@@ -25,7 +28,18 @@ hecha después de construirlo. Se divide en: lo que **ya corregí** durante la r
 5. **Forecast de cierre absurdo (780 % de la meta)** por extrapolar 20 minutos de ventas a 10 horas. Ritmo amortiguado a mínimo 1 h y acotado a 1.5× la meta del punto.
 6. **Títulos de casos con claves internas** (`prices_visible`) → etiquetas en español.
 
-## Corregiría ANTES de publicar (bloqueante)
+## Resuelto en v1.1 (`fix/prepublicacion`)
+
+| # | Qué se hizo | Verificación |
+|---|---|---|
+| B1 | `SEED_MODE=demo\|prod\|none`; `prod` crea sólo `admin` con `ADMIN_INITIAL_PASSWORD` y `must_change_password=true`; `APP_ENV=production` + `SEED_MODE=demo` aborta; `/docs` y `/openapi.json` apagados en producción; `POST /v1/auth/change-password`; `POST /v1/admin/users/{id}/reset-password` (temporal mostrada una vez); gate `403 PASSWORD_CHANGE_REQUIRED`; pantallas de cambio obligatorio en PWA y backoffice | 42 tests API; smokes; CI comprueba que el seed demo se rechaza en producción |
+| B2 | Tabla `login_attempts`; 5 fallos/usuario o 30/IP en 15 min → `429 RATE_LIMITED` + `Retry-After` durante 15 min; audit `auth.lockout`; login correcto limpia fallos; purga >7 días; las apps muestran cuenta regresiva | tests con reloj inyectado |
+| B3 | Refresh tokens opacos (sha256 en DB), 30 días, ligados al `device_id`, rotación en cada uso, reutilización → revoca la familia del dispositivo; logout y revocación de dispositivo los invalidan; las apps refrescan proactivamente (<5 min) y ante 401, y la cola offline sincroniza tras refresh sin pedir login | `smoke_refresh.py`: venta hecha sin red con access token inválido se sincroniza al volver la red |
+| B5 | `.github/workflows/ci.yml`: pytest con Postgres 16, vitest + build de ambas apps, `docker compose build` + arranque + health + login + rechazo de seed demo en producción | Se ejecuta en cada push a `main`/`fix/**`/`feat/**` y en PRs |
+
+Residuales de estos cambios: el límite por IP confía en `X-Forwarded-For`, correcto detrás del nginx del compose; si la API se expone directa en :8000, ese header es falsificable (el límite por usuario sigue aplicando). El cambio de contraseña no invalida access tokens ya emitidos (expiran en ≤12 h).
+
+## Corregiría ANTES de publicar (bloqueante) — estado original v1.0
 
 | # | Qué | Riesgo | Propuesta |
 |---|---|---|---|

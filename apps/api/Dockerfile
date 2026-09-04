@@ -9,5 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8000
-# Migra y arranca. El seed es opcional: SEED=true python -m app.seed
-CMD ["sh", "-c", "alembic upgrade head && ( [ \"$SEED\" = \"true\" ] && python -m app.seed || true ) && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Migra y arranca. Seed según SEED_MODE (demo | prod | none). Compatibilidad: SEED=true equivale a SEED_MODE=demo.
+# Sin SEED_MODE ni SEED=true no se siembra nada.
+CMD ["sh", "-c", "alembic upgrade head && MODE=\"${SEED_MODE:-$([ \"$SEED\" = \"true\" ] && echo demo || echo none)}\" && SEED_MODE=\"$MODE\" python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

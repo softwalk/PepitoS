@@ -46,7 +46,7 @@ Los iconos PNG (`public/icons/`) se regeneran con `npm run icons` (no requiere d
 ## Pruebas
 
 ```bash
-npm test                      # vitest: cola offline (idempotencia, orden, ok/duplicate/error, backoff) y efectivo esperado local
+npm test                      # vitest: cola offline (idempotencia, orden, ok/duplicate/error, backoff), efectivo esperado local y sesión (refresh, 401→reintento, refresh fallido)
 ```
 
 Smoke end-to-end contra el backend real (Playwright + Chromium ya instalados en el contenedor):
@@ -55,6 +55,7 @@ Smoke end-to-end contra el backend real (Playwright + Chromium ya instalados en 
 # con la API en :8000 y `npm run preview` en :4173
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke.py           # login → abrir → 2 ventas → cerrar → verifica en API
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke_offline.py   # todo sin red → reinicio → vuelve la red → sincroniza
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 scripts/smoke_refresh.py   # venta sin red + access token inválido → reinicio → refresh → sincroniza sin login
 ```
 
 Cada smoke consume la asignación de hoy de `op1`; para repetirlo: `psql ... -f scripts/reset-demo-op1.sql` (sólo demo).
@@ -63,7 +64,7 @@ Cada smoke consume la asignación de hoy de `op1`; para repetirlo: `psql ... -f 
 
 ```
 src/
-  api/client.ts        cliente tipado de todos los endpoints del operador (§3, §5)
+  api/client.ts        cliente tipado de todos los endpoints del operador (§3, §5); sesión en memoria, refresh con lock y reintento ante 401
   types.ts             Catalog, OperatorConfig, GPS, payloads y respuestas iguales al contrato
   offline/
     db.ts              IndexedDB (idb): session, assignment, catalog, queue, shift_state, sales_local, waste_local, secrets, settings
@@ -74,12 +75,12 @@ src/
     gps.ts             posición con timeout (fallback null) y pings cada gps_interval_seconds con el turno abierto
     battery.ts · speech.ts · device.ts
   state/
-    actions.ts         login, abrir, vender, deshacer/cancelar, merma, ayuda, esperado, cerrar
+    actions.ts         login, refreshSession, changePassword, abrir, vender, deshacer/cancelar, merma, ayuda, esperado, cerrar
     store.tsx          contexto React que lee IndexedDB y se refresca con cada ACK
-  screens/             Login · Home · OpenShift · Sell · Help · CloseShift · Settings
+  screens/             Login · ChangePassword · Home · OpenShift · Sell · Help · CloseShift · Settings
   components/          Layout (barra: punto, carrito, estado de sync, batería) · YesNo · Numpad
 test/                  vitest (fake-indexeddb)
-scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · reset-demo-op1.sql
+scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · smoke_refresh.py · reset-demo-op1.sql
 ```
 
 ## Cómo funciona el modo offline
@@ -97,6 +98,28 @@ scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · reset-de
   para el producto); el resultado definitivo (conciliado/diferencia) lo fija el servidor al sincronizar.
 - Al reiniciar la app se restauran sesión, asignación, catálogo, turno, ventas locales y cola.
 
+## Sesión y refresh de tokens
+
+- `POST /v1/auth/login` devuelve `access_token` (corto) y `refresh_token` (rotativo, ligado al `device_id`).
+  Ambos se guardan en IndexedDB (`session`) junto con `expires_at`, `refresh_expires_at`, el usuario y
+  `must_change_password`; el `device_id` es el UUID persistido en `localStorage`.
+- El cliente HTTP (`src/api/client.ts`) mantiene la sesión en memoria y aplica estas reglas en cada petición:
+  - si el access token vence en **menos de 5 min**, refresca antes de enviar;
+  - ante **401 `AUTH_INVALID`** llama a `POST /v1/auth/refresh {refresh_token, device_id}`, reemplaza ambos tokens
+    y **reintenta una sola vez**; refrescos simultáneos comparten una única petición (lock);
+  - si el refresh responde 401 (token inválido, rotado o expirado) la sesión local se cierra y la app vuelve al
+    login **conservando la cola cifrada, el turno y las ventas locales** (`dropLocalSession`); tras iniciar sesión
+    de nuevo con el mismo usuario todo se sincroniza;
+  - **401 `DEVICE_REVOKED`** cierra la sesión sin intentar refresh;
+  - si el refresh falla por red o 5xx se conserva la sesión y se reintenta más tarde (la cola aplica su backoff).
+- La cola offline usa el mismo cliente: si el access token venció mientras no había señal, al volver la red el
+  primer `sync/batch` recibe 401, se refresca y se reenvía sin pedir login (`scripts/smoke_refresh.py` lo verifica).
+- **429 `RATE_LIMITED`** en el login: se muestra "Demasiados intentos. Espera N minutos" con cuenta regresiva
+  (`details.retry_after_seconds` o header `Retry-After`) y el botón ENTRAR deshabilitado hasta que termine.
+- **Cambio de contraseña obligatorio**: si login/refresh devuelven `must_change_password: true`, o cualquier
+  llamada responde **403 `PASSWORD_CHANGE_REQUIRED`**, la app muestra la pantalla *Cambia tu contraseña*
+  (actual, nueva ≥8 caracteres, confirmación) antes del Home; `POST /v1/auth/change-password` y luego continúa.
+
 ## Limitaciones conocidas
 
 - **Cifrado local**: la cola se cifra con AES-GCM, pero la clave vive en IndexedDB del mismo origen (el navegador
@@ -109,7 +132,8 @@ scripts/               gen-icons.mjs · smoke.py · smoke_offline.py · reset-de
 - **GPS**: si el teléfono niega el permiso o tarda >8 s, se envía `gps: null`; la ubicación simulada no se detecta
   en el navegador (`mocked` siempre `false`).
 - **Batería**: la Battery Status API sólo existe en Chrome/Android; en iOS no se muestra.
-- **Sesión**: el JWT dura 12 h; si expira o el dispositivo es revocado, la app vuelve al login conservando la cola.
+- **Sesión**: el access token se renueva solo con el refresh token; si el refresh expira (p. ej. muchos días sin
+  abrir la app) o el dispositivo es revocado, la app vuelve al login conservando la cola.
 - **Inventario**: `inventory_receipt` / `inventory_count` están en el cliente API pero no tienen pantalla en el MVP.
 - **Transferencia de turno** (`/v1/shifts/{id}/transfer`) la inicia el supervisor; el operador sólo la ve como
   turno cerrado al refrescar.

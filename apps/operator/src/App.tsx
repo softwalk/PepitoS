@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppProvider, useApp } from './state/store';
 import Layout from './components/Layout';
 import Login from './screens/Login';
+import ChangePassword from './screens/ChangePassword';
 import Home from './screens/Home';
 import OpenShift from './screens/OpenShift';
 import Sell from './screens/Sell';
@@ -24,6 +25,13 @@ function Gate() {
     return (
       <Routes>
         <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
+  if (session.must_change_password) {
+    return (
+      <Routes>
+        <Route path="*" element={<ChangePassword />} />
       </Routes>
     );
   }

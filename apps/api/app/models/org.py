@@ -2,7 +2,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,8 @@ class User(UUIDMixin, TimestampMixin, Base):
     zone_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("zones.id"), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(40))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     zone: Mapped["Zone | None"] = relationship()
 
@@ -47,6 +49,37 @@ class RevokedToken(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"))
     revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RefreshToken(Base):
+    """Refresh token opaco y rotativo (B3). Se guarda sólo el SHA-256; `replaced_by` encadena la rotación."""
+
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (Index("ix_refresh_tokens_user", "user_id"), Index("ix_refresh_tokens_device", "device_id"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
+    device_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    replaced_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+
+    @property
+    def is_active(self) -> bool:
+        return self.revoked_at is None
+
+
+class LoginAttempt(Base):
+    """Intentos de login (B2) para rate limiting por usuario e IP."""
+
+    __tablename__ = "login_attempts"
+    __table_args__ = (Index("ix_login_attempts_username_at", "username", "at"), Index("ix_login_attempts_ip_at", "ip", "at"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    username: Mapped[str | None] = mapped_column(Text)
+    ip: Mapped[str | None] = mapped_column(Text)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
 
 class Point(UUIDMixin, TimestampMixin, Base):

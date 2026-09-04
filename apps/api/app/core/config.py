@@ -19,10 +19,26 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
     RUN_SCHEDULER: bool = True
     SQL_ECHO: bool = False
+    # Seed: demo | prod | none (ver README). En prod el admin inicial usa ADMIN_INITIAL_PASSWORD.
+    SEED_MODE: str = "demo"
+    ADMIN_INITIAL_PASSWORD: str | None = None
+    # Rate limiting de login (B2)
+    LOGIN_MAX_FAILS_USER: int = 5
+    LOGIN_MAX_FAILS_IP: int = 30
+    LOGIN_WINDOW_MINUTES: int = 15
+    LOGIN_LOCK_MINUTES: int = 15
+    LOGIN_ATTEMPTS_RETENTION_DAYS: int = 7
+    # Refresh tokens rotativos (B3)
+    REFRESH_EXPIRES_DAYS: int = 30
+    PASSWORD_MIN_LENGTH: int = 8
 
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.TZ_NAME)
+
+    @property
+    def is_production(self) -> bool:
+        return self.APP_ENV == "production"
 
     @property
     def cors_origins(self) -> list[str]:

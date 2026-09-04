@@ -19,11 +19,14 @@ import { RulesPage } from './pages/Rules';
 import { ApprovalsPage } from './pages/Approvals';
 import { AuditLogPage } from './pages/AuditLog';
 import { AdminPage } from './pages/Admin';
+import { ChangePasswordPage } from './pages/ChangePassword';
 
 const CT: Role[] = ['ops', 'finance', 'admin'];
 const SUP: Role[] = ['supervisor', 'ops', 'admin'];
 const CASES: Role[] = ['supervisor', 'ops', 'finance', 'admin'];
 const OPS: Role[] = ['ops', 'admin'];
+const STAFF: Role[] = ['supervisor', 'ops', 'finance', 'admin'];
+export const CHANGE_PASSWORD_PATH = '/cambiar-contrasena';
 
 export function homeFor(role: Role): string {
   if (role === 'supervisor') return '/supervisor';
@@ -32,15 +35,18 @@ export function homeFor(role: Role): string {
 }
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, mustChangePassword } = useAuth();
   const loc = useLocation();
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  // Contraseña restablecida: el resto de la API responde 403 PASSWORD_CHANGE_REQUIRED hasta cambiarla.
+  if (mustChangePassword && loc.pathname !== CHANGE_PASSWORD_PATH) return <Navigate to={CHANGE_PASSWORD_PATH} replace state={{ from: loc.pathname }} />;
   if (!roles.includes(user.role)) return <Navigate to={homeFor(user.role)} replace />;
   return <>{children}</>;
 }
 
 function Home() {
-  const { user } = useAuth();
+  const { user, mustChangePassword } = useAuth();
+  if (user && mustChangePassword) return <Navigate to={CHANGE_PASSWORD_PATH} replace />;
   return <Navigate to={user ? homeFor(user.role) : '/login'} replace />;
 }
 
@@ -66,6 +72,7 @@ export default function App() {
         <Route path="/aprobaciones" element={<Guard roles={CT}><ApprovalsPage /></Guard>} />
         <Route path="/auditoria" element={<Guard roles={CT}><AuditLogPage /></Guard>} />
         <Route path="/admin" element={<Guard roles={['admin']}><AdminPage /></Guard>} />
+        <Route path={CHANGE_PASSWORD_PATH} element={<Guard roles={STAFF}><ChangePasswordPage /></Guard>} />
       </Route>
       <Route path="*" element={<Home />} />
     </Routes>

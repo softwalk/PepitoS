@@ -14,6 +14,20 @@ class LoginIn(BaseModel):
     platform: str | None = None
 
 
+class RefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=16, max_length=200)
+    device_id: str = Field(min_length=4, max_length=120)
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ResetPasswordIn(BaseModel):
+    new_password: str | None = None
+
+
 class CorrectiveActionIn(BaseModel):
     description: str
     owner_id: uuid.UUID | None = None

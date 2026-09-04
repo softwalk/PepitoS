@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
 import { useToast } from '../components/Toast';
 import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } from '../components/ui';
-import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, User, Zone } from '../types';
+import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, User, Zone } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 import { ROLE_LABEL } from '../components/Layout';
 
@@ -159,9 +159,77 @@ function Crud<T extends { id: string; is_active?: boolean }>({ path, label: enti
   );
 }
 
+/** Restablece la contraseña de un usuario y muestra la temporal generada (una sola vez) con botón copiar. */
+function ResetPasswordModal({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: () => Promise<void> }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ResetPasswordResponse | null>(null);
+  const [copied, setCopied] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await api.post<ResetPasswordResponse>(`/v1/admin/users/${user.id}/reset-password`, {});
+      setResult(r);
+      await onDone();
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    if (!result?.temporary_password) return;
+    try {
+      await navigator.clipboard.writeText(result.temporary_password);
+      setCopied(true);
+      toast.toast('Contraseña copiada', 'success');
+    } catch {
+      toast.toast('No se pudo copiar; selecciona el texto manualmente', 'error');
+    }
+  };
+  return (
+    <Modal title={`Restablecer contraseña · ${user.name}`} onClose={onClose}>
+      {!result ? (
+        <div className="stack">
+          <p>
+            Se generará una contraseña temporal para <b className="mono">{user.username}</b>, se cerrarán sus sesiones y deberá cambiarla al entrar.
+          </p>
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <button type="button" className="btn" onClick={onClose} disabled={busy}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-danger" onClick={run} disabled={busy} data-testid="reset-password-confirm">
+              {busy ? 'Restableciendo…' : 'Restablecer'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="stack">
+          <p>Contraseña temporal (se muestra una sola vez; compártela por un canal seguro):</p>
+          <div className="row">
+            <code className="mono" data-testid="temporary-password" style={{ fontSize: 18, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8, userSelect: 'all' }}>
+              {result.temporary_password ?? '—'}
+            </code>
+            <button type="button" className="btn btn-primary small" onClick={copy} disabled={!result.temporary_password}>
+              {copied ? 'Copiada ✓' : 'Copiar'}
+            </button>
+          </div>
+          <p className="muted small">El usuario verá "Debe cambiar contraseña" hasta que la cambie desde su app.</p>
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-primary" onClick={onClose}>
+              Listo
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export function AdminPage() {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('users');
+  const [resetting, setResetting] = useState<User | null>(null);
   const zones = useFetch<Zone[]>(() => api.get('/v1/admin/zones'), []);
   const users = useFetch<User[]>(() => api.get('/v1/admin/users'), []);
   const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), []);
@@ -249,9 +317,16 @@ export function AdminPage() {
             { h: 'Zona', r: (u) => zoneName(u.zone_id) },
             { h: 'Teléfono', r: (u) => u.phone ?? '—' },
             { h: 'Activo', r: (u) => <StatusBadge status={u.is_active ? 'active' : 'blocked'} /> },
+            { h: 'Contraseña', r: (u) => (u.must_change_password ? <Badge tone="amber" title="Debe cambiar su contraseña al entrar">Debe cambiar contraseña</Badge> : <span className="muted">—</span>) },
           ]}
+          extra={(u) => (
+            <button type="button" className="btn small btn-ghost" onClick={() => setResetting(u)} data-testid={`reset-password-${u.username}`}>
+              Restablecer contraseña
+            </button>
+          )}
         />
       )}
+      {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} onDone={() => users.reload(true)} />}
 
       {tab === 'points' && (
         <Crud<Point>

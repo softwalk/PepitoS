@@ -23,6 +23,8 @@ DEFAULT_MESSAGES = {
     "CANCEL_NOT_ALLOWED": "No se puede cancelar esta venta",
     "LOT_BLOCKED": "El lote está bloqueado",
     "CONFLICT": "Conflicto con el estado actual",
+    "PASSWORD_CHANGE_REQUIRED": "Debes cambiar tu contraseña antes de continuar",
+    "RATE_LIMITED": "Demasiados intentos. Intenta más tarde",
 }
 
 DEFAULT_STATUS = {
@@ -40,17 +42,19 @@ DEFAULT_STATUS = {
     "CANCEL_NOT_ALLOWED": 403,
     "LOT_BLOCKED": 409,
     "CONFLICT": 409,
+    "PASSWORD_CHANGE_REQUIRED": 403,
+    "RATE_LIMITED": 429,
 }
 
 
 class ApiError(HTTPException):
     """Excepción de dominio con código estable."""
 
-    def __init__(self, code: str, message: str | None = None, status_code: int | None = None, details: Any = None):
+    def __init__(self, code: str, message: str | None = None, status_code: int | None = None, details: Any = None, headers: dict[str, str] | None = None):
         self.code = code
         self.message = message or DEFAULT_MESSAGES.get(code, code)
         self.details = details or {}
-        super().__init__(status_code=status_code or DEFAULT_STATUS.get(code, 400), detail=self.message)
+        super().__init__(status_code=status_code or DEFAULT_STATUS.get(code, 400), detail=self.message, headers=headers)
 
     def to_body(self) -> dict:
         return {"error": {"code": self.code, "message": self.message, "details": self.details}}
@@ -63,7 +67,7 @@ def error_body(code: str, message: str, details: Any = None) -> dict:
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def api_error_handler(_: Request, exc: ApiError):
-        return JSONResponse(status_code=exc.status_code, content=exc.to_body())
+        return JSONResponse(status_code=exc.status_code, content=exc.to_body(), headers=exc.headers or None)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error_handler(_: Request, exc: StarletteHTTPException):

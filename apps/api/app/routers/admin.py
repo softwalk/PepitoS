@@ -23,12 +23,14 @@ from app.schemas.backoffice import (
     PresentationIn,
     PresentationPatch,
     PriceVersionIn,
+    ResetPasswordIn,
     RevokeIn,
     UserIn,
     UserPatch,
     ZoneIn,
 )
 from app.services import audit
+from app.services import auth as auth_svc
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 ADMIN = require("admin.users")  # sólo admin (comodín "*")
@@ -43,7 +45,7 @@ def ser_zone(z: Zone) -> dict:
 
 
 def ser_user(u: User) -> dict:
-    return {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active}
+    return {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active, "must_change_password": u.must_change_password}
 
 
 def ser_point(p: Point) -> dict:
@@ -173,6 +175,25 @@ crud("assignments", Assignment, ser_assignment, AssignmentIn, AssignmentPatch, "
 crud("presentations", Presentation, ser_presentation, PresentationIn, PresentationPatch, "Presentación", Presentation.sort)
 
 
+@router.post("/users/{user_id}/reset-password")
+def reset_password(user_id: uuid.UUID, request: Request, data: ResetPasswordIn | None = None, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Restablece la contraseña (temporal generada si no se envía `new_password`) y obliga a cambiarla al entrar.
+    Revoca todos los refresh tokens del usuario. `temporary_password` sólo se devuelve cuando fue generada."""
+    u = _get(db, User, user_id, "Usuario")
+    generated = data is None or not data.new_password
+    new_password = auth_svc.generate_temporary_password() if generated else data.new_password
+    auth_svc.validate_new_password(new_password)
+    u.password_hash = hash_password(new_password)
+    u.must_change_password = True
+    revoked = auth_svc.revoke_user_tokens(db, u.id)
+    audit.log(db, actor_id=current.id, action="user.password_reset", entity="user", entity_id=u.id, after={"must_change_password": True, "generated": generated, "revoked_refresh_tokens": revoked}, ip=client_ip(request))
+    db.commit()
+    body = {"ok": True, "user_id": _u(u.id), "must_change_password": True}
+    if generated:
+        body["temporary_password"] = new_password
+    return body
+
+
 @router.get("/price-versions")
 def list_price_versions(_: CurrentUser = Depends(require("admin.users", "reports.read")), db: Session = Depends(get_db)):
     return [ser_price_version(v) for v in db.query(PriceVersion).order_by(PriceVersion.valid_from.desc()).all()]
@@ -216,7 +237,8 @@ def revoke_device(device_id: str, data: RevokeIn | None = None, request: Request
     d.revoked = True
     d.revoked_at = utcnow()
     d.revoked_reason = data.reason if data else None
-    audit.log(db, actor_id=current.id, action="device.revoke", entity="device", entity_id=d.id, before={"revoked": False}, after={"revoked": True}, reason=d.revoked_reason, ip=client_ip(request) if request else None)
+    revoked_tokens = auth_svc.revoke_device_tokens(db, d.device_id)
+    audit.log(db, actor_id=current.id, action="device.revoke", entity="device", entity_id=d.id, before={"revoked": False}, after={"revoked": True, "revoked_refresh_tokens": revoked_tokens}, reason=d.revoked_reason, ip=client_ip(request) if request else None)
     db.commit()
     return ser_device(d)
 

@@ -27,7 +27,8 @@ Los operadores (`op1..op3`) no entran aquí: usan la PWA `apps/operator`.
 
 | Ruta | Roles | Contenido |
 |---|---|---|
-| `/login` | — | Usuario/contraseña; `device_id` UUID persistido en `localStorage` |
+| `/login` | — | Usuario/contraseña; `device_id` UUID persistido en `localStorage`; ante 429 muestra cuenta regresiva y deshabilita el botón |
+| `/cambiar-contrasena` | supervisor, ops, finance, admin | Contraseña actual / nueva (≥8) / confirmación. Obligatoria mientras `must_change_password` (el Guard redirige ahí); voluntaria desde el menú de usuario |
 | `/ct` | ops, finance, admin | KPIs (puntos abiertos/tarde/cerrados/sin señal, ventas vs meta con barra, transacciones, ticket, forecast) con semáforos PRD §15, contador URGENTE/REVISAR/NORMAL, mapa leaflet con marcador por estado y popup, tabla de puntos, alertas recientes. Auto-refresh 60 s. Botón **Ejecutar reglas ahora** (ops/admin) |
 | `/ct/briefing` | ops, finance, admin | Headline, decisiones con recomendación y enlace al caso, números |
 | `/excepciones` | supervisor, ops, finance, admin | Casos con filtros (estado, severidad, punto) ordenados por `priority_score` |
@@ -42,7 +43,7 @@ Los operadores (`op1..op3`) no entran aquí: usan la PWA `apps/operator`.
 | `/reglas` | ops, admin | Toggle `enabled`, edición de `params` campo por campo (+ alta de parámetro), severidad; guarda con `PUT /v1/rules/{key}` |
 | `/aprobaciones` | ops, finance, admin | Pendientes con aprobar/rechazar + nota (decide finance/admin) |
 | `/auditoria` | ops, finance, admin | Audit log con filtros por entidad, id, acción y límite; diff antes/después |
-| `/admin` | admin | CRUD de usuarios, puntos, carritos, asignaciones (crear la de hoy), presentaciones, versiones de precio (nueva versión, nunca in-place), dispositivos (revocar/reactivar), zonas |
+| `/admin` | admin | CRUD de usuarios (con **Restablecer contraseña**: muestra la temporal en un modal con botón copiar; badge *Debe cambiar contraseña*), puntos, carritos, asignaciones (crear la de hoy), presentaciones, versiones de precio (nueva versión, nunca in-place), dispositivos (revocar/reactivar), zonas |
 
 Semáforos (PRD §15): ventas/día ≥60 verde · 45–59 ámbar · <45 rojo; ticket ≥$39 · $36–38.99 · <$36; merma ≤2% · 2–4% · >4%.
 Estados en mapa: abierto verde · tarde ámbar · sin señal gris · cerrado azul · no programado gris claro.
@@ -50,31 +51,54 @@ Estados en mapa: abierto verde · tarde ámbar · sin señal gris · cerrado azu
 ## Comportamiento transversal
 
 - Guard de rutas por rol; un rol sin acceso se redirige a su inicio (`/ct` o `/supervisor`).
-- Cualquier `401` limpia la sesión y vuelve a `/login`.
+- Sesión y refresh: ver la sección siguiente. Sólo un refresh fallido (401) o `DEVICE_REVOKED` limpian la sesión y vuelven a `/login`.
+- `403 PASSWORD_CHANGE_REQUIRED` en cualquier llamada marca la sesión y el Guard redirige a `/cambiar-contrasena`.
 - Los errores del backend (`{error:{code,message}}`) se muestran como toast con el `message`.
 - Layout: navegación lateral en escritorio; en ≤768 px barra superior + navegación inferior (para supervisor: Excepciones, Supervisor, Ruta, Inventario).
 - Dinero siempre en centavos desde la API; se formatea en la UI (`lib/format.ts`).
+
+## Sesión y refresh de tokens
+
+- `POST /v1/auth/login` devuelve `access_token` (corto) y `refresh_token` (rotativo, ligado al `device_id`). Se guardan en
+  `localStorage` (`pepito.backoffice.session`: `token`, `expiresAt`, `refreshToken`, `refreshExpiresAt`, `user`,
+  `mustChangePassword`). `getSession()` sigue devolviendo la sesión aunque el access token haya vencido si el refresh
+  token está vigente; sólo se descarta cuando tampoco hay refresh utilizable.
+- `src/api/client.ts` aplica en cada petición autenticada:
+  - si el access token vence en **menos de 5 min**, refresca antes de enviar (`refreshSession()`, con lock: refrescos
+    simultáneos comparten una petición);
+  - ante **401 `AUTH_INVALID`** llama a `POST /v1/auth/refresh {refresh_token, device_id}`, reemplaza ambos tokens y
+    **reintenta una sola vez**;
+  - si el refresh responde 401 (token inválido, rotado o expirado) se limpia la sesión y `onUnauthorized` lleva a `/login`;
+  - **401 `DEVICE_REVOKED`** limpia la sesión sin intentar refresh;
+  - un fallo de red/5xx en el refresh conserva la sesión (se reintenta en la siguiente petición).
+- `AuthProvider` expone `refresh()`, `changePassword()` y `mustChangePassword`; la UI se entera de tokens rotados por
+  `onSessionChanged`.
+- **429 `RATE_LIMITED`** en `/login`: "Demasiados intentos. Espera N minutos" con cuenta regresiva
+  (`details.retry_after_seconds` o header `Retry-After`) y botón deshabilitado.
+- **Restablecer contraseña** (admin → Usuarios): `POST /v1/admin/users/{id}/reset-password` sin cuerpo genera una
+  contraseña temporal que se muestra una sola vez en un modal (botón copiar); el usuario queda con
+  `must_change_password` y, al entrar, es forzado a `/cambiar-contrasena` (`POST /v1/auth/change-password`).
 
 ## Estructura
 
 ```
 src/
-  api/client.ts        fetch con bearer, errores tipados, hook 401
-  state/session.ts     sesión + device_id en localStorage
-  state/auth.tsx       AuthProvider (login/logout/hasRole)
+  api/client.ts        fetch con bearer, refresh rotativo con lock, reintento único ante 401, hooks onUnauthorized/onSessionChanged
+  state/session.ts     sesión (access + refresh token, mustChangePassword) + device_id en localStorage
+  state/auth.tsx       AuthProvider (login/logout/refresh/changePassword/hasRole/mustChangePassword)
   lib/format.ts        dinero, fechas, semáforos, etiquetas
   lib/useFetch.ts      fetch declarativo con auto-refresh
   components/          Layout, Toast, PointsMap (leaflet), ui (badges, cards, modal)
   pages/               una página por ruta
-test/                  vitest: format.test.ts, control-tower.test.tsx
+test/                  vitest: format.test.ts, control-tower.test.tsx, auth.test.tsx
 scripts/smoke.py       smoke Playwright (chromium en /opt/pw-browsers)
 screenshots/           ct, excepciones, supervisor, ventas, caso-auditoria
 ```
 
 ## Tests
 
-- `npm test`: semáforos y formatos de dinero; render del Control Tower con `fetch` mockeado (mapa sustituido por stub en jsdom).
-- `npm run smoke` (requiere API en :8000 y `npm run preview` en :4174): login ops → `/ct` con puntos y KPIs → `/excepciones` → `/ventas` → login sup1 en viewport móvil → `/supervisor` con bloques → auditoría con una no conformidad y acción correctiva → verifica que el caso y la acción existan vía API. Guarda capturas en `screenshots/`.
+- `npm test`: semáforos y formatos de dinero; render del Control Tower con `fetch` mockeado (mapa sustituido por stub en jsdom); sesión (refresh rota tokens, lock, 401→refresh→reintento, refresh proactivo, refresh fallido limpia sesión, DEVICE_REVOKED, 403 PASSWORD_CHANGE_REQUIRED, 429 con cuenta regresiva, Guard a `/cambiar-contrasena`).
+- `npm run smoke` (requiere API en :8000 y `npm run preview` en :4174): login ops → `/ct` con puntos y KPIs → `/excepciones` → `/ventas` → login sup1 en viewport móvil → `/supervisor` con bloques → auditoría con una no conformidad y acción correctiva → verifica que el caso y la acción existan vía API → invalida el access token en `localStorage` y comprueba que la app refresca sola (refresh rotado, el anterior ya no sirve) → admin restablece la contraseña de un usuario temporal, lee la temporal del modal, entra con ella, es forzado a `/cambiar-contrasena`, la cambia y llega a `/ct`. Guarda capturas en `screenshots/`.
 
 ## Notas
 

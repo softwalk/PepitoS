@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/auth';
 import type { Role } from '../types';
 
@@ -53,6 +53,9 @@ export function Layout() {
         <div className="side-user">
           <div className="side-user-name">{user.name}</div>
           <div className="muted small">{ROLE_LABEL[user.role]}</div>
+          <Link to="/cambiar-contrasena" className="btn btn-ghost small">
+            Cambiar contraseña
+          </Link>
           <button type="button" className="btn btn-ghost small" onClick={doLogout}>
             Cerrar sesión
           </button>

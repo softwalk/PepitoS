@@ -70,6 +70,13 @@ class CurrentUser:
         return self.role in ("ops", "finance", "admin")
 
 
+PASSWORD_CHANGE_EXEMPT_PREFIXES = ("/v1/auth/", "/v1/health")
+
+
+def _password_change_exempt(path: str) -> bool:
+    return path.startswith(PASSWORD_CHANGE_EXEMPT_PREFIXES)
+
+
 def get_current_user(
     request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
@@ -94,6 +101,8 @@ def get_current_user(
         user = None
     if user is None or not user.is_active:
         raise ApiError("AUTH_INVALID", "Usuario inválido o inactivo")
+    if user.must_change_password and not _password_change_exempt(request.url.path):
+        raise ApiError("PASSWORD_CHANGE_REQUIRED", details={"change_password_url": "/v1/auth/change-password"})
 
     device_id = claims.get("device_id")
     if device_id:
@@ -121,5 +130,11 @@ def require(*perms: str):
     return _dep
 
 
-def client_ip(request: Request) -> str | None:
+def client_ip(request: Request | None) -> str | None:
+    """IP del cliente: primer valor de X-Forwarded-For si existe, si no request.client.host."""
+    if request is None:
+        return None
+    xff = request.headers.get("x-forwarded-for")
+    if xff and xff.split(",")[0].strip():
+        return xff.split(",")[0].strip()
     return request.client.host if request.client else None

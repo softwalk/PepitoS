@@ -1,6 +1,6 @@
 // Estado global de la app: lee IndexedDB y se re-lee cuando la cola/sync cambian algo.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { configureClient, setAuthToken } from '../api/client';
+import { getAuthSession, setAuthSession } from '../api/client';
 import { readBattery, watchBattery, type BatteryInfo } from '../offline/battery';
 import {
   assignmentStore,
@@ -15,7 +15,7 @@ import {
 } from '../offline/db';
 import { setSpeechEnabled } from '../offline/speech';
 import { getSyncStatus, startSync, subscribeDomain, subscribeSync, type SyncStatus } from '../offline/sync';
-import { autoCleanup, refreshAssignment, resumeShift } from './actions';
+import { autoCleanup, installSessionHooks, refreshAssignment, resumeShift } from './actions';
 import type { AssignmentResponse, Catalog, OperatorConfig } from '../types';
 
 export interface Settings {
@@ -71,7 +71,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let shift = shiftRaw ?? null;
     if (shift && shift.status === 'closed' && (await autoCleanup())) shift = null;
     const sales = shift ? await salesLocalStore.byShift(shift.local_id) : [];
-    setAuthToken(session?.access_token ?? null);
+    // Activar la sesión persistida en el cliente HTTP (sin pisar un refresh más reciente en memoria).
+    const cur = getAuthSession();
+    if (!session) setAuthSession(null);
+    else if (!cur || Date.parse(session.expires_at) >= Date.parse(cur.expires_at)) {
+      setAuthSession({
+        access_token: session.access_token,
+        expires_at: session.expires_at,
+        refresh_token: session.refresh_token ?? null,
+        refresh_expires_at: session.refresh_expires_at ?? null,
+        device_id: session.device_id,
+      });
+    }
     setState((s) => ({
       ...s,
       booted: true,
@@ -86,19 +97,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    configureClient({
-      onUnauthorized: (code) => {
-        // Token expirado o dispositivo revocado: cerrar sesión localmente (la cola cifrada se conserva).
-        if (code === 'DEVICE_REVOKED' || code === 'AUTH_INVALID') {
-          void sessionStore.clear().then(reload);
-        }
-      },
-    });
+    installSessionHooks({ onChange: () => void reload() });
     (async () => {
       await reload();
       startSync();
       await resumeShift();
-      if (navigator.onLine && (await sessionStore.get())) {
+      const boot = await sessionStore.get();
+      if (navigator.onLine && boot && !boot.must_change_password) {
         try {
           await refreshAssignment();
           await reload();

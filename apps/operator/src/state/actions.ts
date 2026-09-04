@@ -1,6 +1,6 @@
 // Acciones de dominio: UI optimista → IndexedDB → cola → sync. Nunca exponen "reintentar API" al operador.
 import { v4 as uuidv4 } from 'uuid';
-import { api, ApiError, NetworkError, setAuthToken } from '../api/client';
+import { api, ApiError, NetworkError, configureClient, refreshSession as clientRefreshSession, sessionFromLogin, setAuthSession, type AuthSession } from '../api/client';
 import {
   assignmentStore,
   catalogStore,
@@ -20,6 +20,7 @@ import { syncNow, trigger } from '../offline/sync';
 import type {
   AssignmentResponse,
   CloseChecklist,
+  LoginResponse,
   GPS,
   HelpCategory,
   OpenChecklist,
@@ -48,18 +49,86 @@ export function suggestedAction(code: string): string {
 }
 
 // ---------- sesión ----------
-export async function login(username: string, password: string): Promise<AssignmentResponse> {
-  const device_id = getDeviceId();
-  const res = await api.login({ username, password, device_id, device_name: deviceName(), platform: 'pwa' });
+/** Guarda en IndexedDB la respuesta de login/refresh (ambos tokens) y la deja activa en el cliente HTTP. */
+export async function persistSession(res: LoginResponse, device_id: string): Promise<AuthSession> {
+  const auth = sessionFromLogin(res, device_id);
   await sessionStore.set({
-    access_token: res.access_token,
-    expires_at: new Date(Date.now() + res.expires_in * 1000).toISOString(),
+    access_token: auth.access_token,
+    expires_at: auth.expires_at,
+    refresh_token: auth.refresh_token,
+    refresh_expires_at: auth.refresh_expires_at,
     device_id,
     user: res.user,
+    must_change_password: !!res.must_change_password,
   });
-  setAuthToken(res.access_token);
+  setAuthSession(auth);
+  return auth;
+}
+
+export interface LoginOutcome {
+  must_change_password: boolean;
+  assignment: AssignmentResponse | null;
+}
+
+export async function login(username: string, password: string): Promise<LoginOutcome> {
+  const device_id = getDeviceId();
+  const res = await api.login({ username, password, device_id, device_name: deviceName(), platform: 'pwa' });
+  await persistSession(res, device_id);
+  if (res.must_change_password) return { must_change_password: true, assignment: null };
   const a = await refreshAssignment();
-  return a;
+  return { must_change_password: false, assignment: a };
+}
+
+/**
+ * Rota el refresh token con el device_id persistido y reemplaza ambos tokens en IndexedDB.
+ * Con lock (en el cliente HTTP): dos llamadas simultáneas comparten la misma petición.
+ * Devuelve null si no hay sesión local con refresh token. Si el servidor responde 401 la sesión
+ * local se cierra (conservando la cola cifrada) y se relanza el error.
+ */
+export async function refreshSession(): Promise<LoginResponse | null> {
+  return clientRefreshSession();
+}
+
+/** Cambia la contraseña del usuario actual; al terminar, la sesión deja de exigir cambio. */
+export async function changePassword(current_password: string, new_password: string): Promise<void> {
+  await api.changePassword({ current_password, new_password });
+  await sessionStore.update({ must_change_password: false });
+}
+
+/** Cierra la sesión localmente (token inválido, dispositivo revocado) sin tocar la cola cifrada ni el turno. */
+export async function dropLocalSession(): Promise<void> {
+  stopGpsPings();
+  await sessionStore.clear();
+  setAuthSession(null);
+}
+
+/**
+ * Conecta el cliente HTTP con IndexedDB: persiste tokens rotados, cierra la sesión local cuando el
+ * refresh falla (401) o el dispositivo es revocado, y marca `must_change_password` ante 403
+ * PASSWORD_CHANGE_REQUIRED. `onChange` avisa a la UI para que relea el estado.
+ */
+export function installSessionHooks(opts: { onChange?: () => void } = {}) {
+  configureClient({
+    onSessionLost: async () => {
+      await dropLocalSession();
+      opts.onChange?.();
+    },
+    onSessionRefreshed: async (res, auth) => {
+      await sessionStore.update({
+        access_token: auth.access_token,
+        expires_at: auth.expires_at,
+        refresh_token: auth.refresh_token,
+        refresh_expires_at: auth.refresh_expires_at,
+        user: res.user,
+        must_change_password: !!res.must_change_password,
+      });
+      if (res.must_change_password) opts.onChange?.();
+    },
+    onPasswordChangeRequired: async () => {
+      await sessionStore.update({ must_change_password: true });
+      opts.onChange?.();
+    },
+  });
 }
 
 /** Descarga asignación + catálogo + config y los guarda; adopta un turno abierto en el servidor si no hay uno local. */
@@ -101,7 +170,7 @@ export async function logout(opts: { force?: boolean } = {}): Promise<{ blocked:
   }
   stopGpsPings();
   await wipeLocal({ keepQueue: false });
-  setAuthToken(null);
+  setAuthSession(null);
   return { ok: true };
 }
 

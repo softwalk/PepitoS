@@ -6,8 +6,13 @@ export interface SessionRecord {
   id: 'current';
   access_token: string;
   expires_at: string;
+  /** Refresh token rotativo (null en sesiones antiguas sin refresh). */
+  refresh_token?: string | null;
+  refresh_expires_at?: string | null;
   device_id: string;
   user: { id: string; name: string; role: string; zone_id: string | null; username?: string };
+  /** El servidor exige cambiar la contraseña antes de operar. */
+  must_change_password?: boolean;
 }
 
 export interface AssignmentRecord {
@@ -159,6 +164,14 @@ export async function resetDBForTests() {
 export const sessionStore = {
   get: async () => (await getDB()).get('session', 'current'),
   set: async (s: Omit<SessionRecord, 'id'>) => (await getDB()).put('session', { id: 'current', ...s }),
+  update: async (patch: Partial<SessionRecord>) => {
+    const db = await getDB();
+    const cur = await db.get('session', 'current');
+    if (!cur) return undefined;
+    const next = { ...cur, ...patch, id: 'current' as const };
+    await db.put('session', next);
+    return next;
+  },
   clear: async () => (await getDB()).delete('session', 'current'),
 };
 

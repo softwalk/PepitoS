@@ -6,7 +6,10 @@ export interface LoginResponse {
   access_token: string;
   token_type: 'bearer';
   expires_in: number;
+  refresh_token: string;
+  refresh_expires_at: string;
   user: { id: string; name: string; role: Role; zone_id: string | null; username?: string };
+  must_change_password: boolean;
 }
 
 export interface GPS {

@@ -26,7 +26,9 @@ services:
       RULES_INTERVAL_SECONDS: 300
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       RUN_SCHEDULER: "true"
-      SEED: ${SEED:-true}
+      # demo (datos de prueba) | prod (solo admin con ADMIN_INITIAL_PASSWORD, obliga a cambiarla) | none
+      SEED_MODE: ${SEED_MODE:-demo}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

@@ -1,13 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, onUnauthorized } from '../api/client';
+import { api, commitSession, onSessionChanged, onUnauthorized, refreshSession as clientRefreshSession } from '../api/client';
 import type { AuthUser, LoginResponse, Role } from '../types';
-import { clearSession, getDeviceId, getSession, saveSession, type Session } from './session';
+import { clearSession, getDeviceId, getSession, sessionFromLogin, type Session } from './session';
 
 interface AuthCtx {
   session: Session | null;
   user: AuthUser | null;
-  login: (username: string, password: string) => Promise<AuthUser>;
+  /** El servidor exige cambiar la contraseña antes de seguir. */
+  mustChangePassword: boolean;
+  login: (username: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
+  /** Rota el refresh token y reemplaza ambos tokens (lock en el cliente HTTP). */
+  refresh: () => Promise<LoginResponse | null>;
+  changePassword: (current_password: string, new_password: string) => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
 }
 
@@ -16,7 +21,14 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(() => getSession());
 
-  useEffect(() => onUnauthorized(() => setSession(null)), []);
+  useEffect(() => {
+    const offUnauthorized = onUnauthorized(() => setSession(null));
+    const offChanged = onSessionChanged((s) => setSession(s));
+    return () => {
+      offUnauthorized();
+      offChanged();
+    };
+  }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await api.post<LoginResponse>('/v1/auth/login', {
@@ -26,10 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       device_name: navigator.userAgent.slice(0, 80),
       platform: 'web-backoffice',
     });
-    const s: Session = { token: res.access_token, user: res.user, expiresAt: Date.now() + res.expires_in * 1000 };
-    saveSession(s);
-    setSession(s);
-    return res.user;
+    commitSession(sessionFromLogin(res));
+    return res;
   }, []);
 
   const logout = useCallback(async () => {
@@ -42,15 +52,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const refresh = useCallback(() => clientRefreshSession(), []);
+
+  const changePassword = useCallback(async (current_password: string, new_password: string) => {
+    await api.post<{ ok: boolean }>('/v1/auth/change-password', { current_password, new_password });
+    const s = getSession();
+    if (s) commitSession({ ...s, mustChangePassword: false });
+  }, []);
+
   const value = useMemo<AuthCtx>(
     () => ({
       session,
       user: session?.user ?? null,
+      mustChangePassword: !!session?.mustChangePassword,
       login,
       logout,
+      refresh,
+      changePassword,
       hasRole: (...roles: Role[]) => !!session && roles.includes(session.user.role),
     }),
-    [session, login, logout],
+    [session, login, logout, refresh, changePassword],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

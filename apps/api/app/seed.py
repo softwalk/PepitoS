@@ -1,12 +1,20 @@
-"""Datos demo (CONTRATOS.md §10). Idempotente: se puede ejecutar varias veces.
+"""Seed de datos. Idempotente: se puede ejecutar varias veces.
 
-    python -m app.seed
+    SEED_MODE=demo python -m app.seed   # (default) usuarios demo §10, puntos, carritos, asignaciones, inventario
+    SEED_MODE=prod python -m app.seed   # zona "Default", usuario admin (ADMIN_INITIAL_PASSWORD, must_change_password)
+                                        # y catálogo (presentaciones, sabores, precios, reglas, checklists); sin puntos
+    SEED_MODE=none python -m app.seed   # no hace nada
+
+Con APP_ENV=production y SEED_MODE=demo aborta.
 """
 import logging
+import os
+import sys
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.security import hash_password
 from app.core.timeutil import local_dt, local_today, utcnow
@@ -53,9 +61,77 @@ CHECKLIST_OPEN = [("cart_secure", "Carrito asegurado", True), ("battery_ok", "Ba
 CHECKLIST_CLOSE = [("off_ok", "Equipo apagado", False), ("clean_ok", "Carrito limpio", False), ("secured_ok", "Carrito asegurado", True), ("stored_ok", "Producto guardado", False), ("charging_ok", "Batería cargando", False)]
 ASSET_TYPES = [("battery", 30), ("charger", 90), ("pos", 180)]
 INITIAL_STOCK_UNITS = 40
+SEED_MODES = ("demo", "prod", "none")
+
+
+def _seed_catalog(db: Session, created_by) -> list:
+    """Producto, presentaciones, sabores, versión de precio v1, reglas y checklists (común a demo y prod)."""
+    product = db.query(Product).filter(Product.name == "Pepitas").first()
+    if product is None:
+        product = Product(name="Pepitas", description="Semillas de calabaza tostadas")
+        db.add(product)
+        db.flush()
+    presentations = []
+    for name, grams, _, sort in PRESENTATIONS:
+        p = db.query(Presentation).filter(Presentation.name == name).first()
+        if p is None:
+            p = Presentation(name=name, grams=grams, sort=sort, product_id=product.id)
+            db.add(p)
+        presentations.append(p)
+    for i, name in enumerate(FLAVORS, start=1):
+        if db.query(Flavor).filter(Flavor.name == name).first() is None:
+            db.add(Flavor(name=name, sort=i))
+    db.flush()
+
+    version = db.query(PriceVersion).filter(PriceVersion.name == "v1").first()
+    if version is None:
+        version = PriceVersion(name="v1", valid_from=datetime(2026, 1, 1, tzinfo=timezone.utc), created_by=created_by)
+        version.items = [PriceItem(presentation_id=p.id, amount_cents=amt) for p, (_, _, amt, _) in zip(presentations, PRESENTATIONS)]
+        db.add(version)
+        db.flush()
+
+    for key, name, severity in RULES:
+        r = db.get(Rule, key)
+        if r is None:
+            db.add(Rule(key=key, name=name, enabled=True, params=DEFAULT_RULE_PARAMS[key], severity=severity, updated_at=utcnow()))
+
+    if db.query(Checklist).count() == 0:
+        for i, (key, label, critical) in enumerate(CHECKLIST_OPEN):
+            db.add(Checklist(kind="open", key=key, label=label, critical=critical, sort=i))
+        for i, (key, label, critical) in enumerate(CHECKLIST_CLOSE):
+            db.add(Checklist(kind="close", key=key, label=label, critical=critical, sort=i))
+    db.flush()
+    return presentations
+
+
+def seed_prod(db: Session, admin_password: str | None = None) -> dict:
+    """Seed de producción: zona "Default", usuario `admin` con contraseña inicial obligatoria y
+    `must_change_password=true`, catálogo/reglas/checklists. SIN puntos, carritos, operadores ni asignaciones."""
+    admin_password = admin_password or settings.ADMIN_INITIAL_PASSWORD
+    created = {"users": 0, "zones": 0}
+    zone = db.query(Zone).filter(Zone.name == "Default").first()
+    if zone is None:
+        zone = Zone(name="Default")
+        db.add(zone)
+        db.flush()
+        created["zones"] += 1
+    admin = db.query(User).filter(User.username == "admin").first()
+    if admin is None:
+        if not admin_password:
+            raise RuntimeError("SEED_MODE=prod requiere ADMIN_INITIAL_PASSWORD para crear el usuario admin")
+        if len(admin_password) < settings.PASSWORD_MIN_LENGTH:
+            raise RuntimeError(f"ADMIN_INITIAL_PASSWORD debe tener al menos {settings.PASSWORD_MIN_LENGTH} caracteres")
+        admin = User(username="admin", name="Administrador", role="admin", password_hash=hash_password(admin_password), must_change_password=True)
+        db.add(admin)
+        db.flush()
+        created["users"] += 1
+    _seed_catalog(db, admin.id)
+    db.commit()
+    return created
 
 
 def seed(db: Session, today=None) -> dict:
+    """Seed demo (§10)."""
     today = today or local_today()
     created = {"users": 0, "points": 0, "assignments": 0, "movements": 0}
 
@@ -95,40 +171,7 @@ def seed(db: Session, today=None) -> dict:
         carts.append(c)
     db.flush()
 
-    product = db.query(Product).filter(Product.name == "Pepitas").first()
-    if product is None:
-        product = Product(name="Pepitas", description="Semillas de calabaza tostadas")
-        db.add(product)
-        db.flush()
-    presentations = []
-    for name, grams, _, sort in PRESENTATIONS:
-        p = db.query(Presentation).filter(Presentation.name == name).first()
-        if p is None:
-            p = Presentation(name=name, grams=grams, sort=sort, product_id=product.id)
-            db.add(p)
-        presentations.append(p)
-    for i, name in enumerate(FLAVORS, start=1):
-        if db.query(Flavor).filter(Flavor.name == name).first() is None:
-            db.add(Flavor(name=name, sort=i))
-    db.flush()
-
-    version = db.query(PriceVersion).filter(PriceVersion.name == "v1").first()
-    if version is None:
-        version = PriceVersion(name="v1", valid_from=datetime(2026, 1, 1, tzinfo=timezone.utc), created_by=users["admin"].id)
-        version.items = [PriceItem(presentation_id=p.id, amount_cents=amt) for p, (_, _, amt, _) in zip(presentations, PRESENTATIONS)]
-        db.add(version)
-        db.flush()
-
-    for key, name, severity in RULES:
-        r = db.get(Rule, key)
-        if r is None:
-            db.add(Rule(key=key, name=name, enabled=True, params=DEFAULT_RULE_PARAMS[key], severity=severity, updated_at=utcnow()))
-
-    if db.query(Checklist).count() == 0:
-        for i, (key, label, critical) in enumerate(CHECKLIST_OPEN):
-            db.add(Checklist(kind="open", key=key, label=label, critical=critical, sort=i))
-        for i, (key, label, critical) in enumerate(CHECKLIST_CLOSE):
-            db.add(Checklist(kind="close", key=key, label=label, critical=critical, sort=i))
+    presentations = _seed_catalog(db, users["admin"].id)
 
     for cart in carts:
         for asset_type, interval in ASSET_TYPES:
@@ -168,11 +211,31 @@ def seed(db: Session, today=None) -> dict:
     return created
 
 
+def run_seed(db: Session, mode: str, admin_password: str | None = None) -> dict:
+    mode = (mode or "demo").strip().lower()
+    if mode not in SEED_MODES:
+        raise RuntimeError(f"SEED_MODE inválido: {mode!r} (usa demo | prod | none)")
+    if mode == "none":
+        return {"mode": "none"}
+    if mode == "demo" and settings.is_production:
+        raise RuntimeError("SEED_MODE=demo está prohibido con APP_ENV=production: usa SEED_MODE=prod (o none)")
+    if mode == "prod":
+        return {"mode": "prod", **seed_prod(db, admin_password)}
+    return {"mode": "demo", **seed(db)}
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    # Compatibilidad: SEED=true (Dockerfile antiguo) equivale a SEED_MODE=demo cuando SEED_MODE no viene en el entorno.
+    mode = os.environ.get("SEED_MODE") or ("demo" if os.environ.get("SEED", "").lower() == "true" else settings.SEED_MODE)
     db = SessionLocal()
     try:
-        result = seed(db)
+        try:
+            result = run_seed(db, mode)
+        except RuntimeError as e:
+            log.error("Seed abortado: %s", e)
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(2)
         log.info("Seed listo: %s", result)
         print(f"Seed listo: {result}")
     finally:
