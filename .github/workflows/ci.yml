@@ -82,7 +82,7 @@ jobs:
           curl -fsS -o /dev/null http://localhost:8081/
           curl -fsS -o /dev/null http://localhost:8082/
           TOKEN=$(curl -fsS -X POST http://localhost:8000/v1/auth/login -H 'Content-Type: application/json' \
-            -d '{"username":"op1","password":"op123","device_id":"ci"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+            -d '{"username":"op1","password":"op123","device_id":"ci-smoke"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
           curl -fsS http://localhost:8000/v1/me/assignment -H "Authorization: Bearer $TOKEN" | head -c 300
       - name: Evidencia en MinIO (foto en NECESITO AYUDA → GET /v1/evidence → archivo)
         run: |
