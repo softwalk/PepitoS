@@ -58,9 +58,9 @@ export function LightDot({ light, text }: { light: Light; text?: string }) {
   );
 }
 
-export function Card({ title, children, actions, className = '' }: { title?: ReactNode; children: ReactNode; actions?: ReactNode; className?: string }) {
+export function Card({ title, children, actions, className = '', testId }: { title?: ReactNode; children: ReactNode; actions?: ReactNode; className?: string; testId?: string }) {
   return (
-    <section className={`card ${className}`}>
+    <section className={`card ${className}`} data-testid={testId}>
       {(title || actions) && (
         <header className="card-head">
           {title && <h2>{title}</h2>}

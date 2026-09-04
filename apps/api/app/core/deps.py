@@ -33,6 +33,28 @@ FINANCE_PERMS = {
     "me.read", "catalog.read", "reconciliation.read", "approvals.read", "approvals.decide", "reports.read",
     "cases.read", "audit_log.read", "control_tower.read", "points.read",
 }
+
+# Módulo de Reportes (docs/REPORTES.md): un permiso por área. El alcance (zona / propio) lo aplica la consulta en
+# `services/reporting.py`, no el frontend. `reports.self` = el operador sólo ve su propio desempeño.
+REPORT_PERMS_BY_ROLE: dict[str, set[str]] = {
+    "operator": {"reports.self"},
+    "supervisor": {
+        "reports.sales", "reports.cash", "reports.points", "reports.people", "reports.inventory", "reports.quality",
+        "reports.maintenance", "reports.compliance",
+    },
+    "ops": {
+        "reports.executive", "reports.sales", "reports.cash", "reports.points", "reports.people", "reports.inventory",
+        "reports.quality", "reports.maintenance", "reports.compliance", "reports.expansion",
+    },
+    "finance": {
+        "reports.executive", "reports.sales", "reports.cash", "reports.points", "reports.people", "reports.inventory",
+        "reports.compliance", "reports.expansion",
+    },
+}
+OPERATOR_PERMS |= REPORT_PERMS_BY_ROLE["operator"]
+SUPERVISOR_PERMS |= REPORT_PERMS_BY_ROLE["supervisor"] | REPORT_PERMS_BY_ROLE["operator"]
+OPS_PERMS |= REPORT_PERMS_BY_ROLE["ops"] | SUPERVISOR_PERMS
+FINANCE_PERMS |= REPORT_PERMS_BY_ROLE["finance"]
 ROLE_PERMS: dict[str, set[str]] = {
     "operator": OPERATOR_PERMS,
     "supervisor": SUPERVISOR_PERMS,

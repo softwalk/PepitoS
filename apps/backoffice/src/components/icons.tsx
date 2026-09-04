@@ -25,6 +25,12 @@ const PATHS: Record<string, JSX.Element> = {
       <path d="M4 5h16M4 12h16M4 19h10" />
     </>
   ),
+  reports: (
+    <>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      <path d="M4 7l6-3 6 5 6-4" strokeDasharray="0" />
+    </>
+  ),
   flag: (
     <>
       <path d="M5 21V4M5 4h11l-2 4 2 4H5" />

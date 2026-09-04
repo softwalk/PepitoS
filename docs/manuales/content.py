@@ -555,6 +555,62 @@ ADM_STEPS = """
 </ol>
 """
 
+# =====================================================================
+# REPORTES (sección compartida por los manuales de backoffice)
+# =====================================================================
+REPORTS_ALL = [
+    ("executive", "Resumen ejecutivo", "Ejecutivo", "Dónde poner la atención hoy: red, zona o punto."),
+    ("sales", "Ventas y desempeño comercial", "Comercial", "Mezcla de producto, horarios y puntos donde empujar la venta."),
+    ("cash", "Caja y conciliación", "Finanzas", "Qué diferencias conciliar, escalar o aprobar."),
+    ("points", "Ranking de puntos y ubicaciones", "Comercial", "Qué puntos reforzar, auditar o reubicar."),
+    ("people", "Productividad de vendedores", "Operaciones", "A quién capacitar, reconocer o reasignar."),
+    ("inventory", "Inventario, consumo y merma", "Inventarios", "Qué reponer, qué lote revisar y dónde está la merma."),
+    ("quality", "Calidad y auditorías", "Calidad", "Qué puntos auditar y qué acciones están vencidas."),
+    ("maintenance", "Mantenimiento y disponibilidad", "Mantenimiento", "Qué carrito atender antes de que deje de vender."),
+    ("compliance", "Cumplimiento operativo y GPS", "Operaciones", "Qué operadores y puntos incumplen el protocolo."),
+    ("expansion", "Expansión y ubicaciones", "Expansión", "Dónde abrir, cerrar o reubicar."),
+]
+REPORTS_BY_ROLE = {
+    "supervisor": ({"sales", "cash", "points", "people", "inventory", "quality", "maintenance", "compliance"}, "sólo tu zona", {
+        "cash": "sin aprobaciones de Finanzas", "maintenance": "sólo los carritos asignados en tu zona"}),
+    "ops": (set(k for k, *_ in REPORTS_ALL), "toda la red", {"cash": "sin la sección de aprobaciones"}),
+    "finance": ({"executive", "sales", "cash", "points", "people", "inventory", "compliance", "expansion"}, "toda la red", {
+        "people": "sin asistencia y puntualidad", "inventory": "sólo merma valorizada", "compliance": "sólo lectura"}),
+    "admin": (set(k for k, *_ in REPORTS_ALL), "toda la red", {}),
+}
+
+
+def reports_section(role):
+    allowed, scope, notes = REPORTS_BY_ROLE[role]
+    rows = []
+    for key, title, cat, decision in REPORTS_ALL:
+        if key in allowed:
+            rows.append(f"<tr><td><b>{title}</b><br><span class='muted'>{cat}</span></td><td>{decision}</td><td>{notes.get(key, 'completo')}</td></tr>")
+        else:
+            rows.append(f"<tr class='off'><td><span class='muted'>{title}</span></td><td class='muted'>{decision}</td><td><span class='badge b-gray'>No disponible</span></td></tr>")
+    mobile = " En el teléfono está en la barra inferior." if role == "supervisor" else ""
+    return f"""
+<p>En el menú <b>Monitoreo → Reportes</b>{mobile} está el <b>Centro de Reportes</b>: sólo verás los reportes que tu rol puede consultar (alcance: <b>{scope}</b>). Cada reporte responde una decisión concreta y sigue el mismo orden: <b>KPI → desviación → causa → acción</b>: tarjetas con semáforo, <b>Hallazgos y alertas</b>, gráficas y tablas.</p>
+<div class="tbl"><table><tr><th>Reporte</th><th>Qué decides con él</th><th>Para tu rol</th></tr>{''.join(rows)}</table></div>
+<h3 id="rep-filtros">Periodo y filtros</h3>
+<p>Arriba de cada reporte eliges el periodo (<b>Hoy · Ayer · Últimos 7 días · Semana actual · Mes actual · Mes anterior · Año actual · Rango</b>) y las dimensiones que apliquen (zona, punto, vendedor, carrito, presentación, medio de pago). Todo queda en la <b>dirección de la página</b>: si copias la URL y se la mandas a alguien, abre el mismo reporte con los mismos filtros. Cada KPI se compara automáticamente con el <b>periodo anterior equivalente</b> (semana vs semana, mes vs mes) y muestra la variación con flecha ↑ ↓ →.</p>
+{'<div class="callout">Tu zona viene fija: aunque cambies la URL, la API sólo devuelve datos de tu <code>zone_id</code>. El selector de zona aparece bloqueado.</div>' if role == 'supervisor' else ''}
+<h3 id="rep-hallazgos">Hallazgos y alertas</h3>
+<p>Frases generadas a partir de los datos, con etiqueta: <span class="badge b-blue">Hecho</span> lo que pasó · <span class="badge b-gray">Tendencia</span> cómo cambió vs el periodo anterior · <span class="badge b-red">Alerta</span> algo fuera de umbral · <span class="badge b-amber">Hipótesis</span> una posible explicación <i>que debes verificar</i> · <span class="badge b-green">Recomendación</span> qué hacer. Muchas traen un enlace <b>Ver →</b> al punto, caso o reporte relacionado (drill-down: red → zona → punto → vendedor → caso).</p>
+<h3 id="rep-pdf">Exportar PDF</h3>
+<p><span class="ui p">Exportar PDF</span> abre la <b>vista de impresión</b> (logo PEPITO, nombre del reporte, periodo, filtros, fecha y quién lo generó, KPIs, gráficas, tablas y hallazgos) y lanza el diálogo de impresión del navegador: elige <b>Guardar como PDF</b>. La vista usa los mismos permisos que el reporte: nadie exporta lo que no puede consultar, y cada consulta o exportación queda en el <b>Audit log</b> (<code>report.view</code> / <code>report.export</code>).</p>
+<h3 id="rep-semaforos">Semáforos</h3>
+<div class="tbl"><table><tr><th>Indicador</th><th>🟢</th><th>🟡</th><th>🔴</th></tr>
+<tr><td>Avance vs meta (meta = días con turno × meta diaria del punto)</td><td>≥ 100 %</td><td>75 – 99 %</td><td>&lt; 75 %</td></tr>
+<tr><td>Ticket promedio</td><td>≥ $39</td><td>$36 – 38.99</td><td>&lt; $36</td></tr>
+<tr><td>Merma</td><td>≤ 2 %</td><td>2 – 4 %</td><td>&gt; 4 %</td></tr>
+<tr><td>Diferencia de caja</td><td>$0</td><td>&lt; $20</td><td>≥ $20 (grave ≥ $100 → aprobación de Finanzas)</td></tr>
+<tr><td>Disponibilidad de carrito</td><td>≥ 95 %</td><td>85 – 94 %</td><td>&lt; 85 %</td></tr>
+<tr><td>Días de inventario</td><td>≥ 3</td><td>1.5 – 3</td><td>&lt; 1.5</td></tr>
+<tr><td>Expansión (GO / AJUSTAR / NO GO)</td><td>GO: ≥ 90 % de meta, ticket ≥ $36, merma ≤ 4 %, ≤ 2 casos</td><td>AJUSTAR: ≥ 60 % de meta</td><td>NO GO: &lt; 60 %. «Sin datos» con menos de 3 días con turno</td></tr>
+</table></div>
+"""
+
 MANUALS = {
     "operador": ("operator", "Operador", "Cómo usar la app del teléfono para abrir el puesto, vender, pedir ayuda y cerrar caja, con o sin señal.", [
         {"id": "que", "title": "Qué puedes hacer", "html": OP_INTRO},
@@ -566,24 +622,28 @@ MANUALS = {
         {"id": "que", "title": "Qué puedes hacer", "html": SUP_INTRO},
         {"id": "rapida", "title": "Guía rápida", "html": SUP_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": SUP_DETAIL},
+        {"id": "reportes", "title": "Reportes", "html": reports_section("supervisor")},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": SUP_STEPS},
     ], "Backoffice · teléfono o computadora · sólo tu zona"),
     "operaciones": ("ops", "Operaciones", "Cómo monitorear toda la red desde el Control Tower, ajustar las reglas y gestionar inventario, activos y mantenimiento.", [
         {"id": "que", "title": "Qué puedes hacer", "html": OPS_INTRO},
         {"id": "rapida", "title": "Guía rápida", "html": OPS_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": OPS_DETAIL},
+        {"id": "reportes", "title": "Reportes", "html": reports_section("ops")},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": OPS_STEPS},
     ], "Backoffice · toda la red"),
     "finanzas": ("finance", "Finanzas", "Cómo decidir aprobaciones, revisar caja y ventas, y auditar cambios.", [
         {"id": "que", "title": "Qué puedes hacer", "html": FIN_INTRO},
         {"id": "rapida", "title": "Guía rápida", "html": FIN_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": FIN_DETAIL},
+        {"id": "reportes", "title": "Reportes", "html": reports_section("finance")},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": FIN_STEPS},
     ], "Backoffice · toda la red · lectura + aprobaciones"),
     "administrador": ("admin", "Administrador", "Cómo configurar usuarios, puntos, precios y parámetros, y resolver las excepciones que sólo el administrador puede.", [
         {"id": "que", "title": "Qué puedes hacer", "html": ADM_INTRO},
         {"id": "rapida", "title": "Guía rápida", "html": ADM_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": ADM_DETAIL},
+        {"id": "reportes", "title": "Reportes", "html": reports_section("admin")},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": ADM_STEPS},
     ], "Backoffice · todos los permisos"),
 }

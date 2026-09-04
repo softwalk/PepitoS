@@ -29,6 +29,8 @@ ruta crítica; el módulo `ai/` solo clasifica texto de casos "otro" con reglas 
 | `finance` | Toda la red | + reconciliation.read, approvals.decide(payment), reports.read |
 | `admin` | Todo | + admin.* (usuarios, puntos, carritos, precios, dispositivos, revocación), rules.run, shift.reopen |
 
+Permisos del módulo de Reportes (`reports.executive|sales|cash|points|people|inventory|quality|maintenance|compliance|expansion` y `reports.self` para el operador): matriz por rol y alcance en `docs/REPORTES.md` §3.
+
 Reglas: mínimo privilegio; toda ruta declara permisos requeridos; `403` con `FORBIDDEN` si falta.
 Datos de operador filtrados por `shift.operator_id == user.id`; supervisor por `point.zone_id == user.zone_id`.
 
@@ -104,6 +106,7 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | GET | `/v1/control-tower/summary?date=` | `{date, totals:{points, open, late, closed, offline, sales_cents, target_cents, tx, ticket_cents, forecast_close_cents}, exceptions:{urgent, review, normal}, points:[PointStatus], alerts_recent:[Alert]}` |
 | GET | `/v1/control-tower/briefing?date=` | `{date, headline, decisions:[{title, why, recommendation, case_id?}], numbers:{...}}` |
 | GET | `/v1/reports/daily?date=` | `{date, rows:[{point, shift_id, operator, sales_cents, tx, cash_expected_cents, cash_counted_cents, difference_cents, waste_units, waste_pct, status}]}` |
+| GET | `/v1/reports/bi` · `/v1/reports/bi/options` · `/v1/reports/bi/{key}?period=&from=&to=&zone_id=&point_id=&operator_id=&cart_id=&presentation_id=&method=&export=` | Módulo de Reportes (BI): catálogo por rol, opciones de filtro en alcance y payload declarativo `{kpis, charts, tables, insights, hidden, period, compare, scope}`; alcance por zona/operador aplicado en la consulta; cada consulta se audita (`report.view` / `report.export`). Detalle en `docs/REPORTES.md` |
 | GET/PUT | `/v1/rules` · `/v1/rules/{key}` | `[{key, name, enabled, params:{}, severity}]`; PUT `{enabled?, params?, severity?}` |
 | POST | `/v1/rules/run` | ejecuta motor ahora → `{alerts_created, cases_created}` |
 | GET | `/v1/approvals?status=` · POST `/v1/approvals/{id}/decision` `{decision:"approve"|"reject", note}` |

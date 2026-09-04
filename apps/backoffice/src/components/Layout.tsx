@@ -10,6 +10,7 @@ interface NavItem { to: string; label: string; icon: IconName; roles: Role[]; mo
 const NAV: NavItem[] = [
   { group: 'Monitoreo', to: '/ct', label: 'Control Tower', icon: 'tower', roles: ['ops', 'finance', 'admin'] },
   { group: 'Monitoreo', to: '/ct/briefing', label: 'Briefing', icon: 'briefing', roles: ['ops', 'finance', 'admin'] },
+  { group: 'Monitoreo', to: '/reportes', label: 'Reportes', icon: 'reports', roles: ['ops', 'finance', 'admin', 'supervisor'], mobile: true },
   { group: 'Monitoreo', to: '/excepciones', label: 'Excepciones', icon: 'flag', roles: ['ops', 'finance', 'admin', 'supervisor'], mobile: true },
   { group: 'Campo', to: '/supervisor', label: 'Supervisor', icon: 'bolt', roles: ['supervisor', 'ops', 'admin'], mobile: true },
   { group: 'Campo', to: '/supervisor/ruta', label: 'Ruta', icon: 'route', roles: ['supervisor', 'ops', 'admin'], mobile: true },

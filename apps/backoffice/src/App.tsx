@@ -21,6 +21,9 @@ import { AuditLogPage } from './pages/AuditLog';
 import { AdminPage } from './pages/Admin';
 import { AuditDetailPage } from './pages/AuditDetail';
 import { ChangePasswordPage } from './pages/ChangePassword';
+import { ReportsPage } from './pages/Reports';
+import { ReportViewPage } from './pages/ReportView';
+import { ReportPrintPage } from './pages/ReportPrint';
 
 const CT: Role[] = ['ops', 'finance', 'admin'];
 const SUP: Role[] = ['supervisor', 'ops', 'admin'];
@@ -60,6 +63,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/ct" element={<Guard roles={CT}><ControlTowerPage /></Guard>} />
         <Route path="/ct/briefing" element={<Guard roles={CT}><BriefingPage /></Guard>} />
+        <Route path="/reportes" element={<Guard roles={STAFF}><ReportsPage /></Guard>} />
+        <Route path="/reportes/:key" element={<Guard roles={STAFF}><ReportViewPage /></Guard>} />
         <Route path="/excepciones" element={<Guard roles={CASES}><CasesPage /></Guard>} />
         <Route path="/casos/:id" element={<Guard roles={CASES}><CaseDetailPage /></Guard>} />
         <Route path="/supervisor" element={<Guard roles={SUP}><SupervisorPage /></Guard>} />
@@ -76,6 +81,8 @@ export default function App() {
         <Route path="/admin" element={<Guard roles={CT}><AdminPage /></Guard>} />
         <Route path={CHANGE_PASSWORD_PATH} element={<Guard roles={STAFF}><ChangePasswordPage /></Guard>} />
       </Route>
+      {/* Vista de impresión: fuera del Layout (sin navegación), misma autorización que el reporte. */}
+      <Route path="/reportes/:key/imprimir" element={<Guard roles={STAFF}><ReportPrintPage /></Guard>} />
       <Route path="*" element={<Home />} />
     </Routes>
   );

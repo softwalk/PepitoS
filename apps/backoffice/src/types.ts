@@ -306,3 +306,26 @@ export interface PriceVersion { id: string; name: string; valid_from: string | n
 /** Parámetro operativo (B6): `GET /v1/admin/settings`. */
 export interface Setting { key: string; value: unknown; type: 'int' | 'float' | 'bool' | 'str'; default: unknown; description: string; updated_at: string | null; updated_by: string | null }
 export interface Device { id: string; device_id: string; user_id: string | null; name: string | null; platform: string | null; revoked: boolean; revoked_at: string | null; revoked_reason: string | null; last_login_at: string | null; last_seen_at: string | null }
+
+// ── Módulo de Reportes (BI) ─────────────────────────────────────────────────
+export type ReportKey = 'executive' | 'sales' | 'cash' | 'points' | 'people' | 'inventory' | 'quality' | 'maintenance' | 'compliance' | 'expansion';
+export type ReportPreset = 'today' | 'yesterday' | 'last7' | 'week' | 'month' | 'prev_month' | 'year' | 'custom';
+export type ValueFormat = 'money' | 'int' | 'pct' | 'float' | 'text' | 'delta' | 'status' | 'link' | 'verdict';
+export type Tone = 'ok' | 'warn' | 'bad' | 'neutral';
+export type InsightKind = 'fact' | 'trend' | 'alert' | 'hypothesis' | 'recommendation';
+export interface ReportCatalogItem { key: ReportKey; title: string; description: string; decision: string; frequency: string; orientation: 'portrait' | 'landscape'; scope: 'network' | 'zone' | 'self' }
+export interface ReportCatalog { categories: { name: string; reports: ReportCatalogItem[] }[]; presets: { key: ReportPreset; label: string }[] }
+export interface ReportKpi { key: string; label: string; value: number | string | null; format: ValueFormat; prev: number | null; delta_pct: number | null; delta_abs: number | null; trend: 'up' | 'down' | 'flat'; tone: Tone; hint: string | null }
+export interface ReportSeries { key: string; label: string; format: ValueFormat; dashed?: boolean; axis?: 'left' | 'right'; color?: string }
+export interface ReportChart { key: string; title: string; type: 'line' | 'bar' | 'stacked' | 'donut' | 'heatmap' | 'scatter'; x?: string; y?: string; layout?: 'vertical' | 'horizontal'; data: Record<string, unknown>[]; series?: ReportSeries[]; x_labels?: string[]; y_labels?: string[]; format?: ValueFormat; domain?: [number, number]; x_label?: string; y_label?: string }
+export interface ReportColumn { key: string; label: string; format: ValueFormat; tone?: 'target' | 'ticket' | 'waste' | 'diff' | 'days' | 'avail'; link?: string; label_text?: string }
+export interface ReportTable { key: string; title: string; columns: ReportColumn[]; rows: Record<string, unknown>[]; link?: { route: string; param: string } }
+export interface ReportInsight { kind: InsightKind; text: string; link: string | null }
+export interface ReportPeriod { preset: string; preset_label: string; from: string; to: string; label: string; days: number; start: string; end: string }
+export interface ReportScope { role: Role; zone_id: string | null; operator_id: string | null; point_id: string | null; cart_id: string | null; presentation_id: string | null; method: string | null; zone_locked: boolean; operator_locked: boolean }
+export interface ReportPayload {
+  key: ReportKey; title: string; category: string; description: string; decision: string; frequency: string; orientation: 'portrait' | 'landscape'; generated_at: string;
+  period: ReportPeriod; compare: ReportPeriod; filters: Record<string, string>; scope: ReportScope;
+  kpis: ReportKpi[]; charts: ReportChart[]; tables: ReportTable[]; insights: ReportInsight[]; hidden: string[];
+}
+export interface ReportOptions { zones: { id: string; name: string }[]; points: { id: string; name: string; zone_id: string | null }[]; operators: { id: string; name: string; zone_id: string | null }[]; carts: { id: string; name: string }[]; presentations: { id: string; name: string }[]; methods: { id: string; name: string }[] }
