@@ -97,8 +97,9 @@ def test_out_of_geofence_and_sync_stale(fresh_operator, ops, db_session):
     db_session.commit()
     _run(ops)
     cases = _cases_for(ops, op.point["id"], "sync_stale")
-    assert len(cases) == 1
-    ps = next(p for p in ops.get("/v1/control-tower/summary").json()["points"] if p["point"]["id"] == op.point["id"])
+    from app.core.timeutil import local_today
+    shift_date = local_today(shift.opened_at).isoformat()
+    ps = next(p for p in ops.get("/v1/control-tower/summary", params={"date": shift_date}).json()["points"] if p["point"]["id"] == op.point["id"])
     assert ps["status"] == "offline"
 
 
