@@ -18,10 +18,11 @@ from app.services.cases import open_case_if_new
 from app.services import settings as settings_svc
 from app.services.settings import cash_thresholds, get_setting
 from app.services.cash import sales_summary
-from app.services.geo import in_geofence
+from app.services.geo import haversine_m, in_geofence
 from app.services.inventory import add_movement, apply_count, balances_for_point, shift_units
 
-CRITICAL_OPEN_KEYS = {"cart_secure", "battery_ok", "product_ok", "pos_ok"}
+# out_of_geofence cuenta como crítica: el operador ve el aviso ("abierto con pendientes") y el supervisor recibe caso urgente.
+CRITICAL_OPEN_KEYS = {"cart_secure", "battery_ok", "product_ok", "pos_ok", "out_of_geofence"}
 OPEN_EXCEPTION_MESSAGES = {
     "cart_secure": "Carrito no asegurado: revisa candado y resguardo",
     "battery_ok": "Batería insuficiente: conecta el cargador o pide reemplazo",
@@ -114,10 +115,19 @@ def open_shift(db: Session, current, data) -> dict:
         if not ok:
             exceptions.append({"code": key, "message": OPEN_EXCEPTION_MESSAGES.get(key, key)})
     gps = data.gps.model_dump(mode="json") if data.gps else None
+    distance_m: float | None = None
+    limit_m: int | None = None
     if data.gps is not None:
-        inside = in_geofence(data.gps.lat, data.gps.lng, point.lat, point.lng, point.geofence_radius_m)
-        if not inside:
-            exceptions.append({"code": "out_of_geofence", "message": OPEN_EXCEPTION_MESSAGES["out_of_geofence"]})
+        # Regla de apertura: a no más de `open_max_distance_m` (50 m) del punto asignado. Si las coordenadas del punto
+        # aún no están verificadas en campo, la tolerancia es su geocerca (150 m) para no generar falsos avisos.
+        distance_m = haversine_m(data.gps.lat, data.gps.lng, point.lat, point.lng)
+        limit_m = settings_svc.get_int(db, "open_max_distance_m") if point.geo_verified else point.geofence_radius_m
+        if distance_m > limit_m:
+            exceptions.append({
+                "code": "out_of_geofence",
+                "message": f"Estás a {distance_m:.0f} m del punto asignado (máximo {limit_m} m)",
+                "distance_m": round(distance_m), "limit_m": limit_m,
+            })
         if data.gps.mocked:
             exceptions.append({"code": "gps_mocked", "message": OPEN_EXCEPTION_MESSAGES["gps_mocked"]})
     critical = [e for e in exceptions if e["code"] in CRITICAL_OPEN_KEYS]
@@ -142,11 +152,15 @@ def open_shift(db: Session, current, data) -> dict:
         point_id=shift.point_id, shift_id=shift.id, taken_at=opened_at,
     )
     for e in critical:
+        severity = "urgent" if e["code"] in ("cart_secure", "out_of_geofence") else "review"
         open_case_if_new(
             db, rule_key=f"open_{e['code']}", point_id=shift.point_id, shift_id=shift.id,
-            severity="urgent" if e["code"] == "cart_secure" else "review", title=f"Apertura con excepción: {e['message']}",
-            description=e["message"], impact_score=15, source="operator", actor_id=current.id, category="opening",
+            severity=severity, title=f"Apertura con excepción: {e['message']}",
+            description=e["message"] + (f" · Operador {current.user.name}" if e["code"] == "out_of_geofence" else ""),
+            impact_score=25 if e["code"] == "out_of_geofence" else 15, source="operator", actor_id=current.id, category="opening",
+            payload={k: v for k, v in e.items() if k not in ("code", "message")},
         )
+
     events.emit(
         db, "ShiftOpened", actor_id=current.id, point_id=shift.point_id, shift_id=shift.id, entity="shift", entity_id=shift.id,
         payload={"assignment_id": assignment.id, "cart_id": assignment.cart_id, "exceptions": exceptions, "ready": ready, "photos": len(data.photos or []), "evidence_ids": [ev.id for ev in photos]},

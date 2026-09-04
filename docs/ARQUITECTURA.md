@@ -50,6 +50,12 @@
 diferencia de caja (umbral → caso `review`; grave → caso `urgent` + `Approval`), `count_adjustment` por presentación (umbral → caso),
 `ShiftClosed`, `CashDifferenceDetected`; asignación pasa a `done`.
 
+## Puntos autorizados y regla de distancia al abrir
+
+Los únicos puntos asignables a carritos son los de la tabla `points` activos: los dados de alta a mano y el **catálogo de 100 ubicaciones CDMX** (`apps/api/app/data/puntos_autorizados_cdmx.json`, derivado de `docs/ubicaciones/Pepito_100_mejores_ubicaciones_CDMX.xlsx`), que el seed importa en demo y prod (idempotente; una zona por alcaldía; ficha en `Point.meta`). Sus coordenadas son aproximadas (`geo_verified=false`) hasta que un administrador las valide en campo (*Administración → Puntos → Validar GPS*, audit `points.verify_location`).
+
+Al abrir con GPS el servidor calcula la distancia haversine al punto: límite `open_max_distance_m` (parámetro B6, 50 m) si el punto está verificado, o `geofence_radius_m` (150 m) si no. Si se excede: excepción crítica `out_of_geofence` con la distancia, el operador ve "ABIERTO CON PENDIENTES" (la PWA lo anticipa en vivo antes de pulsar LISTO y replica la regla sin señal), y se abre caso **urgente** `open_out_of_geofence` con alerta en Control Tower para el supervisor.
+
 ## Flujo de reapertura (continuar un turno terminado)
 
 Sólo `admin` (`shift.reopen`). `POST /v1/shifts/{id}/reopen {reason}` exige: `status=closed`, turno abierto en el día local actual, cierre hace menos de `shift_reopen_window_hours` (parámetro B6, 24 h por defecto) y que ni el operador ni el carrito tengan otro turno abierto (la carrera contra una apertura simultánea la resuelven los índices únicos parciales → 409). Se reabre el mismo turno (caja, asistencia, asignación a `started`), se conserva íntegro el cierre anterior en `audit_log` (`shift.reopen`) y en el evento `ShiftReopened`, y los casos `cash_difference` / `inventory_inconsistent` y la aprobación de diferencia grave de ese cierre se marcan **superados** (caso `closed`, aprobación `cancelled`) porque el siguiente cierre vuelve a conciliar contra todas las ventas del turno. La PWA, cuando no tiene turno abierto local, re-consulta `/v1/me/assignment` al volver a primer plano y cada 60 s; al adoptar el turno arranca pings GPS, cachea el esperado y guarda las ventas previas del servidor (`server_sales`) para los contadores y el cierre sin red.

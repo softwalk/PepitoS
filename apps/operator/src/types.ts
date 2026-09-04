@@ -60,6 +60,8 @@ export interface OperatorConfig {
   require_open_photo: boolean;
   /** Tamaño máximo por foto (bytes) aceptado por el servidor. */
   evidence_max_bytes: number;
+  /** Distancia máxima (m) al punto asignado para abrir sin aviso (sólo puntos con coordenadas verificadas). */
+  open_max_distance_m?: number;
 }
 
 /** Foto de evidencia: base64 puro (sin prefijo data:) JPEG/PNG/WebP ≤ evidence_max_bytes. */
@@ -87,6 +89,8 @@ export interface Point {
   lat: number;
   lng: number;
   geofence_radius_m: number;
+  /** Coordenadas validadas en campo; si es false la tolerancia de apertura es geofence_radius_m. */
+  geo_verified?: boolean;
 }
 
 export interface Assignment {

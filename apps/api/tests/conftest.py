@@ -140,7 +140,8 @@ def fresh_operator(client, admin):
         n = _counter["n"]
         tag = f"{uuid.uuid4().hex[:6]}"
         zones = admin.get("/v1/admin/zones").json()
-        zone_id = zone_id or zones[0]["id"]
+        # Zona "Centro" (la de sup1); el catálogo de puntos autorizados crea una zona por alcaldía.
+        zone_id = zone_id or next((z["id"] for z in zones if z["name"] == "Centro"), zones[0]["id"])
         point = admin.post("/v1/admin/points", json={"name": f"Punto Test {tag}", "address": "test", "lat": lat, "lng": lng, "zone_id": zone_id, "geofence_radius_m": 150}).json()
         cart = admin.post("/v1/admin/carts", json={"code": f"T-{tag}"}).json()
         user = admin.post("/v1/admin/users", json={"username": f"optest{tag}", "name": f"Operador Test {n}", "role": "operator", "password": "op123", "zone_id": zone_id}).json()

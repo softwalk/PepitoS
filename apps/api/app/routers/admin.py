@@ -23,6 +23,7 @@ from app.schemas.backoffice import (
     CartPatch,
     PointIn,
     PointPatch,
+    PointVerifyIn,
     PresentationIn,
     PresentationPatch,
     PriceVersionIn,
@@ -58,7 +59,11 @@ def ser_user(u: User) -> dict:
 
 
 def ser_point(p: Point) -> dict:
-    return {"id": _u(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "zone_id": _u(p.zone_id), "open_time": p.open_time, "close_time": p.close_time, "daily_target_cents": p.daily_target_cents, "daily_target_tx": p.daily_target_tx, "is_active": p.is_active}
+    return {
+        "id": _u(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "zone_id": _u(p.zone_id),
+        "open_time": p.open_time, "close_time": p.close_time, "daily_target_cents": p.daily_target_cents, "daily_target_tx": p.daily_target_tx, "is_active": p.is_active,
+        "geo_verified": bool(p.geo_verified), "meta": p.meta or {},
+    }
 
 
 def ser_cart(c: Cart) -> dict:
@@ -199,6 +204,8 @@ def _user_patch(db, obj, values):
 
 def _assignment_create(db, values):
     point = _get(db, Point, values["point_id"], "Punto")
+    if not point.is_active:
+        raise ApiError("VALIDATION", f"El punto «{point.name}» no está activo: sólo se asignan puntos autorizados activos")
     _get(db, User, values["operator_id"], "Operador")
     _get(db, Cart, values["cart_id"], "Carrito")
     if db.query(Assignment).filter(Assignment.operator_id == values["operator_id"], Assignment.shift_date == values["shift_date"]).first():
@@ -245,6 +252,30 @@ def reset_password(user_id: uuid.UUID, request: Request, data: ResetPasswordIn |
     if generated:
         body["temporary_password"] = new_password
     return body
+
+
+@router.post("/points/import-authorized")
+def import_authorized(request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Re-importa el catálogo de puntos autorizados (idempotente; no pisa coordenadas verificadas)."""
+    from app.services.points_import import import_authorized_points
+
+    out = import_authorized_points(db, actor_id=current.id)
+    db.commit()
+    return out
+
+
+@router.post("/points/{point_id}/verify-location")
+def verify_point_location(point_id: uuid.UUID, data: PointVerifyIn, request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Marca las coordenadas del punto como verificadas en campo. Si vienen lat/lng (p. ej. el GPS de una apertura), se adoptan."""
+    p = _get(db, Point, point_id, "Punto")
+    before = {"lat": p.lat, "lng": p.lng, "geo_verified": p.geo_verified}
+    if data.lat is not None and data.lng is not None:
+        p.lat, p.lng = data.lat, data.lng
+    p.geo_verified = data.verified
+    p.meta = {**(p.meta or {}), "geo_source": data.source or ("verificado por administrador" if data.verified else "por validar")}
+    audit.log(db, actor_id=current.id, action="points.verify_location", entity="points", entity_id=p.id, before=before, after={"lat": p.lat, "lng": p.lng, "geo_verified": p.geo_verified}, reason=data.source, ip=client_ip(request))
+    db.commit()
+    return ser_point(p)
 
 
 @router.get("/price-versions")

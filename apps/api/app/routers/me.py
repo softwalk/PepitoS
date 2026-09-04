@@ -73,6 +73,7 @@ def operator_config(db: Session, assignment=None) -> dict:
         "photo_sampling_pct": sampling,
         "require_open_photo": require_open_photo(assignment.id, sampling) if assignment is not None else False,
         "evidence_max_bytes": settings.EVIDENCE_MAX_BYTES,
+        "open_max_distance_m": settings_svc.get_int(db, "open_max_distance_m"),
     }
 
 
@@ -90,7 +91,7 @@ def my_assignment(current: CurrentUser = Depends(require("me.read")), db: Sessio
             "planned_start": iso(a.planned_start),
             "planned_end": iso(a.planned_end),
             "status": a.status,
-            "point": {"id": str(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m},
+            "point": {"id": str(p.id), "name": p.name, "address": p.address, "lat": p.lat, "lng": p.lng, "geofence_radius_m": p.geofence_radius_m, "geo_verified": bool(p.geo_verified)},
             "cart": {"id": str(a.cart.id), "code": a.cart.code},
         }
     return {

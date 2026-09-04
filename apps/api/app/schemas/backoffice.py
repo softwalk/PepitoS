@@ -137,6 +137,8 @@ class PointIn(BaseModel):
     daily_target_cents: int | None = None  # None → settings.daily_sales_target_default_cents
     daily_target_tx: int = 60
     is_active: bool = True
+    geo_verified: bool = True  # alta manual con coordenadas conocidas
+    meta: dict | None = None
 
 
 class PointPatch(BaseModel):
@@ -151,6 +153,15 @@ class PointPatch(BaseModel):
     daily_target_cents: int | None = None
     daily_target_tx: int | None = None
     is_active: bool | None = None
+    geo_verified: bool | None = None
+    meta: dict | None = None
+
+
+class PointVerifyIn(BaseModel):
+    verified: bool = True
+    lat: float | None = None
+    lng: float | None = None
+    source: str | None = None  # p. ej. "GPS de apertura 04-sep 08:12"
 
 
 class CartIn(BaseModel):

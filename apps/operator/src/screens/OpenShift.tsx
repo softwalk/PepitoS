@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
 import { GPS_REASON_TEXT, getPositionDetailed, type GpsReason } from '../offline/gps';
+import { haversineM, openLimitM } from '../offline/geo';
 import { speak } from '../offline/speech';
 import { openShift, suggestedAction } from '../state/actions';
 import { useApp } from '../state/store';
@@ -18,7 +19,7 @@ const ITEMS: { key: keyof OpenChecklist; icon: string; label: string }[] = [
 
 export default function OpenShift() {
   const nav = useNavigate();
-  const { catalog, config, reload } = useApp();
+  const { catalog, config, reload, assignment } = useApp();
   const [gps, setGps] = useState<GPS | null | 'loading'>('loading');
   const [gpsReason, setGpsReason] = useState<GpsReason | null>(null);
   const [values, setValues] = useState<Partial<Record<keyof OpenChecklist, boolean>>>({});
@@ -48,6 +49,10 @@ export default function OpenShift() {
   }, []);
 
   const labels = new Map((catalog?.checklist_open ?? []).map((c) => [c.key, c.label]));
+  const point = assignment?.assignment?.point ?? null;
+  const distanceM = gps && gps !== 'loading' && point ? Math.round(haversineM(gps.lat, gps.lng, point.lat, point.lng)) : null;
+  const limitM = point ? openLimitM(point, config?.open_max_distance_m) : null;
+  const tooFar = distanceM !== null && limitM !== null && distanceM > limitM;
   const answered = ITEMS.filter((i) => typeof values[i.key] === 'boolean').length;
   const complete = answered === ITEMS.length;
 
@@ -131,6 +136,23 @@ export default function OpenShift() {
         <span aria-hidden>📡</span>
         {gps === 'loading' ? 'Buscando ubicación…' : gps ? `Ubicación lista${gps.accuracy_m ? ` (±${Math.round(gps.accuracy_m)} m)` : ''}` : 'Sin ubicación (continúa igual)'}
       </div>
+      {distanceM !== null && limitM !== null && (
+        <div className={tooFar ? 'exception' : 'row muted'} role="status" data-testid="distance-check">
+          <span className="ico" aria-hidden>
+            {tooFar ? '📍' : '✅'}
+          </span>
+          <div>
+            {tooFar ? (
+              <>
+                <b>Estás a {distanceM} m del punto asignado (máximo {limitM} m)</b>
+                Acércate a {point?.name} antes de abrir. Si abres aquí, quedará como pendiente y se avisará al supervisor.
+              </>
+            ) : (
+              <>A {distanceM} m de {point?.name} · dentro del punto</>
+            )}
+          </div>
+        </div>
+      )}
       {gps === null && gpsReason && (
         <div className="exception" role="status" data-testid="gps-reason">
           <span className="ico" aria-hidden>

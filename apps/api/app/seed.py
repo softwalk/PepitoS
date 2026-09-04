@@ -98,6 +98,11 @@ def _seed_catalog(db: Session, created_by) -> list:
 
     ensure_settings(db)  # parámetros operativos (B6), mismas claves en demo y prod
 
+    # Puntos autorizados (catálogo de 100 ubicaciones CDMX): mismas altas en demo y prod; idempotente.
+    from app.services.points_import import import_authorized_points
+
+    import_authorized_points(db, actor_id=created_by)
+
     if db.query(Checklist).count() == 0:
         for i, (key, label, critical) in enumerate(CHECKLIST_OPEN):
             db.add(Checklist(kind="open", key=key, label=label, critical=critical, sort=i))

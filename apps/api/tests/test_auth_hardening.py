@@ -279,8 +279,10 @@ def test_seed_prod_only_admin(monkeypatch):
         users = db.query(User).all()
         assert [u.username for u in users] == ["admin"]
         assert users[0].must_change_password is True and users[0].role == "admin"
-        assert [z.name for z in db.query(Zone).all()] == ["Default"]
-        assert db.query(Point).count() == 0
+        zone_names = [z.name for z in db.query(Zone).all()]
+        assert "Default" in zone_names and "Iztapalapa" in zone_names  # Default + una zona por alcaldía del catálogo
+        # Sin puntos manuales: sólo el catálogo de 100 puntos autorizados (coordenadas por verificar)
+        assert db.query(Point).count() == 100 and db.query(Point).filter(Point.geo_verified.is_(True)).count() == 0
         assert db.query(Cart).count() == 0
         assert db.query(Assignment).count() == 0
         assert db.query(Device).count() == 0

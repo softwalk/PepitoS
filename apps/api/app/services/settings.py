@@ -24,6 +24,7 @@ SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
     "gps_retention_days": {"type": "int", "default": 90, "min": 1, "description": "Días que se conservan los gps_pings"},
     "daily_sales_target_default_cents": {"type": "int", "default": 234000, "min": 0, "description": "Meta diaria de ventas por punto (centavos) cuando el punto no tiene una propia"},
     "shift_reopen_window_hours": {"type": "int", "default": 24, "min": 1, "max": 48, "description": "Horas tras el cierre en que un administrador aún puede continuar (reabrir) un turno terminado; además debe ser del día en curso"},
+    "open_max_distance_m": {"type": "int", "default": 50, "min": 10, "max": 1000, "description": "Distancia máxima (m) entre el operador y el punto asignado al abrir; si se excede se avisa al operador y se abre caso urgente para el supervisor. Sólo aplica a puntos con coordenadas verificadas; en los demás se usa la geocerca del punto"},
     "inventory_count_tolerance_units": {"type": "int", "default": 3, "min": 0, "description": "Diferencia (unidades) entre conteo y teórico a partir de la cual se abre caso de inventario"},
 }
 

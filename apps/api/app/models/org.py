@@ -95,6 +95,11 @@ class Point(UUIDMixin, TimestampMixin, Base):
     daily_target_cents: Mapped[int] = mapped_column(Integer, default=234000, nullable=False)
     daily_target_tx: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Coordenadas confirmadas en campo. Mientras sea False la apertura usa `geofence_radius_m` como tolerancia en vez de
+    # la regla estricta `open_max_distance_m` (50 m), porque una coordenada aproximada generaría falsos "fuera de punto".
+    geo_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Ficha del punto autorizado (ranking, alcaldía, tipo de nodo, score, horario sugerido, justificación, fuente…).
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     zone: Mapped["Zone | None"] = relationship()
 

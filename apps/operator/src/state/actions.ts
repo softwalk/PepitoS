@@ -15,6 +15,7 @@ import {
 import { computeLocalExpected, computeLocalProductExpected } from '../offline/expected';
 import { getDeviceId, deviceName } from '../offline/device';
 import { startGpsPings, stopGpsPings } from '../offline/gps';
+import { haversineM, openLimitM } from '../offline/geo';
 import * as queue from '../offline/queue';
 import { syncNow, trigger } from '../offline/sync';
 import type {
@@ -63,7 +64,8 @@ const OPEN_MESSAGES: Record<string, { message: string; action: string }> = {
   out_of_geofence: { message: 'Estás fuera del punto asignado', action: 'Ve al punto o avisa al supervisor' },
   gps_mocked: { message: 'La ubicación parece simulada', action: 'Desactiva ubicación falsa' },
 };
-const CRITICAL_OPEN = new Set(['cart_secure', 'battery_ok', 'product_ok', 'pos_ok']);
+// out_of_geofence es crítica: el operador ve "abierto con pendientes" y el servidor abre caso urgente.
+const CRITICAL_OPEN = new Set(['cart_secure', 'battery_ok', 'product_ok', 'pos_ok', 'out_of_geofence']);
 
 export function suggestedAction(code: string): string {
   return OPEN_MESSAGES[code]?.action ?? 'Avisa al supervisor';
@@ -220,6 +222,13 @@ export async function openShift(checklist: OpenChecklist, gps: GPS | null, photo
   if (!a?.assignment) throw new ApiError('NO_ASSIGNMENT', 'No tienes asignación para hoy', 409);
   const local_id = `local:${uuidv4()}`;
   const exceptions = localOpenExceptions(checklist);
+  // Regla de distancia (misma que el servidor) para que el aviso se vea también al abrir sin señal.
+  if (gps) {
+    const cfg = (await getConfig()) ?? undefined;
+    const limit = openLimitM(a.assignment.point, cfg?.open_max_distance_m);
+    const d = haversineM(gps.lat, gps.lng, a.assignment.point.lat, a.assignment.point.lng);
+    if (d > limit) exceptions.push({ code: 'out_of_geofence', message: `Estás a ${Math.round(d)} m del punto asignado (máximo ${limit} m)` });
+  }
   const ready = !exceptions.some((e) => CRITICAL_OPEN.has(e.code));
   const opened_at = new Date().toISOString();
   await shiftStore.set({

@@ -5,7 +5,7 @@ import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { SettingsTab } from './SettingsTab';
 import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } from '../components/ui';
-import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, User, Zone } from '../types';
+import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, Setting, User, Zone } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 import { ROLE_LABEL } from '../components/Layout';
 import { ReopenShiftButton } from '../components/ReopenShift';
@@ -245,6 +245,24 @@ export function AdminPage() {
   const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), [], { enabled: isAdmin });
   const carts = useFetch<Cart[]>(() => api.get('/v1/admin/carts'), [], { enabled: isAdmin });
   const assignments = useFetch<Assignment[]>(() => api.get('/v1/admin/assignments'), [], { enabled: isAdmin });
+  const [pointSheet, setPointSheet] = useState<Point | null>(null);
+  const [verifying, setVerifying] = useState<Point | null>(null);
+  const [importing, setImporting] = useState(false);
+  const settingsAll = useFetch<Setting[]>(() => api.get('/v1/admin/settings'), []);
+  const openMaxDistance = Number(settingsAll.data?.find((s) => s.key === 'open_max_distance_m')?.value ?? 50);
+  const reimportPoints = async () => {
+    setImporting(true);
+    try {
+      const r = await api.post<{ created: number; updated: number; zones_created: number }>('/v1/admin/points/import-authorized');
+      toast.toast(`Catálogo importado: ${r.created} nuevos, ${r.updated} actualizados, ${r.zones_created} zonas nuevas`, 'success');
+      await points.reload(true);
+      await zones.reload(true);
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setImporting(false);
+    }
+  };
   const presentations = useFetch<Presentation[]>(() => api.get('/v1/admin/presentations'), [], { silent: !isAdmin });
   const priceVersions = useFetch<PriceVersion[]>(() => api.get('/v1/admin/price-versions'), []);
   const devices = useFetch<Device[]>(() => api.get('/v1/admin/devices'), [], { enabled: isAdmin });
@@ -357,7 +375,7 @@ export function AdminPage() {
         <Crud<Point>
           path="points"
           label="Puntos"
-          data={points.data}
+          data={points.data ? [...points.data].sort((a, b) => (a.meta?.ranking ?? 0) - (b.meta?.ranking ?? 0) || a.name.localeCompare(b.name)) : null}
           reload={() => points.reload(true)}
           fields={[
             { key: 'name', label: 'Nombre', required: true },
@@ -371,16 +389,62 @@ export function AdminPage() {
             { key: 'daily_target_cents', label: 'Meta diaria (centavos)', type: 'number' },
             { key: 'daily_target_tx', label: 'Meta ventas/día', type: 'number' },
             { key: 'is_active', label: 'Activo', type: 'checkbox' },
+            { key: 'geo_verified', label: 'Coordenadas verificadas en campo', type: 'checkbox' },
           ]}
           columns={[
-            { h: 'Punto', r: (p) => <b>{p.name}</b> },
-            { h: 'Dirección', r: (p) => p.address ?? '—' },
-            { h: 'Zona', r: (p) => zoneName(p.zone_id) },
-            { h: 'GPS', r: (p) => <span className="mono">{p.lat.toFixed(4)}, {p.lng.toFixed(4)} · r{p.geofence_radius_m}m</span> },
+            { h: '#', r: (p) => (p.meta?.ranking ? <span className="mono">{p.meta.ranking}</span> : <span className="muted">—</span>) },
+            { h: 'Punto', r: (p) => (
+              <>
+                <b>{p.name}</b>
+                {p.meta?.node_type && <div className="muted small">{p.meta.node_type}{p.meta.score ? ` · score ${p.meta.score}` : ''}</div>}
+              </>
+            ) },
+            { h: 'Alcaldía / zona', r: (p) => zoneName(p.zone_id) },
+            { h: 'GPS', r: (p) => (
+              <>
+                <span className="mono">{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</span>{' '}
+                {p.geo_verified === false ? <Badge tone="amber" title={p.meta?.geo_source ?? 'Coordenadas aproximadas'}>Por validar · tolerancia {p.geofence_radius_m} m</Badge> : <Badge tone="green">Verificado · apertura ≤ {openMaxDistance} m</Badge>}
+              </>
+            ) },
             { h: 'Horario', r: (p) => `${p.open_time ?? '—'}–${p.close_time ?? '—'}` },
             { h: 'Meta', r: (p) => `${money(p.daily_target_cents, { decimals: 0 })} · ${p.daily_target_tx} tx` },
             { h: 'Activo', r: (p) => <StatusBadge status={p.is_active ? 'active' : 'blocked'} /> },
           ]}
+          extra={(p) => (
+            <>
+              {p.meta?.ranking && (
+                <button type="button" className="btn small btn-ghost" onClick={() => setPointSheet(p)}>
+                  Ficha
+                </button>
+              )}{' '}
+              {p.geo_verified === false && isAdmin && (
+                <button type="button" className="btn small btn-accent" data-testid={`verify-point-${p.id}`} onClick={() => setVerifying(p)}>
+                  Validar GPS
+                </button>
+              )}
+            </>
+          )}
+        />
+      )}
+      {tab === 'points' && (
+        <p className="muted small">
+          Sólo los puntos activos pueden asignarse a carritos. Los 100 del catálogo <i>Pepito · mejores ubicaciones CDMX</i> entran con coordenadas aproximadas (<b>Por validar</b>): al abrir se tolera la geocerca del punto. Tras validarlas en campo (<b>Validar GPS</b>) aplica la regla estricta: abrir a más de {openMaxDistance} m avisa al operador y abre caso urgente.{' '}
+          {isAdmin && (
+            <button type="button" className="btn small" onClick={reimportPoints} disabled={importing}>
+              {importing ? 'Importando…' : 'Reimportar catálogo'}
+            </button>
+          )}
+        </p>
+      )}
+      {pointSheet && <PointSheetModal point={pointSheet} onClose={() => setPointSheet(null)} />}
+      {verifying && (
+        <VerifyPointModal
+          point={verifying}
+          onClose={() => setVerifying(null)}
+          onDone={async () => {
+            setVerifying(null);
+            await points.reload(true);
+          }}
         />
       )}
 
@@ -610,5 +674,88 @@ export function AdminPage() {
         />
       )}
     </div>
+  );
+}
+
+
+/** Ficha del punto autorizado (datos del catálogo de ubicaciones). */
+function PointSheetModal({ point, onClose }: { point: Point; onClose: () => void }) {
+  const m = point.meta ?? {};
+  const row = (k: string, v?: string | number | null) => (v ? (
+    <tr>
+      <th style={{ width: 180 }}>{k}</th>
+      <td>{v}</td>
+    </tr>
+  ) : null);
+  return (
+    <Modal title={`#${m.ranking} · ${point.name}`} onClose={onClose} className="wide">
+      <table className="table compact">
+        <tbody>
+          {row('Alcaldía', m.alcaldia)}
+          {row('Tipo de nodo', m.node_type)}
+          {row('Score /100', m.score)}
+          {row('Afluencia estimada', m.afluencia)}
+          {row('Riesgo permiso/operación', m.riesgo)}
+          {row('Factibilidad resguardo + carga', m.resguardo)}
+          {row('Horario sugerido', m.horario_sugerido)}
+          {row('Justificación', m.justificacion)}
+          {row('Estrategia resguardo/recarga', m.estrategia)}
+          {row('Validación antes de abrir', m.validacion)}
+          {row('Coordenadas', `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)} · ${point.geo_verified === false ? 'por validar' : 'verificadas'}${m.geo_source ? ` (${m.geo_source})` : ''}`)}
+          {row('Fuente', m.fuente)}
+        </tbody>
+      </table>
+      <p className="muted small" style={{ marginTop: 8 }}>{m.source}</p>
+    </Modal>
+  );
+}
+
+/** Valida las coordenadas de un punto: a mano (lat/lng) o adoptando el GPS de la última apertura registrada en ese punto. */
+function VerifyPointModal({ point, onClose, onDone }: { point: Point; onClose: () => void; onDone: () => Promise<void> }) {
+  const toast = useToast();
+  const [lat, setLat] = useState(String(point.lat));
+  const [lng, setLng] = useState(String(point.lng));
+  const [source, setSource] = useState('Validado en campo');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post(`/v1/admin/points/${point.id}/verify-location`, { verified: true, lat: Number(lat), lng: Number(lng), source });
+      toast.toast(`Coordenadas de ${point.name} verificadas`, 'success');
+      await onDone();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Validar GPS · ${point.name}`} onClose={onClose}>
+      <form className="stack" onSubmit={submit} data-testid="verify-point-form">
+        <p className="small muted">
+          Escribe las coordenadas reales del lugar exacto donde se coloca el carrito (por ejemplo, las que marca el teléfono del supervisor parado en el punto). A partir de ahora la apertura exigirá estar a no más de la distancia máxima configurada.
+        </p>
+        <div className="form-grid">
+          <Field label="Latitud">
+            <input value={lat} onChange={(e) => setLat(e.target.value)} required inputMode="decimal" />
+          </Field>
+          <Field label="Longitud">
+            <input value={lng} onChange={(e) => setLng(e.target.value)} required inputMode="decimal" />
+          </Field>
+        </div>
+        <Field label="Fuente / nota" hint="Queda en el audit log.">
+          <input value={source} onChange={(e) => setSource(e.target.value)} maxLength={120} />
+        </Field>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn btn-accent" disabled={busy} data-testid="verify-point-confirm">
+            {busy ? 'Guardando…' : 'Marcar verificado'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

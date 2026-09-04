@@ -94,8 +94,10 @@ svg text{font-family:inherit}
 <tr><td>Producto suficiente y en buen estado</td><td>Crítico</td><td>Caso REVISAR: <i>"pide reposición"</i>.</td></tr>
 <tr><td>🧽 Carrito limpio</td><td>No crítico</td><td>Queda anotado; se te pide limpiar antes de vender.</td></tr>
 <tr><td>💳 Terminal POS funciona</td><td>Crítico</td><td>Caso REVISAR: <i>"cobra sólo en efectivo y pide ayuda"</i>.</td></tr>
+<tr><td>📍 Distancia al punto (automática)</td><td>Crítico si &gt; 50 m</td><td>Caso <b>URGENTE</b>: <i>"Estás a N m del punto asignado (máximo 50 m)"</i>.</td></tr>
 </table></div>
-<p>Con todo en Sí → <b>"LISTO PARA VENDER"</b>. Con algún No crítico → <b>"ABIERTO CON PENDIENTES"</b>, la lista de lo que falta y <i>"Ya avisamos al supervisor"</i>; puedes vender de todos modos. Si estás lejos de tu punto (fuera de la geocerca, 150 m normalmente) aparece <i>"Estás fuera del punto asignado"</i>.</p>
+<p>Con todo en Sí → <b>"LISTO PARA VENDER"</b>. Con algún No crítico → <b>"ABIERTO CON PENDIENTES"</b>, la lista de lo que falta y <i>"Ya avisamos al supervisor"</i>; puedes vender de todos modos.</p>
+<div class="callout warn"><b>Regla de los 50 metros.</b> Debes abrir a no más de <b>50 m</b> del lugar exacto de tu punto. Mientras contestas el checklist la app te dice a qué distancia estás: <i>"✅ A 18 m de Metro Insurgentes · dentro del punto"</i> o <i>"📍 Estás a 300 m del punto asignado (máximo 50 m) — Acércate antes de abrir"</i>. Si abres lejos, el puesto queda <b>abierto con pendientes</b> y el supervisor recibe un aviso urgente con la distancia. (En puntos nuevos cuyas coordenadas aún no se validaron en campo, la tolerancia es de 150 m.)</div>
 <p><b>Foto de muestreo.</b> Algunos días (10 % de las aperturas, lo decide el sistema) el botón dice <span class="ui g">SIGUIENTE: FOTO</span>: toma una foto del puesto listo. Si la cámara falla, <span class="ui">Continuar sin foto</span>; nunca te bloquea. Ese mismo día también se pide foto al cerrar.</p>
 
 <h3 id="op-vender">Vender</h3>
@@ -147,7 +149,7 @@ svg text{font-family:inherit}
 <h3 id="op-ej1">Ejemplo 1 · Un día normal (Operador Uno, Metro Insurgentes, carrito C-001)</h3>
 <ol class="steps">
 <li><b>Entrar</b> Usuario <code>op1</code>, contraseña, <span class="ui p">ENTRAR</span>.<div class="ex">Pantalla verde: "Bienvenido · 📍 Metro Insurgentes · Carrito C-001". A los 2 segundos pasas a Inicio con "Puesto cerrado · Turno 8:00 a.m. – 6:00 p.m.".</div></li>
-<li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>.</div></li>
+<li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Verifica la línea de distancia ("✅ A 12 m de Metro Insurgentes · dentro del punto") y contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>. Si dijera "📍 Estás a 300 m…", camina hasta el punto antes de pulsar LISTO.</div></li>
 <li><b>Primera venta en efectivo</b> Con "💵 Efectivo" seleccionado toca <b>100 g · $45</b>.<div class="ex">Toast "✓ Venta registrada · 100 g · $45". Contador: 1 venta · $45. La barra sigue en "✓ Guardado".</div></li>
 <li><b>Venta con QR</b> Toca <span class="ui b">📱 QR / Tarjeta</span>, luego <b>75 g · $35</b>.<div class="ex">El botón se ve azul y el toast también. Después de la venta la forma de pago regresa a Efectivo.</div></li>
 <li><b>Te equivocaste</b> Vendiste 50 g pero era 100 g. En el toast toca <span class="ui">↩ Deshacer</span> antes de 60 s.<div class="ex">Si ya decía "Última venta" y se había enviado, elige el motivo "🔁 Cambio de tamaño". Luego registra la venta correcta.</div></li>

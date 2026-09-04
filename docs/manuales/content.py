@@ -55,8 +55,10 @@ OP_DETAIL = """
 <tr><td>Producto suficiente y en buen estado</td><td>Crítico</td><td>Caso REVISAR: <i>"pide reposición"</i>.</td></tr>
 <tr><td>🧽 Carrito limpio</td><td>No crítico</td><td>Queda anotado; se te pide limpiar antes de vender.</td></tr>
 <tr><td>💳 Terminal POS funciona</td><td>Crítico</td><td>Caso REVISAR: <i>"cobra sólo en efectivo y pide ayuda"</i>.</td></tr>
+<tr><td>📍 Distancia al punto (automática)</td><td>Crítico si &gt; 50 m</td><td>Caso <b>URGENTE</b>: <i>"Estás a N m del punto asignado (máximo 50 m)"</i>.</td></tr>
 </table></div>
-<p>Con todo en Sí → <b>"LISTO PARA VENDER"</b>. Con algún No crítico → <b>"ABIERTO CON PENDIENTES"</b>, la lista de lo que falta y <i>"Ya avisamos al supervisor"</i>; puedes vender de todos modos. Si estás lejos de tu punto (fuera de la geocerca, 150 m normalmente) aparece <i>"Estás fuera del punto asignado"</i>.</p>
+<p>Con todo en Sí → <b>"LISTO PARA VENDER"</b>. Con algún No crítico → <b>"ABIERTO CON PENDIENTES"</b>, la lista de lo que falta y <i>"Ya avisamos al supervisor"</i>; puedes vender de todos modos.</p>
+<div class="callout warn"><b>Regla de los 50 metros.</b> Debes abrir a no más de <b>50 m</b> del lugar exacto de tu punto. Mientras contestas el checklist la app te dice a qué distancia estás: <i>"✅ A 18 m de Metro Insurgentes · dentro del punto"</i> o <i>"📍 Estás a 300 m del punto asignado (máximo 50 m) — Acércate antes de abrir"</i>. Si abres lejos, el puesto queda <b>abierto con pendientes</b> y el supervisor recibe un aviso urgente con la distancia. (En puntos nuevos cuyas coordenadas aún no se validaron en campo, la tolerancia es de 150 m.)</div>
 <p><b>Foto de muestreo.</b> Algunos días (10 % de las aperturas, lo decide el sistema) el botón dice <span class="ui g">SIGUIENTE: FOTO</span>: toma una foto del puesto listo. Si la cámara falla, <span class="ui">Continuar sin foto</span>; nunca te bloquea. Ese mismo día también se pide foto al cerrar.</p>
 
 <h3 id="op-vender">Vender</h3>
@@ -110,7 +112,7 @@ OP_STEPS = """
 <h3 id="op-ej1">Ejemplo 1 · Un día normal (Operador Uno, Metro Insurgentes, carrito C-001)</h3>
 <ol class="steps">
 <li><b>Entrar</b> Usuario <code>op1</code>, contraseña, <span class="ui p">ENTRAR</span>.<div class="ex">Pantalla verde: "Bienvenido · 📍 Metro Insurgentes · Carrito C-001". A los 2 segundos pasas a Inicio con "Puesto cerrado · Turno 8:00 a.m. – 6:00 p.m.".</div></li>
-<li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>.</div></li>
+<li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Verifica la línea de distancia ("✅ A 12 m de Metro Insurgentes · dentro del punto") y contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>. Si dijera "📍 Estás a 300 m…", camina hasta el punto antes de pulsar LISTO.</div></li>
 <li><b>Primera venta en efectivo</b> Con "💵 Efectivo" seleccionado toca <b>100 g · $45</b>.<div class="ex">Toast "✓ Venta registrada · 100 g · $45". Contador: 1 venta · $45. La barra sigue en "✓ Guardado".</div></li>
 <li><b>Venta con QR</b> Toca <span class="ui b">📱 QR / Tarjeta</span>, luego <b>75 g · $35</b>.<div class="ex">El botón se ve azul y el toast también. Después de la venta la forma de pago regresa a Efectivo.</div></li>
 <li><b>Te equivocaste</b> Vendiste 50 g pero era 100 g. En el toast toca <span class="ui">↩ Deshacer</span> antes de 60 s.<div class="ex">Si ya decía "Última venta" y se había enviado, elige el motivo "🔁 Cambio de tamaño". Luego registra la venta correcta.</div></li>
@@ -166,7 +168,7 @@ SUP_QUICK = """
 </div>
 <h3 id="sup-sev">Severidades y prioridad</h3>
 <div class="tbl"><table><tr><th>Severidad</th><th>Significa</th><th>Ejemplos</th><th>Qué se espera de ti</th></tr>
-<tr><td><span class="badge b-red">URGENTE</span></td><td>Riesgo o pérdida en curso</td><td>Punto sin abrir (20 min de gracia), fuera de geocerca 10 min, seguridad, batería &lt; 10 %, carrito no asegurado, diferencia de caja &gt; $100</td><td>Actuar ahora (llamar, ir, escalar)</td></tr>
+<tr><td><span class="badge b-red">URGENTE</span></td><td>Riesgo o pérdida en curso</td><td>Punto sin abrir (20 min de gracia), apertura a más de 50 m del punto, fuera de geocerca 10 min, seguridad, batería &lt; 10 %, carrito no asegurado, diferencia de caja &gt; $100</td><td>Actuar ahora (llamar, ir, escalar)</td></tr>
 <tr><td><span class="badge b-amber">REVISAR</span></td><td>Desviación que requiere visita</td><td>Ventas bajo trayectoria, merma &gt; 4 %, batería &lt; 25 %, sin sincronizar 30 min, cancelaciones anómalas, stock crítico, diferencia de caja &gt; $20</td><td>Incluirlo en la ruta de hoy</td></tr>
 <tr><td><span class="badge b-green">NORMAL</span></td><td>Dentro de parámetros</td><td>Ayuda "Otro", puntos sin casos</td><td>Muestreo</td></tr>
 </table></div>
@@ -207,6 +209,13 @@ SUP_STEPS = """
 <li><b>8:25 a.m. — Mi día</b> En URGENTE aparece "Punto sin abrir: Parque México · ⏱ 5 min · El operador Operador Dos no ha abierto; 25 min después de la hora planeada".<div class="ex">La regla <code>no_open</code> corre cada 5 minutos con 20 min de gracia.</div></li>
 <li><b>Atender</b> <span class="ui b">Atender</span> → Estado <i>En proceso</i> → <span class="ui">Asignármelo</span>. Llamas al operador.<div class="ex">Agrega la acción "Confirmar llegada del operador · hoy". Nota: "Operador en camino, llega 8:45".</div></li>
 <li><b>Se resuelve solo</b> A las 8:47 el operador abre.<div class="ex">Como el caso ya tiene responsable (tú), no se autocierra: tú lo resuelves con <span class="ui g">Resolver con nota</span> "Abrió 8:47, retraso por transporte". El retraso queda en Personas como "Tarde · 47 min".</div></li>
+</ol>
+
+<h3 id="sup-ej1b">Ejemplo 1b · Apertura lejos del punto</h3>
+<ol class="steps">
+<li><b>Aviso</b> En URGENTE aparece "Apertura con excepción: Estás a 300 m del punto asignado (máximo 50 m) · Operador Uno" (categoría Apertura, punto Metro Insurgentes).<div class="ex">También sale en "Alertas recientes" del Control Tower. La distancia y el límite están en el payload del caso.</div></li>
+<li><b>Actúa</b> Llama al operador: ¿está en otra esquina, en el resguardo, o el punto tiene mal las coordenadas?<div class="ex">Si el lugar real es otro, pide al administrador validar el GPS del punto (Administración → Puntos → Validar GPS) con las coordenadas correctas.</div></li>
+<li><b>Resuelve</b> Cuando el operador esté en el punto (o se corrija el punto), <span class="ui g">Resolver con nota</span>.</li>
 </ol>
 
 <h3 id="sup-ej2">Ejemplo 2 · Auditoría con no conformidad y arqueo</h3>
@@ -457,6 +466,7 @@ ADM_QUICK = """
 <tr><td>gps_retention_days</td><td>90</td><td>Días que se conservan los pings GPS.</td></tr>
 <tr><td>daily_sales_target_default_cents</td><td>234000 ($2,340)</td><td>Meta diaria cuando el punto no tiene una propia.</td></tr>
 <tr><td>shift_reopen_window_hours</td><td>24 (1–48)</td><td>Horas tras el cierre en que aún puedes "Continuar turno" (además debe ser del mismo día).</td></tr>
+<tr><td>open_max_distance_m</td><td>50 (10–1000)</td><td>Distancia máxima al punto asignado para abrir sin aviso (sólo puntos con coordenadas verificadas). Excederla: aviso al operador + caso urgente.</td></tr>
 <tr><td>inventory_count_tolerance_units</td><td>3</td><td>Diferencia entre conteo y teórico que abre caso de inventario.</td></tr>
 </table></div>
 <p>Precedencia: override en <b>Reglas</b> (params) &gt; Parámetros &gt; valor por defecto. Cada guardado: toast <i>"Parámetro X guardado"</i> y entrada <code>settings.update</code> en el audit log. Un valor fuera de rango devuelve un error como <i>"photo_sampling_pct debe ser ≤ 100"</i>.</p>
@@ -470,7 +480,8 @@ ADM_DETAIL = """
 <h3 id="adm-puntos">Zonas, puntos, carritos y asignaciones</h3>
 <ul>
 <li><b>Zonas</b>: nombre y activa; muestra cuántos supervisores y puntos tiene. El supervisor sólo ve su zona.</li>
-<li><b>Puntos</b>: nombre, dirección, latitud/longitud, <b>geocerca (m)</b> (radio para "En geocerca / Fuera"; 150 m en demo), zona, horario de apertura/cierre, meta diaria ($) y meta de transacciones.</li>
+<li><b>Puntos</b>: nombre, dirección, latitud/longitud, <b>geocerca (m)</b> (radio para "En geocerca / Fuera" y tolerancia de apertura mientras el punto no esté verificado), zona, horario, meta diaria ($) y de transacciones, activo y <b>coordenadas verificadas en campo</b>. Sólo los puntos <b>activos</b> se pueden asignar a carritos.</li>
+<li><b>Catálogo de puntos autorizados</b>: los 100 lugares de <i>Pepito · 100 mejores ubicaciones CDMX</i> vienen precargados (columna <b>#</b> con el ranking, tipo de nodo y score; botón <span class="ui">Ficha</span> con afluencia, riesgo, estrategia de resguardo y fuente). Entran con coordenadas <b>aproximadas</b> (badge <span class="badge b-amber">Por validar · tolerancia 150 m</span>). <span class="ui p">Validar GPS</span> pide las coordenadas reales del lugar exacto del carrito y las marca verificadas (badge <span class="badge b-green">Verificado · apertura ≤ 50 m</span>); desde ese momento aplica la regla estricta. <span class="ui">Reimportar catálogo</span> vuelve a cargar la ficha sin tocar coordenadas ya verificadas. Zona = alcaldía (se crean solas).</li>
 <li><b>Carritos</b>: código (C-001…) y descripción. Un carrito sólo puede tener un turno abierto a la vez.</li>
 <li><b>Asignaciones</b>: operador + punto + carrito + fecha (una por operador y día). Estado <code>planned</code> → <code>started</code> (al abrir) → <code>done</code> (al cerrar) o <code>absent</code>. Columna <b>Turno</b> con el estado del último turno y botón <span class="ui p">Continuar turno</span> si está cerrado.</li>
 </ul>
@@ -504,6 +515,14 @@ ADM_STEPS = """
 <li><b>Carrito</b> Carritos → + Nuevo → C-004.</li>
 <li><b>Usuarios</b> Supervisor "sup2" (rol Supervisor, zona Norte) y operador "op4" (rol Operador, zona Norte, contraseña inicial).<div class="ex">Comparte la contraseña por un canal seguro; el operador entra sólo desde la PWA en https.</div></li>
 <li><b>Asignación</b> Asignaciones → + Nuevo → op4 · Metro Indios Verdes · C-004 · fecha de hoy → Crear.<div class="ex">"Al crear sin horario, se usa el horario de apertura/cierre del punto." A partir de la hora de apertura + 20 min sin abrir, la regla "Punto sin abrir" avisará a sup2.</div></li>
+</ol>
+
+<h3 id="adm-ej1b">Ejemplo 1b · Activar un punto del catálogo y validar su GPS</h3>
+<ol class="steps">
+<li><b>Elige el punto</b> Administración → Puntos → fila <b>#2 Metro Tláhuac – terminal y zona comercial</b> (Tláhuac). <span class="ui">Ficha</span>: score 96, "Muy alto" de afluencia, horario sugerido 06:00–10:00 / 16:00–21:00, estrategia de resguardo.</li>
+<li><b>Asigna</b> Asignaciones → + Nuevo → operador, punto Metro Tláhuac, carrito, fecha.<div class="ex">Como el punto sigue "Por validar", el primer día la apertura tolera 150 m.</div></li>
+<li><b>Valida en campo</b> El supervisor se para en el lugar exacto del carrito y te pasa las coordenadas de su teléfono (o las lees del "Último GPS" de la apertura en Control Tower). <span class="ui p">Validar GPS</span> → escribe lat/lng → "Marcar verificado".<div class="ex">Badge "Verificado · apertura ≤ 50 m". Audit log: points.verify_location con antes/después.</div></li>
+<li><b>Desde mañana</b> Si el operador abre a más de 50 m, verá el aviso y el supervisor un caso urgente con la distancia.</li>
 </ol>
 
 <h3 id="adm-ej2">Ejemplo 2 · Subir precios el lunes</h3>
