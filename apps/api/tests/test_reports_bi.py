@@ -168,5 +168,5 @@ def test_point_with_zero_target_renders_cleanly(fresh_operator, catalog, admin, 
         r = admin.get(f"/v1/reports/bi/{rep}", params={"period": "today"})
         assert r.status_code == 200, f"{rep} failed: {r.text}"
         body = r.json()
-        assert body["report"] == rep
+        assert body["key"] == rep
 
