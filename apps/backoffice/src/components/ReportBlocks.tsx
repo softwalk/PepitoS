@@ -24,7 +24,10 @@ export function KpiGrid({ kpis, compareLabel }: { kpis: ReportKpi[]; compareLabe
               <span>{k.label}</span>
               {light && <LightDot light={light} text="" />}
             </div>
-            <div className="kpi-value">{fmtValue(k.value, k.format)}</div>
+            <div className="kpi-value">
+              {fmtValue(k.value, k.format)}
+              {k.unit && <span className="kpi-unit"> {k.unit}</span>}
+            </div>
             <div className="kpi-sub">
               {k.delta_pct != null && (
                 <span className={`kpi-delta ${deltaTone}`} title={compareLabel ? `vs ${compareLabel}` : undefined}>
@@ -32,7 +35,11 @@ export function KpiGrid({ kpis, compareLabel }: { kpis: ReportKpi[]; compareLabe
                   {k.prev != null && <span className="muted"> · antes {fmtValue(k.prev, k.format)}</span>}
                 </span>
               )}
-              {k.delta_pct == null && k.prev != null && <span className="muted">antes {fmtValue(k.prev, k.format)}</span>}
+              {k.delta_pct == null && k.compare === 'no_comparable' && (
+                <span className="muted" title={`Sin base en ${compareLabel ?? 'el periodo anterior'}`}>
+                  Sin base comparable
+                </span>
+              )}
               {k.hint && <span className="kpi-hint"> {k.hint}</span>}
             </div>
           </div>
@@ -218,7 +225,7 @@ export function TableBlock({ table, pageSize = 25 }: { table: ReportTable; pageS
   return (
     <Card title={table.title} className="report-table" testId={`table-${table.key}`}>
       {rows.length === 0 ? (
-        <Empty text="Sin datos en el periodo" />
+        <Empty text="Sin registros en el periodo" />
       ) : (
         <div className="table-wrap">
           <table className="table compact">

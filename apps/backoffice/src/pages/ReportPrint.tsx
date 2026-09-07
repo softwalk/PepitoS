@@ -68,7 +68,8 @@ export function ReportPrintPage() {
         <div className="print-meta">
           <div><b>Periodo:</b> {data.period.preset_label} — {data.period.label}</div>
           <div><b>Comparado con:</b> {data.compare.label}</div>
-          <div><b>Generado:</b> {fmtDateTime(data.generated_at)} por {user?.name ?? '—'}</div>
+          <div><b>Corte de datos:</b> {fmtDateTime(data.data_as_of)}{data.coverage?.status === 'pending' ? ' (cifras preliminares: hay turnos abiertos)' : ''}</div>
+          <div><b>Generado:</b> {fmtDateTime(data.generated_at)} por {user?.name ?? '—'} · versión {data.version}</div>
           <div><b>Alcance:</b> {data.scope.zone_locked ? 'zona del supervisor' : data.scope.operator_locked ? 'desempeño propio' : 'toda la red'}</div>
           {applied.length > 0 && (
             <div>
@@ -79,7 +80,7 @@ export function ReportPrintPage() {
       </header>
       <ReportBody r={data} print />
       <footer className="print-foot">
-        <span>PEPITO OS · {data.title} · {data.period.label}</span>
+        <span>PEPITO OS · {data.title} · {data.period.label} · corte {fmtDateTime(data.data_as_of)} · v{data.version}</span>
         <span>{['cash', 'executive', 'people', 'expansion'].includes(data.key) ? 'CONFIDENCIAL — uso interno' : 'Uso interno'}</span>
       </footer>
       <div className="print-actions no-print">

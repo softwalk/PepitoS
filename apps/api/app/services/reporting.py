@@ -34,6 +34,8 @@ from app.services.settings import get_int
 
 MAX_CUSTOM_DAYS = 366
 TABLE_LIMIT = 200
+# Versión del cálculo de los reportes: cambia cuando cambian definiciones/denominadores (docs/INDICADORES.md).
+REPORT_VERSION = "1.1"
 
 # ───────────────────────────── Catálogo de reportes ─────────────────────────────
 
@@ -261,11 +263,15 @@ def _trend(delta: float | None, invert: bool = False) -> str:
     return "up" if up else "down"
 
 
-def kpi(key: str, label: str, value: Any, fmt: str = "int", prev: Any = None, tone: str = "neutral", hint: str | None = None, invert: bool = False) -> dict:
-    delta = _pct(value or 0, prev or 0) if (prev is not None and isinstance(value, (int, float))) else None
-    return {"key": key, "label": label, "value": value, "format": fmt, "prev": prev, "delta_pct": delta,
+def kpi(key: str, label: str, value: Any, fmt: str = "int", prev: Any = None, tone: str = "neutral", hint: str | None = None, invert: bool = False, unit: str | None = None) -> dict:
+    """`prev` = valor del periodo anterior equivalente. Sin base (None o 0) el comparativo se marca `no_comparable`
+    en lugar de mostrar un porcentaje engañoso."""
+    comparable = prev is not None and isinstance(value, (int, float)) and prev not in (0, 0.0)
+    delta = _pct(value or 0, prev or 0) if comparable else None
+    return {"key": key, "label": label, "value": value, "format": fmt, "unit": unit, "prev": prev, "delta_pct": delta,
             "delta_abs": (value - prev) if (prev is not None and isinstance(value, (int, float))) else None,
-            "trend": _trend(delta, invert), "tone": tone, "hint": hint}
+            "trend": _trend(delta, invert), "tone": tone, "hint": hint,
+            "compare": "ok" if comparable else ("no_comparable" if prev is not None else "none")}
 
 
 def insight(kind: str, text: str, link: str | None = None) -> dict:
@@ -394,9 +400,12 @@ def _compare_block(cur: dict, prev: dict) -> dict:
 
 def _empty_payload(key: str, p: Period, prev: Period, sc: Scope, filters: dict) -> dict:
     meta = REPORTS[key]
+    now = utcnow()
     return {
         "key": key, "title": meta["title"], "category": meta["category"], "description": meta["description"], "decision": meta["decision"],
-        "frequency": meta["frequency"], "orientation": meta["orientation"], "generated_at": iso(utcnow()),
+        "frequency": meta["frequency"], "orientation": meta["orientation"], "generated_at": iso(now), "version": REPORT_VERSION,
+        # Corte de datos: fin del periodo o el momento de la consulta si el periodo sigue abierto (hoy).
+        "data_as_of": iso(min(now, p.end)), "partial": p.end > now, "coverage": {},
         "period": p.to_dict(), "compare": prev.to_dict(), "filters": {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in filters.items() if v is not None},
         "scope": sc.to_dict(), "kpis": [], "charts": [], "tables": [], "insights": [], "hidden": [],
     }
@@ -432,7 +441,7 @@ def report_executive(db: Session, p: Period, prev: Period, sc: Scope, current, f
     out["kpis"] = [
         kpi("sales", "Ventas", cur["sales_cents"], "money", old["sales_cents"], _tone_target(target_pct) if target_cents else "neutral", f"Meta {_money(target_cents)}" if target_cents else "sin turnos en el periodo"),
         kpi("target_pct", "Avance vs meta", target_pct, "pct", None, _tone_target(target_pct) if target_cents else "neutral", f"{cur['tx']} de {target_tx} tx · meta = días con turno × meta diaria"),
-        kpi("tx", "Transacciones", cur["tx"], "int", old["tx"], _tone_sales_tx(cur["tx"], p.days * max(points_with_sales, 1))),
+        kpi("tx", "Transacciones", cur["tx"], "int", old["tx"], _tone_sales_tx(cur["tx"], p.days * max(points_with_sales, 1)), unit="tx"),
         kpi("ticket", "Ticket promedio", cur["ticket_cents"], "money", old["ticket_cents"], _tone_ticket(cur["ticket_cents"])),
         kpi("points", "Puntos con turno", points_with_sales, "int", None, "ok" if points_with_sales >= active_points else "warn", f"{open_now} abiertos ahora · {active_points} activos"),
         kpi("cash_diff", "Diferencias de caja", diff_total, "money", None, "ok" if diff_count == 0 else "warn" if diff_count <= 2 else "bad", f"{diff_count} turnos con diferencia", invert=True),
@@ -565,9 +574,9 @@ def report_sales(db: Session, p: Period, prev: Period, sc: Scope, current, filte
 
     out["kpis"] = [
         kpi("sales", "Ventas", cur["sales_cents"], "money", old["sales_cents"], "neutral"),
-        kpi("tx", "Transacciones", cur["tx"], "int", old["tx"], "neutral"),
+        kpi("tx", "Transacciones", cur["tx"], "int", old["tx"], "neutral", unit="tx"),
         kpi("ticket", "Ticket promedio", cur["ticket_cents"], "money", old["ticket_cents"], _tone_ticket(cur["ticket_cents"])),
-        kpi("units", "Unidades", units, "int", None, "neutral"),
+        kpi("units", "Unidades", units, "int", None, "neutral", unit="piezas"),
         kpi("digital_pct", "Pago digital", round(digital * 100 / total_pay, 1), "pct", None, "neutral", f"{_money(digital)} en QR/tarjeta"),
         kpi("cancelled", "Cancelaciones", int(cancelled[0]), "int", None, "ok" if not cancelled[0] else "warn", _money(int(cancelled[1])), invert=True),
         kpi("stale", "Precio vencido", stale, "int", None, "ok" if not stale else "bad", "ventas con versión de precio vencida", invert=True),
@@ -937,7 +946,7 @@ def report_inventory(db: Session, p: Period, prev: Period, sc: Scope, current, f
     out["kpis"] = [
         kpi("waste_pct", "Merma", waste_pct, "pct", _waste_pct(prev_units, prev_waste), _tone_waste(waste_pct), f"{waste_units} u. de {units + waste_units}", invert=True),
         kpi("waste_value", "Merma valorizada", waste_value, "money", None, "neutral", "a precio de venta", invert=True),
-        kpi("units", "Unidades vendidas", units, "int", prev_units, "neutral"),
+        kpi("units", "Unidades vendidas", units, "int", prev_units, "neutral", unit="piezas"),
     ]
     out["charts"].append({"key": "reasons", "title": "Merma por motivo", "type": "donut", "x": "label",
                           "data": [{"label": k, "units": v} for k, v in sorted(by_reason.items(), key=lambda x: -x[1])], "series": [{"key": "units", "label": "Unidades", "format": "int"}]})
@@ -952,7 +961,7 @@ def report_inventory(db: Session, p: Period, prev: Period, sc: Scope, current, f
         receipts = mov.get("receipt", (0, 0))[0]
         adjust = mov.get("count_adjustment", (0, 0))[0]
         out["kpis"] += [
-            kpi("receipts", "Entradas (u.)", receipts, "int", None, "neutral", f"{mov.get('receipt', (0, 0))[1]} recepciones"),
+            kpi("receipts", "Entradas", receipts, "int", None, "neutral", f"{mov.get('receipt', (0, 0))[1]} recepciones", unit="piezas"),
             kpi("adjust", "Ajustes por conteo (u.)", adjust, "int", None, "ok" if abs(adjust) <= 3 else "warn", f"{mov.get('count_adjustment', (0, 0))[1]} ajustes", invert=True),
         ]
         # Existencias por punto/presentación y días de inventario (consumo promedio diario del periodo)
@@ -1193,7 +1202,7 @@ def report_maintenance(db: Session, p: Period, prev: Period, sc: Scope, current,
         kpi("availability", "Disponibilidad promedio", round(sum(r["availability_pct"] for r in avail_rows) / len(avail_rows), 1) if avail_rows else 100.0, "pct", None, "ok" if not low_avail else "warn" if len(low_avail) <= 2 else "bad", f"{len(low_avail)} carritos < 95 %"),
         kpi("overdue", "Preventivos vencidos", len(overdue), "int", None, "ok" if not overdue else "bad", invert=True),
         kpi("tickets_open", "Tickets abiertos", len(open_t), "int", None, "ok" if not open_t else "warn", f"{sum(1 for t in open_t if t.severity == 'urgent')} urgentes", invert=True),
-        kpi("mttr", "MTTR (h)", round(sum(mttr) / len(mttr), 1) if mttr else 0, "float", None, "neutral", f"{len(mttr)} tickets resueltos"),
+        kpi("mttr", "MTTR", round(sum(mttr) / len(mttr), 1) if mttr else 0, "float", None, "neutral", f"{len(mttr)} tickets resueltos", unit="h"),
         kpi("low_battery", "Turnos con batería < 25 %", len(low_bat), "int", None, "ok" if not low_bat else "warn", f"de {len(bat)} con lectura", invert=True),
     ]
     out["charts"].append({"key": "availability", "title": "Disponibilidad por carrito", "type": "bar", "x": "cart", "layout": "vertical",
@@ -1474,10 +1483,34 @@ def can_view(current, key: str) -> bool:
     return key in allowed_reports(current)
 
 
+def coverage(db: Session, p: Period, sc: Scope) -> dict:
+    """Cobertura de captura del periodo: cuántos turnos siguen abiertos (sus cifras cambiarán al cierre), cuántos
+    cerraron con/sin diferencia y cuántos casos de sincronización siguen abiertos (hay dispositivos con registros
+    posiblemente pendientes de enviar; el servidor no inventa ese número)."""
+    pids = _point_ids(db, sc)
+    shifts = _shifts_in(db, p, sc, pids)
+    open_shifts = [s for s in shifts if s.status == "open"]
+    now = utcnow()
+    overdue = 0
+    if open_shifts:
+        ends = {a.id: a.planned_end for a in db.execute(select(Assignment).where(Assignment.id.in_([s.assignment_id for s in open_shifts if s.assignment_id]))).scalars().all()}
+        overdue = sum(1 for s in open_shifts if s.assignment_id in ends and ends[s.assignment_id] < now)
+    sq = select(func.count(Case.id)).where(Case.rule_key == "sync_stale", Case.status.in_(("open", "in_progress")))
+    if pids is not None:
+        sq = sq.where(Case.point_id.in_(pids))
+    return {
+        "shifts": len(shifts), "open_shifts": len(open_shifts), "closed_shifts": len(shifts) - len(open_shifts),
+        "close_overdue": overdue, "sync_stale_open": int(db.execute(sq).scalar_one()),
+        "status": "closed" if not open_shifts else "pending",
+    }
+
+
 def build_report(db: Session, key: str, current, *, period: str | None, date_from: str | None, date_to: str | None, filters: dict[str, Any]) -> dict:
     if key not in REPORTS:
         raise ApiError("NOT_FOUND", "Reporte no encontrado")
     p = parse_period(period, date_from, date_to)
     prev = previous_period(p)
     sc = build_scope(current, filters)
-    return BUILDERS[key](db, p, prev, sc, current, filters)
+    payload = BUILDERS[key](db, p, prev, sc, current, filters)
+    payload["coverage"] = coverage(db, p, sc)
+    return payload

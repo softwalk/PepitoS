@@ -29,6 +29,27 @@ La app lo diagnostica sola: pastilla roja **Sin GPS** en la barra superior y, en
 | *El teléfono no entrega ubicación* | Ubicación del sistema desactivada / modo ahorro extremo | Activar Ubicación en los ajustes rápidos; en Android usar precisión "Alta" |
 | *Sin señal GPS por ahora* | Interior, cielo cubierto | Se reintenta solo (alta y luego baja precisión); el último fix reciente se reutiliza para ventas/ayuda/cierre |
 
+## HTTPS también en PC/Mac; un solo origen por dispositivo
+
+- `http://IP:8081` **no** es equivalente a `https://IP:8443` ni en computadora: sin contexto seguro no hay service worker
+  (modo offline), ni geolocalización, ni instalación como app. La excepción de los navegadores aplica sólo a
+  `localhost`/`127.0.0.1`, no a una IP de LAN. Uso recomendado: HTTPS (`8443` operador, `8444` backoffice) para todo uso
+  normal y pruebas funcionales; HTTP sólo para diagnóstico puntual.
+- Instalar la CA **no** activa el GPS ni el offline por sí mismo: valida la conexión HTTPS. El GPS además requiere el
+  permiso del usuario; el offline requiere que la app haya cargado y guardado sus recursos una vez con red.
+- **No alternar** `http://…:8081` y `https://…:8443` en un mismo teléfono con registros pendientes: IndexedDB y la cola
+  cifrada son por origen; lo pendiente en un origen no aparece en el otro (no se pierde, pero no se envía hasta volver
+  al origen donde se capturó). Fijar la dirección HTTPS antes de capturar operaciones reales.
+- La PWA y el backoffice llaman a la API por **ruta relativa `/v1`** sobre su mismo origen (nginx/Caddy la proxean a
+  `api:8000`): no hay contenido mixto ni CORS entre `8443/8444/8445`. `8445` (API directa) es sólo para scripts.
+- Fuera de la LAN (Metro Insurgentes, Parque México, Alameda): el operador trabaja con la cola offline y sincroniza al
+  tener red hacia `PUBLIC_HOST`; si se expone el servicio a internet, hacerlo con dominio y certificado real
+  (`CADDY_TLS` automático), nunca con la CA interna. Control Tower muestra `last_seen_at` y marca `sync_stale`
+  cuando un carrito deja de comunicar; nunca inventa las ventas pendientes del teléfono.
+- El certificado interno incluye la IP en `subjectAltName` (Caddy `tls internal` lo hace por `PUBLIC_HOST`); si se
+  cambia la IP hay que regenerarlo y reinstalar la CA. Verificar la huella de la CA con el administrador antes de
+  confiar en ella.
+
 ## Notas
 
 - Los puertos HTTP `8081/8082/8000` siguen expuestos para pruebas y scripts; se pueden quitar del compose en producción.

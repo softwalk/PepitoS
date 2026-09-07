@@ -135,3 +135,19 @@ def test_options_scoped(admin, sup1):
     assert len(a["zones"]) > 1 and len(s["zones"]) == 1 and s["zones"][0]["id"] == sup1.user["zone_id"]
     assert all(p["zone_id"] == sup1.user["zone_id"] for p in s["points"]) and len(s["points"]) < len(a["points"])
     assert a["presentations"] and a["methods"]
+
+
+def test_cutoff_version_coverage_and_no_comparable(fresh_operator, catalog, admin):
+    a = fresh_operator()
+    a.post("/v1/shifts/open", json=open_payload(a.assignment["id"]))
+    body = admin.get("/v1/reports/bi/executive", params={"period": "today", "point_id": a.point["id"]}).json()
+    assert body["version"] and body["partial"] is True and body["data_as_of"] <= body["generated_at"]
+    cov = body["coverage"]
+    assert cov["open_shifts"] >= 1 and cov["status"] == "pending" and cov["shifts"] == cov["open_shifts"] + cov["closed_shifts"]
+    # Ayer no hubo ventas en ese punto → el comparativo se marca como no comparable, sin porcentaje
+    k = {x["key"]: x for x in body["kpis"]}
+    assert k["sales"]["compare"] == "no_comparable" and k["sales"]["delta_pct"] is None
+    assert k["tx"]["unit"] == "tx"
+    # Un periodo pasado sin turnos abiertos queda "closed" y con corte = fin del periodo
+    old = admin.get("/v1/reports/bi/executive", params={"period": "prev_month"}).json()
+    assert old["partial"] is False and old["data_as_of"] == old["period"]["end"] and old["coverage"]["status"] == "closed"

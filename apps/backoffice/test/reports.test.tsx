@@ -52,13 +52,14 @@ const catalog: ReportCatalog = {
 function payload(period: string, pointId: string | null): ReportPayload {
   return {
     key: 'sales', title: 'Ventas y desempeño comercial', category: 'Comercial', description: 'desc', decision: 'x', frequency: 'Diaria', orientation: 'landscape', generated_at: '2026-09-04T20:00:00Z',
+    version: '1.1', data_as_of: '2026-09-04T19:59:00Z', partial: !pointId, coverage: { shifts: 3, open_shifts: pointId ? 0 : 1, closed_shifts: 2, close_overdue: 0, sync_stale_open: 0, status: pointId ? 'closed' : 'pending' },
     period: { preset: period, preset_label: period === 'last7' ? 'Últimos 7 días' : 'Hoy', from: '2026-09-04', to: '2026-09-04', label: '04/09/2026', days: 1, start: '', end: '' },
     compare: { preset: 'previous', preset_label: '', from: '2026-09-03', to: '2026-09-03', label: '03/09/2026', days: 1, start: '', end: '' },
     filters: pointId ? { point_id: pointId } : {},
     scope: { role: 'supervisor', zone_id: 'z1', operator_id: null, point_id: pointId, cart_id: null, presentation_id: null, method: null, zone_locked: true, operator_locked: false },
     kpis: [
       { key: 'sales', label: 'Ventas', value: pointId ? 49000 : 123400, format: 'money', prev: 100000, delta_pct: 23.4, delta_abs: 23400, trend: 'up', tone: 'ok', hint: null },
-      { key: 'ticket', label: 'Ticket promedio', value: 3500, format: 'money', prev: null, delta_pct: null, delta_abs: null, trend: 'flat', tone: 'bad', hint: 'bajo' },
+      { key: 'ticket', label: 'Ticket promedio', value: 3500, format: 'money', prev: 0, delta_pct: null, delta_abs: 3500, trend: 'flat', tone: 'bad', hint: 'bajo', compare: 'no_comparable' },
     ],
     charts: [{ key: 'trend', title: 'Ventas por día', type: 'bar', x: 'label', data: [{ label: '04/09', sales_cents: 49000 }], series: [{ key: 'sales_cents', label: 'Ventas', format: 'money' }] }],
     tables: [{ key: 'points', title: 'Por punto', columns: [{ key: 'point', label: 'Punto', format: 'text', link: '/reportes/points?point_id={point_id}' }, { key: 'target_pct', label: 'vs meta', format: 'pct', tone: 'target' }], rows: [{ point_id: 'p1', point: 'Metro Insurgentes - 90', target_pct: 120 }] }],
@@ -132,6 +133,9 @@ describe('Centro de Reportes y página de reporte', () => {
     expect(screen.getByTestId('chart')).toBeTruthy();
     expect(screen.getByText('Metro Insurgentes - 90', { selector: 'td a' }).closest('a')?.getAttribute('href')).toBe('/reportes/points?point_id=p1');
     expect(screen.getByText('Alcance: tu zona')).toBeTruthy();
+    expect(screen.getByText('Sin base comparable')).toBeTruthy();
+    expect(screen.getByTestId('coverage-note').textContent).toContain('1 turno(s) abiertos');
+    expect(screen.getByText('Cifras preliminares')).toBeTruthy();
     expect((screen.getByTestId('filter-zone_id') as HTMLSelectElement).disabled).toBe(true);
     expect(screen.getByTestId('export-pdf').getAttribute('href')).toBe('/reportes/sales/imprimir?period=today');
 
@@ -142,6 +146,8 @@ describe('Centro de Reportes y página de reporte', () => {
     fireEvent.change(screen.getByTestId('filter-point_id'), { target: { value: 'p1' } });
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/reportes/sales?period=last7&point_id=p1'));
     await screen.findByText('$490.00');
+    expect(screen.queryByTestId('coverage-note')).toBeNull();
+    expect(screen.getByText('Periodo cerrado')).toBeTruthy();
     expect(calls.some((c) => c.includes('/v1/reports/bi/sales?period=last7&point_id=p1'))).toBe(true);
     // Sólo puntos de la zona en el selector
     expect(Array.from((screen.getByTestId('filter-point_id') as HTMLSelectElement).options).map((o) => o.value)).toEqual(['', 'p1']);
@@ -151,7 +157,8 @@ describe('Centro de Reportes y página de reporte', () => {
 
   it('un 403 de la API se muestra como mensaje, nunca datos', async () => {
     mount('/reportes/cash?period=today');
-    await screen.findByText('No tienes permiso para esta acción', { selector: '.empty' });
+    await screen.findByTestId('report-error');
+    expect(screen.getByTestId('report-error').textContent).toContain('Sin permiso');
     expect(screen.queryByTestId('report-kpis')).toBeNull();
   });
 

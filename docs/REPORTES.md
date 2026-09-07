@@ -110,6 +110,16 @@ Periodo anterior: misma longitud inmediatamente anterior; `month` → mismos dí
 - **Exportar PDF** → `/reportes/<clave>/imprimir?…` (fuera del Layout): logo, título, periodo, comparativo, filtros con nombres, generado por, KPIs, hallazgos, gráficas SVG, tablas, pie con leyenda de confidencialidad; `@page { size: Letter portrait|landscape }` según el reporte, `break-inside: avoid`, `window.print()` automático (`?noprint=1` lo evita, usado en pruebas). Misma autorización que el reporte.
 - Responsive: KPIs a 2 columnas, gráficas apiladas y tablas con scroll horizontal en ≤ 768 px.
 
+## 5b. Corte de datos, versión y cobertura
+
+- `data_as_of` = fin del periodo, o el momento de la consulta si el periodo incluye hoy; se imprime junto a
+  `generated_at` y `version` (`REPORT_VERSION`, sube cuando cambian definiciones; ver `docs/INDICADORES.md`).
+- `coverage` = turnos abiertos / cerrados / cierres vencidos / casos `sync_stale` abiertos en el alcance; con turnos
+  abiertos el reporte se etiqueta **Cifras preliminares** y muestra el aviso "Información pendiente".
+- Comparativo sin base (periodo anterior en 0) → `compare: no_comparable` → "Sin base comparable", nunca un %.
+- Unidades explícitas en KPIs ambiguos (`unit`: tx, piezas, h); dinero y % por formato.
+- La vista de impresión imprime **todas** las filas devueltas por la API (hasta 200), no sólo la página visible.
+
 ## 6. Rendimiento
 
 - Índices (migración 0008): `sales(occurred_at, point_id)`, `sales(operator_id, occurred_at)`, `sale_lines(presentation_id, sale_id)`, `payments(method, occurred_at)`, `inventory_movements(point_id, occurred_at)`, `waste(occurred_at, point_id)`, `cases(point_id, opened_at)`, `shifts(opened_at, point_id)`, `gps_pings(at, shift_id)`, `audits(performed_at, point_id)`, `assignments(shift_date, point_id)`, `audit_log(action, at)`.

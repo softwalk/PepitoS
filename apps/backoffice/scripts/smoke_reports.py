@@ -103,8 +103,8 @@ def run():
         assert "Alcance: tu zona" in page.inner_text(".report-meta")
         shot(page, "06-supervisor-ventas", full=True)
         page.goto(APP + "/reportes/executive?period=month")
-        page.wait_for_selector(".empty")
-        assert "permiso" in page.inner_text(".empty").lower()
+        page.wait_for_selector("[data-testid=report-error]")
+        assert "sin permiso" in page.inner_text("[data-testid=report-error]").lower()
         shot(page, "07-supervisor-403")
 
         # Móvil

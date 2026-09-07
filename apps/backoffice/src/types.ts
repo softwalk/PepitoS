@@ -315,7 +315,7 @@ export type Tone = 'ok' | 'warn' | 'bad' | 'neutral';
 export type InsightKind = 'fact' | 'trend' | 'alert' | 'hypothesis' | 'recommendation';
 export interface ReportCatalogItem { key: ReportKey; title: string; description: string; decision: string; frequency: string; orientation: 'portrait' | 'landscape'; scope: 'network' | 'zone' | 'self' }
 export interface ReportCatalog { categories: { name: string; reports: ReportCatalogItem[] }[]; presets: { key: ReportPreset; label: string }[] }
-export interface ReportKpi { key: string; label: string; value: number | string | null; format: ValueFormat; prev: number | null; delta_pct: number | null; delta_abs: number | null; trend: 'up' | 'down' | 'flat'; tone: Tone; hint: string | null }
+export interface ReportKpi { key: string; label: string; value: number | string | null; format: ValueFormat; unit?: string | null; prev: number | null; delta_pct: number | null; delta_abs: number | null; trend: 'up' | 'down' | 'flat'; tone: Tone; hint: string | null; compare?: 'ok' | 'no_comparable' | 'none' }
 export interface ReportSeries { key: string; label: string; format: ValueFormat; dashed?: boolean; axis?: 'left' | 'right'; color?: string }
 export interface ReportChart { key: string; title: string; type: 'line' | 'bar' | 'stacked' | 'donut' | 'heatmap' | 'scatter'; x?: string; y?: string; layout?: 'vertical' | 'horizontal'; data: Record<string, unknown>[]; series?: ReportSeries[]; x_labels?: string[]; y_labels?: string[]; format?: ValueFormat; domain?: [number, number]; x_label?: string; y_label?: string }
 export interface ReportColumn { key: string; label: string; format: ValueFormat; tone?: 'target' | 'ticket' | 'waste' | 'diff' | 'days' | 'avail'; link?: string; label_text?: string }
@@ -323,8 +323,10 @@ export interface ReportTable { key: string; title: string; columns: ReportColumn
 export interface ReportInsight { kind: InsightKind; text: string; link: string | null }
 export interface ReportPeriod { preset: string; preset_label: string; from: string; to: string; label: string; days: number; start: string; end: string }
 export interface ReportScope { role: Role; zone_id: string | null; operator_id: string | null; point_id: string | null; cart_id: string | null; presentation_id: string | null; method: string | null; zone_locked: boolean; operator_locked: boolean }
+export interface ReportCoverage { shifts: number; open_shifts: number; closed_shifts: number; close_overdue: number; sync_stale_open: number; status: 'closed' | 'pending' }
 export interface ReportPayload {
   key: ReportKey; title: string; category: string; description: string; decision: string; frequency: string; orientation: 'portrait' | 'landscape'; generated_at: string;
+  version: string; data_as_of: string; partial: boolean; coverage: ReportCoverage;
   period: ReportPeriod; compare: ReportPeriod; filters: Record<string, string>; scope: ReportScope;
   kpis: ReportKpi[]; charts: ReportChart[]; tables: ReportTable[]; insights: ReportInsight[]; hidden: string[];
 }

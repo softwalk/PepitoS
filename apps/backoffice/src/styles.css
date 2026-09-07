@@ -426,6 +426,9 @@ pre.json { background: var(--panel-2); border: 1px solid var(--border); border-r
 .kpi-delta.red { color: var(--red); }
 .kpi-delta.gray { color: var(--muted); }
 .kpi-hint { color: var(--muted); }
+.kpi-unit { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.coverage-note { background: var(--amber-bg); color: var(--amber); border-left: 4px solid var(--amber-fill); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+.state-msg { margin: 0; font-size: 14px; }
 .kpi-delta + .kpi-hint::before, .muted + .kpi-hint::before { content: ' · '; }
 
 .report-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-bottom: 14px; }

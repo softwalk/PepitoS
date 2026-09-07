@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, qs } from '../api/client';
-import { Badge, Card, Empty, Loading, PageTitle } from '../components/ui';
+import { Badge, Card, Loading, PageTitle } from '../components/ui';
 import { ChartBlock, Insights, KpiGrid, TableBlock } from '../components/ReportBlocks';
 import { useFetch } from '../lib/useFetch';
 import { fmtDateTime } from '../lib/format';
@@ -101,6 +101,19 @@ export function ReportFilters({ reportKey, filters, onChange, options }: { repor
   );
 }
 
+export function CoverageNote({ r }: { r: ReportPayload }) {
+  const c = r.coverage;
+  if (!c || (c.open_shifts === 0 && c.sync_stale_open === 0)) return null;
+  const parts: string[] = [];
+  if (c.open_shifts) parts.push(`${c.open_shifts} turno(s) abiertos${c.close_overdue ? ` (${c.close_overdue} con cierre vencido)` : ''}: sus ventas y caja cambiarán al cerrar`);
+  if (c.sync_stale_open) parts.push(`${c.sync_stale_open} dispositivo(s) sin sincronizar: puede haber registros pendientes de enviar`);
+  return (
+    <div className="coverage-note" role="status" data-testid="coverage-note">
+      <b>Información pendiente ·</b> {parts.join(' · ')}.
+    </div>
+  );
+}
+
 export function ReportHeaderMeta({ r }: { r: ReportPayload }) {
   return (
     <div className="report-meta">
@@ -108,7 +121,8 @@ export function ReportHeaderMeta({ r }: { r: ReportPayload }) {
       <Badge tone="gray">vs {r.compare.label}</Badge>
       {r.scope.zone_locked && <Badge tone="amber">Alcance: tu zona</Badge>}
       {r.scope.operator_locked && <Badge tone="amber">Alcance: tu desempeño</Badge>}
-      <span className="muted small">Generado {fmtDateTime(r.generated_at)}</span>
+      <Badge tone={r.coverage?.status === 'pending' ? 'amber' : 'green'}>{r.coverage?.status === 'pending' ? 'Cifras preliminares' : r.partial ? 'Sin turnos abiertos' : 'Periodo cerrado'}</Badge>
+      <span className="muted small">Corte de datos {fmtDateTime(r.data_as_of)} · generado {fmtDateTime(r.generated_at)} · v{r.version}</span>
     </div>
   );
 }
@@ -117,6 +131,7 @@ export function ReportBody({ r, print = false }: { r: ReportPayload; print?: boo
   const charts = r.charts;
   return (
     <>
+      <CoverageNote r={r} />
       <KpiGrid kpis={r.kpis} compareLabel={r.compare.label} />
       <Insights items={r.insights} />
       {charts.length > 0 && (
@@ -127,7 +142,7 @@ export function ReportBody({ r, print = false }: { r: ReportPayload; print?: boo
         </div>
       )}
       {r.tables.map((t) => (
-        <TableBlock key={t.key} table={t} pageSize={print ? 60 : 25} />
+        <TableBlock key={t.key} table={t} pageSize={print ? Math.max(t.rows.length, 1) : 25} />
       ))}
       {r.hidden.length > 0 && !print && (
         <p className="muted small">Secciones no disponibles para tu rol: {r.hidden.join(', ')}.</p>
@@ -168,7 +183,9 @@ export function ReportViewPage() {
       {loading && !data && <Loading />}
       {error && !data && (
         <Card>
-          <Empty text={error} />
+          <p className="state-msg" data-testid="report-error">
+            <b>{/permiso/i.test(error) ? 'Sin permiso' : /conexi|red|network|fetch/i.test(error) ? 'Error de conexión' : 'No se pudo generar el reporte'}</b> · {error}
+          </p>
         </Card>
       )}
       {data && <ReportBody r={data} />}
