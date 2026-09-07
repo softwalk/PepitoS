@@ -490,7 +490,7 @@ def report_executive(db: Session, p: Period, prev: Period, sc: Scope, current, f
     if top and top[0]["tx"]:
         ins.append(insight("fact", f"Mejor punto: {top[0]['point']} con {_money(top[0]['sales_cents'])}."))
     worst = [r for r in top if r["tx"] > 0]
-    if len(worst) >= 3 and worst[-1]["target_pct"] < 50:
+    if len(worst) >= 3 and worst[-1]["target_pct"] is not None and worst[-1]["target_pct"] < 50:
         ins.append(insight("hypothesis", f"{worst[-1]['point']} lleva {worst[-1]['target_pct']:.0f} % de meta; evaluar afluencia u horario antes de decidir reubicación.", "/reportes/expansion"))
     return out
 
@@ -763,13 +763,13 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
     avg = total / len(with_sales) if with_sales else 0
     for r in rows:
         r["vs_network_pct"] = _pct(r["sales_cents"], avg) if avg else None
-    on_target = sum(1 for r in with_sales if r["target_pct"] >= 100)
+    on_target = sum(1 for r in with_sales if r["target_pct"] is not None and r["target_pct"] >= 100)
     out["kpis"] = [
         kpi("points", "Puntos con ventas", len(with_sales), "int", None, "neutral", f"de {len(rows)} activos"),
         kpi("avg", "Promedio por punto", int(avg), "money", None, "neutral"),
         kpi("on_target", "Puntos en meta", on_target, "int", None, _tone_target(on_target * 100 / len(with_sales)) if with_sales else "neutral", f"{on_target * 100 // len(with_sales) if with_sales else 0} %"),
-        kpi("red", "Puntos en rojo (< 75 %)", sum(1 for r in with_sales if r["target_pct"] < 75), "int", None, "neutral", invert=True),
-        kpi("waste_red", "Puntos con merma > 4 %", sum(1 for r in with_sales if r["waste_pct"] > 4), "int", None, "neutral", invert=True),
+        kpi("red", "Puntos en rojo (< 75 %)", sum(1 for r in with_sales if r["target_pct"] is not None and r["target_pct"] < 75), "int", None, "neutral", invert=True),
+        kpi("waste_red", "Puntos con merma > 4 %", sum(1 for r in with_sales if (r["waste_pct"] or 0) > 4), "int", None, "neutral", invert=True),
     ]
     out["charts"].append({"key": "top", "title": "Top 10 por ventas", "type": "bar", "x": "point", "layout": "vertical",
                           "data": [{"point": r["point"], "sales_cents": r["sales_cents"], "point_id": r["point_id"]} for r in with_sales[:10]],
@@ -782,18 +782,19 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
     out["tables"].append({"key": "bottom", "title": "Bottom 5 (con turno)", "columns": cols, "rows": list(reversed(with_sales))[:5]})
     ins = out["insights"]
     if with_sales:
-        ins.append(insight("fact", f"{with_sales[0]['point']} lidera con {_money(with_sales[0]['sales_cents'])} ({with_sales[0]['target_pct']:.0f} % de meta)."))
+        meta_str = f" ({with_sales[0]['target_pct']:.0f} % de meta)." if with_sales[0]['target_pct'] is not None else "."
+        ins.append(insight("fact", f"{with_sales[0]['point']} lidera con {_money(with_sales[0]['sales_cents'])}{meta_str}"))
         drops = sorted([r for r in with_sales if r["delta_pct"] is not None and r["delta_pct"] <= -15], key=lambda r: r["delta_pct"])
         for r in drops[:3]:
             ins.append(insight("trend", f"{r['point']} cayó {abs(r['delta_pct']):.0f} % vs {prev.label}.", f"/reportes/points?point_id={r['point_id']}"))
-        red_waste = [r for r in with_sales if r["waste_pct"] > 4]
+        red_waste = [r for r in with_sales if (r["waste_pct"] or 0) > 4]
         for r in red_waste[:3]:
             ins.append(insight("alert", f"Merma de {r['point']} en rojo: {r['waste_pct']:.1f} %.", "/reportes/inventory"))
-        high_score_low = [r for r in with_sales if (r["score"] or 0) >= 85 and r["target_pct"] < 50]
+        high_score_low = [r for r in with_sales if (r["score"] or 0) >= 85 and r["target_pct"] is not None and r["target_pct"] < 50]
         for r in high_score_low[:2]:
             ins.append(insight("hypothesis", f"{r['point']} tiene score {r['score']} pero sólo {r['target_pct']:.0f} % de meta: el potencial del lugar no se está capturando (horario, vendedor o ubicación exacta).", "/reportes/expansion"))
         low = with_sales[-1]
-        if len(with_sales) >= 5 and low["target_pct"] < 40 and (low["delta_pct"] or 0) <= 0:
+        if len(with_sales) >= 5 and low["target_pct"] is not None and low["target_pct"] < 40 and (low["delta_pct"] or 0) <= 0:
             ins.append(insight("recommendation", f"{low['point']} debería evaluarse para reubicación: {low['target_pct']:.0f} % de meta y sin mejora vs periodo anterior.", "/reportes/expansion"))
     idle = [r for r in rows if not r["tx"]]
     if idle:
