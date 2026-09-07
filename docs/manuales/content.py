@@ -593,6 +593,8 @@ OPS_V2 = """
 <p>La ruta sugerida agrega puntos <b>sin casos</b> como «Visita de muestreo» (parámetro <code>route_sampling_normal_pct</code>, 10 %): el mismo punto sale sorteado el mismo día para todos, así no se repite ni se olvida.</p>
 <h3 id="v2-mfa">Verificación en dos pasos</h3>
 <p>Administradores y Finanzas activan MFA en <b>Seguridad y avisos</b>: agrega la clave a tu app autenticadora y confirma con el código. Al entrar se pedirá el código después de la contraseña. Si pierdes el teléfono, un administrador lo restablece.</p>
+<h3 id="v2-inventario-kg">Inventario en kilogramos y fotos</h3>
+<p><b>Inventario</b> muestra, además de las piezas por presentación, el <b>total en kg</b> por punto y de toda la red (piezas × gramos nominales). Las tarjetas <b>Conteos físicos</b> y <b>Recepciones</b> listan lo capturado por los vendedores con kilogramos contados y esperados, diferencia y las <b>fotos del producto</b> (con fecha, hora y punto impresos). <span class="ui">Ver</span> abre el detalle por presentación y la galería; el reporte de Inventario enlaza cada conteo. En el detalle de un caso de AYUDA aparece la <b>ubicación del incidente</b> (GPS reportado y punto asignado) junto con la foto.</p>
 <h3 id="v2-apariencia">Tema oscuro y densidad</h3>
 <p>En <b>Seguridad y avisos → Apariencia</b> eliges tema claro/oscuro (o el del sistema) y densidad compacta para monitores grandes. Las tablas de Reportes se ordenan tocando el encabezado, permiten elegir columnas y muestran el detalle al pulsar una fila; cada tabla tiene <span class="ui">⬇ CSV</span> y el reporte <span class="ui">✉ Enviar</span> por correo. Desde un hallazgo puedes <span class="ui">+ Crear caso</span> con responsable y fecha.</p>
 """
@@ -604,6 +606,9 @@ OP_V2 = """
 <p>En VENDER, el botón <span class="ui">↩️ Devolución / caja</span> abre dos pestañas: <b>Devolución</b> (elige la venta que el cliente regresó; se registra y el supervisor la revisa) y <b>Caja</b> (gasto, retiro o entrada de efectivo con motivo: hielo, bolsas, entrega al supervisor…). No puedes retirar más efectivo del que hay en caja.</p>
 <h3 id="op-v2-producto">Recibir y contar producto</h3>
 <p>Con el puesto abierto, en Inicio verás <span class="ui">📦 Recibir producto</span> (escanea o escribe el código de la entrega y marca cuántas piezas llegaron) y <span class="ui">🔢 Contar producto</span> (ajusta lo que tienes; si hay diferencia, se avisa al supervisor). Funciona sin señal.</p>
+<p>Debajo de las piezas la app muestra el <b>total en kilogramos</b> (piezas × gramos de cada presentación) y cuánto debería haber. Toca <span class="ui">📷 Tomar foto</span> para adjuntar una foto del producto: la app le imprime <b>fecha, hora y punto</b> dentro de la imagen, así el supervisor la ve tal cual en el Backoffice. Si la cámara falla puedes registrar sin foto.</p>
+<h3 id="op-v2-ayuda-foto">Foto del incidente al pedir ayuda</h3>
+<p>En NECESITO AYUDA → «otro», <span class="ui">📷 Tomar foto (incidente)</span> guarda la foto con <b>ubicación GPS, punto, fecha y hora</b> impresos en la imagen. El supervisor ve el mapa del incidente y la foto en el caso.</p>
 <h3 id="op-v2-enviar">Enviar ahora</h3>
 <p>Cuando la tira dice «Pendiente de enviar (n)» aparece <span class="ui">Enviar ahora</span>: tócalo si ya tienes señal y no quieres esperar. Al cerrar, <b>Cuadra exacto / Falta / Sobra</b> se ve en vivo mientras escribes lo que tienes.</p>
 <h3 id="op-v2-ajustes">Alto contraste, voz y contexto</h3>

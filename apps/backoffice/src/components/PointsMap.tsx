@@ -144,3 +144,49 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
     </div>
   );
 }
+
+/** Ubicación de un incidente (foto/caso de AYUDA): marcador del GPS reportado y, si se conoce, el punto asignado. */
+export function IncidentMap({ gps, point }: { gps: { lat: number; lng: number; accuracy_m?: number | null; at?: string | null }; point?: { name: string; lat: number; lng: number } | null }) {
+  const tiles = useTilesOk();
+  const coords: [number, number][] = [[gps.lat, gps.lng], ...(point ? [[point.lat, point.lng] as [number, number]] : [])];
+  const b = bounds(coords);
+  const osm = `https://www.openstreetmap.org/?mlat=${gps.lat}&mlon=${gps.lng}#map=18/${gps.lat}/${gps.lng}`;
+  const meta = (
+    <div className="small muted" data-testid="incident-gps">
+      GPS {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
+      {gps.accuracy_m != null ? ` ±${Math.round(gps.accuracy_m)} m` : ''}
+      {gps.at ? ` · ${fmtTime(gps.at)}` : ''} ·{' '}
+      <a href={osm} target="_blank" rel="noreferrer">
+        Abrir en mapa
+      </a>
+    </div>
+  );
+  if (tiles.failed) {
+    return (
+      <div>
+        <div className="map mini">
+          <SchematicMap items={[{ id: 'gps', name: 'Incidente', lat: gps.lat, lng: gps.lng, status: 'late', label: 'Incidente' }, ...(point ? [{ id: 'pt', name: point.name, lat: point.lat, lng: point.lng, status: 'closed', label: point.name }] : [])]} />
+        </div>
+        {meta}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="map mini">
+        <MapContainer bounds={b} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+          <TileLayer attribution={ATTR} url={TILES} eventHandlers={tiles.handlers} />
+          <Marker position={[gps.lat, gps.lng]} icon={pin('late')}>
+            <Popup>Incidente reportado aquí</Popup>
+          </Marker>
+          {point && (
+            <Marker position={[point.lat, point.lng]} icon={pin('closed')}>
+              <Popup>{point.name}</Popup>
+            </Marker>
+          )}
+        </MapContainer>
+      </div>
+      {meta}
+    </div>
+  );
+}

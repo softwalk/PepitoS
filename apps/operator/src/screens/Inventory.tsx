@@ -1,9 +1,33 @@
 /** Recibir producto (QR o cantidades) y contar producto: dos pantallas simples con +/− por presentación. */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PhotoCapture from '../components/PhotoCapture';
+import { fmtKg, kilograms } from '../offline/image';
 import { speak } from '../offline/speech';
 import { getExpected, recordCount, recordReceipt } from '../state/actions';
 import { useApp } from '../state/store';
+
+/** Total en piezas y kilogramos (gramos nominales del catálogo × piezas). */
+function KgTotal({ values, base, testId = 'kg-total' }: { values: Record<string, number>; base?: Record<string, number>; testId?: string }) {
+  const { catalog } = useApp();
+  const pres = catalog?.presentations ?? [];
+  const units = Object.values(values).reduce((a, b) => a + (b || 0), 0);
+  const kg = kilograms(values, pres);
+  const baseKg = base ? kilograms(base, pres) : null;
+  return (
+    <div className="kg-total" data-testid={testId} aria-live="polite">
+      <div className="kg-total-main">
+        <span className="kg-total-value" data-testid={`${testId}-value`}>{fmtKg(kg)}</span>
+        <span className="muted">{units} pieza{units === 1 ? '' : 's'}</span>
+      </div>
+      {baseKg !== null && (
+        <div className="muted small" data-testid={`${testId}-base`}>
+          Debería haber {fmtKg(baseKg)}{baseKg !== kg ? ` · diferencia ${kg > baseKg ? '+' : '−'}${fmtKg(Math.abs(kg - baseKg))}` : ''}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function QtyRows({ values, onChange, base }: { values: Record<string, number>; onChange: (id: string, v: number) => void; base?: Record<string, number> }) {
   const { catalog } = useApp();
@@ -34,6 +58,7 @@ export function Receive() {
   const { shift, reload } = useApp();
   const [qty, setQty] = useState<Record<string, number>>({});
   const [qr, setQr] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
@@ -45,6 +70,8 @@ export function Receive() {
       <p className="h2">Escanea el QR de la entrega o marca cuántas piezas recibiste.</p>
       <input className="input" placeholder="Código QR de la entrega (opcional)" value={qr} onChange={(e) => setQr(e.target.value)} inputMode="text" autoCapitalize="characters" />
       <QtyRows values={qty} onChange={(id, v) => setQty((s) => ({ ...s, [id]: v }))} />
+      <KgTotal values={qty} testId="receive-kg" />
+      <PhotoCapture label="Recepción" value={photo} onChange={setPhoto} disabled={busy} testId="receive-photo" />
       <button
         className="btn btn-green"
         disabled={!total || busy}
@@ -52,7 +79,7 @@ export function Receive() {
         onClick={async () => {
           setBusy(true);
           try {
-            await recordReceipt(Object.entries(qty).map(([presentation_id, q]) => ({ presentation_id, qty: q })), qr.trim() || undefined);
+            await recordReceipt(Object.entries(qty).map(([presentation_id, q]) => ({ presentation_id, qty: q })), qr.trim() || undefined, photo ?? undefined);
             await reload();
             speak(`Recibiste ${total} piezas`);
             setDone(true);
@@ -78,6 +105,7 @@ export function Count() {
   const { shift, reload } = useApp();
   const [qty, setQty] = useState<Record<string, number>>({});
   const [base, setBase] = useState<Record<string, number>>({});
+  const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   useEffect(() => {
@@ -96,11 +124,14 @@ export function Count() {
       <h1 className="h1">Contar producto</h1>
       <p className="h2">Cuenta lo que tienes en el carrito y ajusta los números.</p>
       <QtyRows values={qty} onChange={(id, v) => setQty((s) => ({ ...s, [id]: v }))} base={base} />
+      <KgTotal values={qty} base={base} testId="count-kg" />
       {diff > 0 && (
         <div className="cash-diff warn" data-testid="count-diff">
           Diferencia de {diff} pieza(s) contra lo esperado
         </div>
       )}
+      <p className="muted small">Toma una foto del producto: queda con fecha y hora para el supervisor.</p>
+      <PhotoCapture label="Conteo" value={photo} onChange={setPhoto} disabled={busy} testId="count-photo" />
       <button
         className="btn btn-primary"
         disabled={busy}
@@ -108,7 +139,7 @@ export function Count() {
         onClick={async () => {
           setBusy(true);
           try {
-            await recordCount(qty);
+            await recordCount(qty, photo ?? undefined);
             await reload();
             speak('Conteo registrado');
             setDone(true);

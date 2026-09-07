@@ -61,6 +61,8 @@ para puntos con costos capturados; nunca se llama "utilidad neta" a una cifra qu
 | Merma valorizada | unidades de merma × último precio de venta de la presentación (no costo) |
 | Ajustes por conteo | `inventory_movements.count_adjustment`: diferencia entre conteo físico y teórico. Se muestra aparte de la merma; no se clasifica como robo |
 | Existencia | Σ `inventory_movements.qty` por punto/presentación (reconstruible) |
+| Existencia en kg | Σ existencia × gramos nominales de la presentación ÷ 1000 (peso teórico, no pesado). Misma fórmula en la PWA (`kilograms()`), `/v1/inventory/status` y el reporte de Inventario |
+| Conteo físico | `inventory_counts`: piezas contadas vs teóricas por presentación; se informa en piezas y kg. La foto del producto (opcional) se guarda como evidencia `inventory_count` con fecha/hora/punto impresos en la imagen por el teléfono |
 | Días de inventario | existencia ÷ consumo promedio diario del periodo (unidades vendidas ÷ días) |
 
 Pérdida de peso en preparación y consumo de materia prima no se capturan (fase 2, almacén central).

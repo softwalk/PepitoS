@@ -63,6 +63,16 @@ def add_movement(
     return mv
 
 
+def grams_of(db: Session) -> dict[str, int]:
+    """Gramos nominales por presentación (clave str(uuid)), para convertir piezas a kilogramos teóricos."""
+    return {str(p.id): int(p.grams) for p in db.query(Presentation).all()}
+
+
+def kg_of(counts: dict, grams: dict[str, int]) -> float:
+    """Kilogramos teóricos de un dict {presentation_id: piezas}."""
+    return round(sum(int(v) * grams.get(str(k), 0) for k, v in (counts or {}).items()) / 1000, 3)
+
+
 def balance(db: Session, point_id: uuid.UUID, presentation_id: uuid.UUID) -> int:
     total = db.execute(
         select(func.coalesce(func.sum(InventoryMovement.qty), 0)).where(

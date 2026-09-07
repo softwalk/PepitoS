@@ -142,6 +142,7 @@ class ReceiptIn(BaseModel):
     occurred_at: datetime | None = None
     qr_code: str | None = None
     lines: list[ReceiptLineIn] = Field(min_length=1)
+    photo_base64: str | None = None  # foto del producto recibido (con sello de fecha/hora en el cliente)
 
 
 class CountIn(BaseModel):
@@ -149,6 +150,7 @@ class CountIn(BaseModel):
     shift_id: uuid.UUID
     occurred_at: datetime | None = None
     counts: dict[uuid.UUID, int]
+    photo_base64: str | None = None  # foto del producto contado (con sello de fecha/hora en el cliente)
 
 
 class GpsPingIn(BaseModel):

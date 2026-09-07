@@ -50,7 +50,7 @@ Candidatos evaluados (26) y decisión:
 | `cash` | Caja y conciliación | Qué conciliar, escalar o aprobar | esperado, contado, diferencia neta, turnos con diferencia, graves, reaperturas, arqueos sorpresa, aprobaciones pendientes | shifts, audits, approvals, audit_log | diaria | — |
 | `points` | Ranking de puntos y ubicaciones | Qué punto reforzar, auditar o reubicar | puntos con ventas, promedio, en meta, en rojo, merma > 4 %; top 10; score vs meta; ranking completo con Δ y vs red | sales, points, waste, cases | semanal | — |
 | `people` | Productividad de vendedores | A quién capacitar, reconocer o reasignar | $/hora abierta, ticket, merma, diferencias de caja, cancelaciones, casos, asistencia/puntualidad, ranking día/mes/año | sales, shifts, attendance, waste, sale_cancellations, users | semanal / mensual | — |
-| `inventory` | Inventario, consumo y merma | Qué reponer, qué lote revisar | merma %, merma valorizada, unidades, entradas, ajustes, lotes bloqueados; existencias y días de inventario; movimientos por día; merma por punto/presentación/motivo | inventory_movements, waste, lots, inventory_counts | diaria | trazabilidad por lote |
+| `inventory` | Inventario, consumo y merma | Qué reponer, qué lote revisar | merma %, merma valorizada, unidades, entradas, ajustes, **existencia total (kg)**, lotes bloqueados; existencias (u. y kg) y días de inventario; movimientos por día; merma por punto/presentación/motivo; **conteos físicos** (contado u./kg, diferencia, fotos, enlace a Inventario) | inventory_movements, waste, lots, inventory_counts, evidence | diaria | trazabilidad por lote |
 | `quality` | Calidad y auditorías | Qué auditar y qué acción está vencida | auditorías, conformidad, acciones pendientes/vencidas, turnos con excepción de apertura, casos; NC por ítem, excepciones, casos por categoría | audits, actions, shifts, cases | semanal | SLA formal |
 | `maintenance` | Mantenimiento y disponibilidad | Qué carrito atender | activos, disponibilidad promedio, preventivos vencidos, tickets abiertos, MTTR, turnos con batería < 25 % | assets, maintenance_tickets, gps_pings, carts | semanal | MTBF |
 | `compliance` | Cumplimiento operativo y GPS | Quién incumple el protocolo | aperturas a tiempo, tarde, sin abrir, fuera del punto (50 m), pings fuera de geocerca, casos sin sync, fotos de muestreo | assignments, shifts, gps_pings, cases, evidence | diaria | — |
@@ -71,6 +71,8 @@ Permisos nuevos en `ROLE_PERMS` (`apps/api/app/core/deps.py`): `reports.executiv
 | points | ✅ | ✅ | ✅ | ◐ su zona | ❌ |
 | people | ✅ | ✅ | ◐ sin asistencia (`hidden: attendance`) | ◐ su zona | ◐ el suyo |
 | inventory | ✅ | ✅ | ◐ sólo merma valorizada (`hidden: movements, stock, lots, counts`) | ◐ su zona | ❌ |
+
+Versión de cálculo vigente: `REPORT_VERSION = "1.2"` (1.2: existencias y conteos en kilogramos, fotos de conteo; ver `docs/INDICADORES.md`).
 | quality | ✅ | ✅ | ❌ | ◐ su zona | ❌ |
 | maintenance | ✅ | ✅ | ❌ | ◐ carritos de su zona | ❌ |
 | compliance | ✅ | ✅ | ◐ lectura | ◐ su zona | ❌ |

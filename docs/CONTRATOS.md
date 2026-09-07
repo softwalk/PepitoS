@@ -76,8 +76,8 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | POST | `/v1/sales/{id}/cancel` | `{idempotency_key, reason_code, note?}` → `{sale_id, status:"cancelled"}` |
 | POST | `/v1/waste` | `{idempotency_key, shift_id, occurred_at, presentation_id, qty, reason_code:"spill"|"quality"|"expired"|"sample"|"other", note?}` → `201 {waste_id}` |
 | POST | `/v1/help-cases` | `{idempotency_key, shift_id?, occurred_at, category:"cart"|"battery"|"product"|"payment"|"security"|"other", note?, photo_base64?, gps?}` → `201 {case_id, severity, category, status:"open"}` |
-| POST | `/v1/inventory/receipts` | `{idempotency_key, shift_id, occurred_at, qr_code?, lines:[{presentation_id, qty, lot_code?}]}` → `201 {receipt_id}` |
-| POST | `/v1/inventory/counts` | `{idempotency_key, shift_id, occurred_at, counts:{presentation_id:qty}}` → `{count_id, differences:{presentation_id:int}}` |
+| POST | `/v1/inventory/receipts` | `{idempotency_key, shift_id, occurred_at, qr_code?, lines:[{presentation_id, qty, lot_code?}], photo_base64?}` → `201 {receipt_id, evidence_ids}` (foto con sello fecha/hora → `evidence` kind `inventory_receipt`) |
+| POST | `/v1/inventory/counts` | `{idempotency_key, shift_id, occurred_at, counts:{presentation_id:qty}, photo_base64?}` → `{count_id, differences:{presentation_id:int}, evidence_ids}` (foto → kind `inventory_count`) |
 | POST | `/v1/gps/pings` | `{pings:[{shift_id, at, lat, lng, accuracy_m, mocked:boolean, battery_pct?}]}` → `{accepted:int}` |
 | POST | `/v1/sync/batch` | `{device_id, commands:[{idempotency_key, type:"sale"|"waste"|"shift_open"|"shift_close"|"help_case"|"gps_ping"|"inventory_receipt"|"inventory_count"|"sale_cancel", created_at, payload}]}` → `{results:[{idempotency_key, status:"ok"|"duplicate"|"error", code?, message?, result?}]}` (procesa en orden; un error no detiene los demás) |
 | GET | `/v1/catalog` | → `Catalog` |
@@ -118,7 +118,9 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | POST | `/v1/rules/run` | ejecuta motor ahora → `{alerts_created, cases_created}` |
 | GET | `/v1/approvals?status=` · POST `/v1/approvals/{id}/decision` `{decision:"approve"|"reject", note}` |
 | GET | `/v1/audit-log?entity=&entity_id=&limit=` |
-| GET | `/v1/inventory/status` → por punto: balance, teórico, riesgo de quiebre |
+| GET | `/v1/inventory/status` → por punto: balance, teórico, riesgo de quiebre, `grams`/`kg` por presentación, `total_kg`; totales de la red |
+| GET | `/v1/inventory/counts?days=&point_id=` → conteos físicos con `counted_units/kg`, `expected_kg`, `diff_units/kg` y `evidence[]` |
+| GET | `/v1/inventory/receipts?days=&point_id=` → recepciones con piezas, `kg` y `evidence[]` |
 | GET | `/v1/people/attendance?date=` |
 | GET | `/v1/assets` · POST `/v1/maintenance/tickets` · PATCH `/v1/maintenance/tickets/{id}` |
 | POST | `/v1/lots/{id}/block` `{reason}` → `{affected_points:[...]}` |

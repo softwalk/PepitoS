@@ -13,6 +13,8 @@ const KIND_LABEL: Record<string, string> = {
   shift_close: 'Cierre',
   audit: 'Auditoría',
   case_note: 'Nota',
+  inventory_count: 'Conteo',
+  inventory_receipt: 'Recepción',
 };
 
 type Resolved = { status: 'loading' } | { status: 'ok'; src: ResolvedUrl } | { status: 'error'; message: string };

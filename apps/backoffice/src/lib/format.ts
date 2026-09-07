@@ -152,3 +152,9 @@ export function fmtBytes(bytes: number | null | undefined): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/** Kilogramos con hasta 2 decimales (es-MX). */
+export function fmtKg(kg: number | null | undefined): string {
+  if (kg == null || Number.isNaN(kg)) return '—';
+  return `${kg.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg`;
+}

@@ -21,6 +21,7 @@ from app.schemas.operator import (
     WasteIn,
 )
 from app.services import cases as cases_svc
+from app.services import evidence as evidence_svc
 from app.services import inventory as inv_svc
 from app.services import sales as sales_svc
 from app.services import shifts as shifts_svc
@@ -125,9 +126,10 @@ def cmd_receipt(db: Session, current, data: ReceiptIn) -> IdemResult:
     def fn():
         shift = _open_shift_checked(db, current, data.shift_id)
         r = inv_svc.create_receipt(db, shift, current.id, data)
-        return {"receipt_id": str(r.id)}, 201
+        photos = evidence_svc.store_photos(db, [data.photo_base64] if data.photo_base64 else [], kind="inventory_receipt", entity="receipt", entity_id=r.id, uploaded_by=current.id, point_id=shift.point_id, shift_id=shift.id, taken_at=r.occurred_at)
+        return {"receipt_id": str(r.id), "evidence_ids": [str(e.id) for e in photos]}, 201
 
-    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json"), fn)
+    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json", exclude={"photo_base64"}), fn)
 
 
 def cmd_count(db: Session, current, data: CountIn) -> IdemResult:
@@ -136,9 +138,10 @@ def cmd_count(db: Session, current, data: CountIn) -> IdemResult:
         if shift.status != "open":
             raise ApiError("SHIFT_NOT_OPEN")
         ic, diffs, _ = inv_svc.apply_count(db, shift, current.id, data.counts, kind="manual", idempotency_key=data.idempotency_key, occurred_at=data.occurred_at)
-        return {"count_id": str(ic.id), "differences": {str(k): v for k, v in diffs.items()}}, 200
+        photos = evidence_svc.store_photos(db, [data.photo_base64] if data.photo_base64 else [], kind="inventory_count", entity="inventory_count", entity_id=ic.id, uploaded_by=current.id, point_id=shift.point_id, shift_id=shift.id, taken_at=ic.occurred_at)
+        return {"count_id": str(ic.id), "differences": {str(k): v for k, v in diffs.items()}, "evidence_ids": [str(e.id) for e in photos]}, 200
 
-    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json"), fn)
+    return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json", exclude={"photo_base64"}), fn)
 
 
 def cmd_gps(db: Session, current, data: GpsBatchIn) -> dict:

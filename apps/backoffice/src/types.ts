@@ -47,7 +47,7 @@ export interface Case {
   description: string;
   source: 'operator' | 'rule' | 'supervisor' | 'system';
   rule_key: string | null;
-  point: Ref | null;
+  point: (Ref & { lat?: number; lng?: number }) | null;
   shift_id: string | null;
   shift_status: 'open' | 'closed' | 'transferred' | null;
   opened_at: string;
@@ -67,8 +67,8 @@ export interface Case {
 
 export interface Evidence {
   id: string;
-  kind: 'help_case' | 'shift_open' | 'shift_close' | 'audit' | 'case_note' | string;
-  entity: 'case' | 'shift' | 'audit';
+  kind: 'help_case' | 'shift_open' | 'shift_close' | 'audit' | 'case_note' | 'inventory_count' | 'inventory_receipt' | string;
+  entity: 'case' | 'shift' | 'audit' | 'inventory_count' | 'receipt' | string;
   entity_id: string;
   content_type: string;
   size_bytes: number;
@@ -238,10 +238,46 @@ export interface InventoryStatus {
   points: {
     point: Ref;
     stock_risk: 'ok' | 'low' | 'critical';
-    items: { presentation_id: string; name: string; balance: number; theoretical: number; min_units: number }[];
+    items: { presentation_id: string; name: string; grams: number; balance: number; theoretical: number; min_units: number; kg: number }[];
     total_units: number;
+    total_kg: number;
   }[];
   min_units: number;
+  total_units: number;
+  total_kg: number;
+}
+
+/** Conteo físico (`GET /v1/inventory/counts`): piezas y kilogramos teóricos, diferencia y fotos con sello. */
+export interface InventoryCountRow {
+  id: string;
+  occurred_at: string;
+  kind: 'manual' | 'close' | 'transfer' | string;
+  shift_id: string;
+  point: Ref;
+  actor: Ref;
+  counts: Record<string, number>;
+  theoretical: Record<string, number>;
+  differences: Record<string, number>;
+  counted_units: number;
+  counted_kg: number;
+  expected_kg: number;
+  diff_units: number;
+  diff_kg: number;
+  evidence: Evidence[];
+}
+
+/** Recepción de producto (`GET /v1/inventory/receipts`). */
+export interface InventoryReceiptRow {
+  id: string;
+  occurred_at: string;
+  shift_id: string;
+  qr_code: string | null;
+  point: Ref;
+  actor: Ref;
+  lines: { presentation_id: string; qty: number; lot_code: string | null }[];
+  units: number;
+  kg: number;
+  evidence: Evidence[];
 }
 
 export interface Lot {

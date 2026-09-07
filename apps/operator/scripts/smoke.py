@@ -10,6 +10,9 @@ import uuid
 
 from playwright.sync_api import sync_playwright
 
+# PNG 1×1 (el sello se dibuja sobre él; el servidor valida tipo y tamaño)
+PNG_1X1 = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cfc0f01f0005000201cb3e3b0e0000000049454e44ae426082")
+
 APP = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:4173"
 API = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8000"
 SHOTS = sys.argv[3] if len(sys.argv) > 3 else None
@@ -160,12 +163,25 @@ with sync_playwright() as p:
     page.goto(APP + "/#/contar")
     page.wait_for_selector("text=Contar producto")
     page.wait_for_timeout(800)
+    # Total en kilogramos visible (piezas × gramos) y foto del producto con sello de fecha/hora
+    kg_text = page.locator("[data-testid=count-kg-value]").inner_text()
+    assert kg_text.endswith("kg"), kg_text
+    page.set_input_files("[data-testid=count-photo-input]", {"name": "producto.png", "mimeType": "image/png", "buffer": PNG_1X1})
+    page.wait_for_selector("[data-testid=count-photo-stamp]", timeout=10000)
+    stamp = page.locator("[data-testid=count-photo-stamp]").inner_text()
+    assert "Conteo ·" in stamp and "Metro Insurgentes" in stamp, stamp
+    shot(page, "07e-contar-foto")
     page.click("[data-testid=count-confirm]")
     page.wait_for_selector("text=Conteo registrado")
     for _ in range(30):
         if page.locator("text=Guardado").count() and not page.locator("text=Pendiente de enviar").count():
             break
         time.sleep(0.5)
+    st, counts = api("GET", "/v1/inventory/counts?days=1", token=api("POST", "/v1/auth/login", {"username": "admin", "password": "admin123", "device_id": device_id + "-adm"})[1]["access_token"])
+    mine = [c for c in counts["counts"] if c["shift_id"] == shift_id]
+    assert mine and mine[0]["evidence"] and mine[0]["evidence"][0]["kind"] == "inventory_count", mine
+    assert abs(float(kg_text.replace(",", "").split()[0]) - mine[0]["counted_kg"]) < 0.01, (mine[0]["counted_kg"], kg_text)
+    print("Conteo con foto sellada:", mine[0]["counted_kg"], "kg;", stamp.replace(chr(10), " | "))
 
     # CERRAR: paso 1
     page.goto(APP + "/#/cerrar")

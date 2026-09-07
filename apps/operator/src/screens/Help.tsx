@@ -1,8 +1,8 @@
-import { useState, type ChangeEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
+import PhotoCapture from '../components/PhotoCapture';
 import { getPosition, recentPosition } from '../offline/gps';
-import { compressImage } from '../offline/image';
 import { speak } from '../offline/speech';
 import { requestHelp } from '../state/actions';
 import { useApp } from '../state/store';
@@ -27,7 +27,7 @@ const TAGS: { code: HelpTag; label: string }[] = [
 
 export default function Help() {
   const nav = useNavigate();
-  const { catalog, config, reload } = useApp();
+  const { catalog, reload } = useApp();
   const [sent, setSent] = useState<HelpCategory | null>(null);
   const [other, setOther] = useState(false);
   const [note, setNote] = useState('');
@@ -51,20 +51,8 @@ export default function Help() {
     }
   };
 
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const onPhoto = async (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    setPhotoError(null);
-    try {
-      // ≤1280 px / JPEG 0.8 y validación contra config.evidence_max_bytes (3 MB por defecto).
-      setPhoto(await compressImage(f, { maxBytes: config?.evidence_max_bytes }));
-    } catch (err) {
-      setPhoto(null);
-      setPhotoError(err instanceof Error ? err.message : 'No se pudo procesar la foto');
-    }
-  };
+  // Foto del incidente: se estampa con ubicación (GPS al momento de la toma), punto, fecha y hora dentro de la imagen.
+  const stampWithGps = async () => ({ gps: (await getPosition(4000)) ?? recentPosition() ?? null });
 
   if (sent) {
     return (
@@ -94,21 +82,7 @@ export default function Help() {
           ))}
         </div>
         <textarea placeholder="Escribe una nota corta (opcional)" value={note} maxLength={280} onChange={(e) => setNote(e.target.value)} />
-        <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
-          <span className="ico" aria-hidden>
-            📷
-          </span>
-          {photo ? 'Foto lista ✓' : 'Tomar foto (opcional)'}
-          <input className="sr" type="file" accept="image/*" capture="environment" onChange={onPhoto} />
-        </label>
-        {photoError && (
-          <div className="exception" role="alert">
-            <span className="ico" aria-hidden>
-              ⚠️
-            </span>
-            <div>{photoError}</div>
-          </div>
-        )}
+        <PhotoCapture label="Incidente" value={photo} onChange={setPhoto} stamp={stampWithGps} disabled={busy} testId="help-photo" />
         <button className="btn btn-blue" disabled={busy} onClick={() => send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined, tags })}>
           <span className="ico" aria-hidden>
             📨
