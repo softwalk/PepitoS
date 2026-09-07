@@ -1,21 +1,28 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { syncNow } from '../offline/sync';
 import { useApp } from '../state/store';
 
-/** Estado de sincronía: texto + color; el fondo de la tira de estado sigue este mismo estado. */
+/** Estado de sincronía: texto + color; el fondo de la tira de estado sigue este mismo estado.
+ *  Con pendientes muestra «Sincronizar ahora» (Background Sync no es uniforme entre navegadores). */
 function SyncPill() {
   const { sync } = useApp();
+  const now = (
+    <button type="button" className="sync-now" onClick={() => void syncNow()} disabled={sync.syncing || !sync.online} data-testid="sync-now">
+      {sync.syncing ? 'Enviando…' : 'Enviar ahora'}
+    </button>
+  );
   if (sync.visible === 'help') {
     return (
       <span className="pill pill-red" role="status">
-        <span className="dot" aria-hidden /> Requiere ayuda
+        <span className="dot" aria-hidden /> Requiere ayuda {now}
       </span>
     );
   }
   if (sync.visible === 'pending') {
     return (
       <span className="pill pill-amber" role="status">
-        <span className="dot" aria-hidden /> Pendiente de enviar ({sync.pending})
+        <span className="dot" aria-hidden /> Pendiente de enviar ({sync.pending}) {now}
       </span>
     );
   }

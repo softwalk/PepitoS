@@ -22,6 +22,7 @@ import type { AssignmentResponse, Catalog, OperatorConfig } from '../types';
 export interface Settings {
   audio: boolean;
   large_text: boolean;
+  high_contrast: boolean;
 }
 
 export interface AppState {
@@ -46,7 +47,7 @@ interface Ctx extends AppState {
 
 const AppContext = createContext<Ctx | null>(null);
 
-const DEFAULT_SETTINGS: Settings = { audio: false, large_text: false };
+const DEFAULT_SETTINGS: Settings = { audio: false, large_text: false, high_contrast: false };
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>({
@@ -95,7 +96,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       config: catalog?.config ?? assignment?.data.config ?? null,
       shift,
       sales,
-      settings: settings ? { audio: settings.audio, large_text: settings.large_text } : DEFAULT_SETTINGS,
+      settings: settings ? { audio: settings.audio, large_text: settings.large_text, high_contrast: !!settings.high_contrast } : DEFAULT_SETTINGS,
     }));
   }, []);
 
@@ -158,6 +159,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSpeechEnabled(state.settings.audio);
     document.documentElement.classList.toggle('large-text', state.settings.large_text);
+    document.documentElement.classList.toggle('high-contrast', state.settings.high_contrast);
   }, [state.settings]);
 
   const setSettings = useCallback(

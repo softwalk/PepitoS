@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Numpad, { pesosToCents } from '../components/Numpad';
 import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
 import { GPS_REASON_TEXT, getPositionDetailed, type GpsReason } from '../offline/gps';
 import { haversineM, openLimitM } from '../offline/geo';
 import { speak } from '../offline/speech';
 import { openShift, suggestedAction } from '../state/actions';
-import { useApp } from '../state/store';
+import { money, useApp } from '../state/store';
 import type { GPS, OpenChecklist, Photo, ShiftException } from '../types';
 
 const ITEMS: { key: keyof OpenChecklist; icon: string; label: string }[] = [
@@ -23,8 +24,12 @@ export default function OpenShift() {
   const [gps, setGps] = useState<GPS | null | 'loading'>('loading');
   const [gpsReason, setGpsReason] = useState<GpsReason | null>(null);
   const [values, setValues] = useState<Partial<Record<keyof OpenChecklist, boolean>>>({});
-  const [step, setStep] = useState<'checklist' | 'photo'>('checklist');
+  const [step, setStep] = useState<'checklist' | 'cash' | 'photo'>('checklist');
+  const [opening, setOpening] = useState('');
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    speak('Revisa el carrito y marca sí o no en cada punto.');
+  }, []);
   const [result, setResult] = useState<{ ready: boolean; exceptions: ShiftException[]; pending: boolean } | null>(null);
 
   useEffect(() => {
@@ -61,7 +66,7 @@ export default function OpenShift() {
     setBusy(true);
     try {
       const checklist = Object.fromEntries(ITEMS.map((i) => [i.key, values[i.key] === true])) as unknown as OpenChecklist;
-      const st = await openShift(checklist, gps === 'loading' ? null : gps, photos);
+      const st = await openShift(checklist, gps === 'loading' ? null : gps, photos, pesosToCents(opening || '0'));
       await reload();
       setResult({ ready: st.ready, exceptions: st.exceptions, pending: st.status === 'open_pending' });
       speak(st.ready ? 'Listo para vender' : 'Puesto abierto con excepciones. Revisa la lista.');
@@ -76,6 +81,10 @@ export default function OpenShift() {
   // Foto del puesto (muestreo determinístico decidido por el servidor: config.require_open_photo).
   const next = () => {
     if (!complete) return;
+    setStep('cash');
+    speak('¿Con cuánto efectivo empiezas? Escribe el fondo de caja o cero si no recibiste.');
+  };
+  const afterCash = () => {
     if (config?.require_open_photo) setStep('photo');
     else void submit([]);
   };
@@ -126,7 +135,30 @@ export default function OpenShift() {
   }
 
   if (step === 'photo') {
-    return <PhotoStep title="Toma una foto del puesto listo" maxBytes={config?.evidence_max_bytes} busy={busy} onContinue={(photos) => void submit(photos)} onBack={() => setStep('checklist')} continueLabel="LISTO" />;
+    return <PhotoStep title="Toma una foto del puesto listo" maxBytes={config?.evidence_max_bytes} busy={busy} onContinue={(photos) => void submit(photos)} onBack={() => setStep('cash')} continueLabel="LISTO" />;
+  }
+
+  if (step === 'cash') {
+    const cents = pesosToCents(opening || '0');
+    return (
+      <div className="stack" data-testid="opening-cash">
+        <h1 className="h1 center">Fondo de caja</h1>
+        <p className="h2 center">¿Con cuánto efectivo empiezas? Si no recibiste fondo, deja $0.</p>
+        <div className={`amount-display ${opening ? '' : 'empty'}`} aria-live="polite">
+          {opening ? money(cents) : '$ 0'}
+        </div>
+        <Numpad value={opening} onChange={setOpening} />
+        <button className="btn btn-green" disabled={busy} onClick={afterCash}>
+          <span className="ico" aria-hidden>
+            {config?.require_open_photo ? '📷' : '✅'}
+          </span>
+          {busy ? 'Abriendo…' : config?.require_open_photo ? 'SIGUIENTE: FOTO' : 'LISTO'}
+        </button>
+        <button className="btn btn-ghost" onClick={() => setStep('checklist')}>
+          Volver
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -177,9 +209,9 @@ export default function OpenShift() {
       ))}
       <button className="btn btn-green" disabled={!complete || busy} onClick={next}>
         <span className="ico" aria-hidden>
-          {config?.require_open_photo ? '📷' : '✅'}
+          💵
         </span>
-        {busy ? 'Abriendo…' : config?.require_open_photo ? 'SIGUIENTE: FOTO' : 'LISTO'}
+        SIGUIENTE: FONDO DE CAJA
       </button>
       <button className="btn btn-ghost" onClick={() => nav('/')}>
         Volver

@@ -67,6 +67,10 @@ export interface ShiftStateRecord {
     difference_cents: number;
     closed_at: string;
   } | null;
+  /** Fondo de caja recibido al abrir (entra en el efectivo esperado). */
+  opening_cents?: number;
+  /** Movimientos de efectivo registrados en este teléfono (fondo, retiros, gastos, devoluciones en efectivo). */
+  cash_movements?: { key: string; kind: 'deposit' | 'withdrawal' | 'expense' | 'refund'; amount_cents: number; reason: string; occurred_at: string }[];
 }
 
 export type SaleLocalStatus = 'pending' | 'synced' | 'undone' | 'cancel_pending' | 'cancelled' | 'failed';
@@ -107,6 +111,7 @@ export interface SettingsRecord {
   id: 'current';
   audio: boolean;
   large_text: boolean;
+  high_contrast?: boolean;
 }
 
 interface PepitoDB extends DBSchema {

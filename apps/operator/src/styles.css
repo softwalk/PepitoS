@@ -54,6 +54,28 @@
   --gap: 14px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
+/* Alto contraste (sol directo): fondos blancos, texto negro, bordes gruesos. */
+html.high-contrast {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --ink: #000000;
+  --muted: #222222;
+  --line: #000000;
+  --line-strong: #000000;
+}
+html.high-contrast .card,
+html.high-contrast .shift-card,
+html.high-contrast .rank-card,
+html.high-contrast .expected-card {
+  border: 2px solid #000;
+  box-shadow: none;
+}
+html.high-contrast .btn {
+  border: 2px solid #000;
+}
+html.high-contrast .muted {
+  color: #222;
+}
 html.large-text {
   --fs: 22px;
   --btn-h: 76px;
@@ -177,7 +199,8 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 6px 14px 8px;
   border-top: 1px solid var(--line);
   background: var(--green-bg);
@@ -366,6 +389,20 @@ a.pill {
 .home-hero {
   min-height: 150px;
   font-size: 1.6em;
+}
+.home-secondary {
+  margin-top: 6px;
+}
+.home-grid .home-secondary .btn-huge {
+  min-height: 88px;
+  font-size: 1.05em;
+}
+.home-secondary .btn-huge .ico {
+  font-size: 1.4em;
+}
+.home-tertiary .btn {
+  min-height: 60px;
+  font-size: 0.95em;
 }
 .home-hero .ico {
   font-size: 1.7em;
@@ -726,18 +763,24 @@ a.pill {
 .sale-btn.qr:active:not(:disabled) {
   box-shadow: 0 1px 0 #143f85;
 }
-.sale-btn .g {
+/* El operador cobra en pesos: el importe manda; los gramos son la etiqueta secundaria. */
+.sale-btn .p {
   grid-row: 1 / span 2;
+  grid-column: 1;
   font-size: 2.6em;
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.02em;
+  text-align: left;
 }
-.sale-btn .p {
-  font-size: 1.6em;
-  font-weight: 900;
+.sale-btn .g {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 1.35em;
+  font-weight: 800;
   line-height: 1;
   text-align: right;
+  opacity: 0.95;
 }
 .sale-btn .btn-sub {
   justify-self: end;
@@ -1224,3 +1267,62 @@ textarea {
   width: auto;
   max-width: 110px;
 }
+
+
+/* --- diferencia de caja en vivo (cierre) --- */
+.cash-diff {
+  text-align: center;
+  font-weight: 800;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 1.05em;
+}
+.cash-diff.ok { background: var(--green-bg, #dff5e7); color: var(--green, #1a7f46); }
+.cash-diff.warn { background: var(--amber-bg, #fff1d6); color: #8a5a00; }
+.cash-diff.bad { background: var(--red-bg, #fde8e6); color: var(--red, #b3261e); }
+
+/* --- bienvenida --- */
+.welcome-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.welcome-facts .fact {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.welcome-facts .fact .k { font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+.welcome-facts .fact .v { font-weight: 800; font-size: 1.05em; margin-top: 2px; }
+
+/* --- sincronizar ahora --- */
+.sync-now {
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95em;
+  font-weight: 800;
+  padding: 2px 10px;
+  min-height: 28px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.sync-now:disabled {
+  opacity: 0.6;
+}
+
+/* --- devoluciones y recepción --- */
+.sale-list { display: flex; flex-direction: column; gap: 8px; }
+.sale-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 56px; }
+.sale-row .t { font-weight: 800; }
+.sale-row .s { font-size: 0.85em; color: var(--muted); }
+.qty-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.qty-row .qty-btn { min-width: 52px; min-height: 52px; border-radius: 12px; border: 2px solid var(--line-strong); background: var(--card); font-size: 1.4em; font-weight: 900; }
+.qty-row .qty-val { min-width: 44px; text-align: center; font-size: 1.4em; font-weight: 900; }

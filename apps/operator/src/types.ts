@@ -299,7 +299,11 @@ export type SyncCommandType =
   | 'gps_ping'
   | 'inventory_receipt'
   | 'inventory_count'
-  | 'sale_cancel';
+  | 'sale_cancel'
+  | 'cash_movement';
+
+export type CashMovementKind = 'deposit' | 'withdrawal' | 'expense' | 'refund';
+export type HelpTag = 'rain' | 'planned_closure' | 'traffic' | 'low_footfall' | 'stockout';
 
 export interface SyncCommand {
   idempotency_key: string;

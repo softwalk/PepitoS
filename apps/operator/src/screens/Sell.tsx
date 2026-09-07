@@ -270,13 +270,16 @@ export default function Sell() {
           </span>
           MERMA
         </button>
-        <button className="btn btn-outline" onClick={() => nav('/')}>
+        <button className="btn btn-outline" onClick={() => nav('/devolucion')} data-testid="go-returns">
           <span className="ico" aria-hidden>
-            🏠
+            ↩️
           </span>
-          Inicio
+          Devolución / caja
         </button>
       </div>
+      <button className="btn btn-ghost" onClick={() => nav('/')}>
+        Inicio
+      </button>
 
       {toast && (toast.text || showUndo) && (
         <div className="toast" role="status" aria-live="assertive">

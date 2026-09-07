@@ -167,7 +167,7 @@ class GpsBatchIn(BaseModel):
 
 SyncType = Literal[
     "sale", "waste", "shift_open", "shift_close", "help_case", "gps_ping", "inventory_receipt", "inventory_count",
-    "sale_cancel", "shift_transfer",
+    "sale_cancel", "shift_transfer", "cash_movement",
 ]
 
 

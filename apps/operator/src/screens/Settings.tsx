@@ -124,6 +124,12 @@ export default function Settings() {
           </span>
           <span className={`switch ${settings.large_text ? 'on' : ''}`} aria-hidden />
         </button>
+        <button type="button" className="switch-row" onClick={() => setSettings({ high_contrast: !settings.high_contrast })} aria-pressed={settings.high_contrast}>
+          <span className="h2">
+            <span aria-hidden>☀️</span> Alto contraste (sol directo)
+          </span>
+          <span className={`switch ${settings.high_contrast ? 'on' : ''}`} aria-hidden />
+        </button>
       </div>
 
       {confirmForce ? (

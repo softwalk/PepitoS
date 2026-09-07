@@ -80,6 +80,11 @@ with sync_playwright() as p:
         for i in range(yes.count()):
             yes.nth(i).click()
         shot(page, "04-abrir-checklist")
+        page.click("button:has-text('SIGUIENTE: FONDO DE CAJA')")
+        page.wait_for_selector("[data-testid=opening-cash]")
+        for ch in "200":  # fondo $200
+            page.click(f"[data-testid=opening-cash] .numpad button[aria-label='{ch}']")
+        shot(page, "04b-fondo-caja")
         page.click("button:has-text('LISTO'), button:has-text('SIGUIENTE: FOTO')")
         skip_photo_if_asked(page)
         page.wait_for_selector("text=LISTO PARA VENDER", timeout=20000)
@@ -92,6 +97,8 @@ with sync_playwright() as p:
     st, exp0 = api("GET", f"/v1/shifts/{shift_id}/expected", token=token)
     base_count = exp0["sales_count"]
     base_cash = exp0["cash_expected_cents"]
+    if not before["active_shift"]:
+        assert exp0["opening_cents"] == 20000, exp0
 
     # VENDER: 2 ventas en efectivo (1 toque cada una)
     if "vender" not in page.url:
@@ -113,6 +120,52 @@ with sync_playwright() as p:
     assert exp1["sales_count"] == base_count + 2, f"Deben existir 2 ventas nuevas en la API: {exp1}"
     assert exp1["cash_expected_cents"] == base_cash + 2500 + 4500, f"Efectivo esperado incorrecto: {exp1}"
     print("Ventas confirmadas en API:", exp1["sales_count"], "efectivo", exp1["cash_expected_cents"])
+
+    # DEVOLUCIÓN / CAJA: gasto de $30 (hielo) y devolución de la última venta (100 g) → caso de revisión
+    page.click("[data-testid=go-returns]")
+    page.wait_for_selector("text=¿Qué venta devolvió el cliente?")
+    page.click("[data-testid=return-sale] >> nth=0")
+    page.click("[data-testid=return-confirm]")
+    page.wait_for_selector("text=Devolución registrada", timeout=15000)
+    shot(page, "07b-devolucion")
+    page.click("button:has-text('Seguir vendiendo')")
+    page.click("[data-testid=go-returns]")
+    page.click("[role=tab]:has-text('Caja')")
+    page.click(".chip:has-text('Hielo')")
+    for ch in "30":
+        page.click(f".numpad button[aria-label='{ch}']")
+    page.click("[data-testid=cash-confirm]")
+    page.wait_for_selector("text=Gasto registrado", timeout=15000)
+    shot(page, "07c-gasto")
+    page.click("button:has-text('Seguir vendiendo')")
+    for _ in range(30):
+        if page.locator("text=Guardado").count() and not page.locator("text=Pendiente de enviar").count():
+            break
+        time.sleep(0.5)
+    st, exp1 = api("GET", f"/v1/shifts/{shift_id}/expected", token=token)
+    assert exp1["sales_count"] == base_count + 1 and exp1["cash_out_cents"] == 3000, f"Devolución/gasto no reflejados: {exp1}"
+    assert exp1["cash_expected_cents"] == base_cash + 2500 - 3000, f"Esperado tras devolución y gasto: {exp1}"
+    st, cases = api("GET", "/v1/cases?status=open", token=api("POST", "/v1/auth/login", {"username": "sup1", "password": "sup123", "device_id": device_id + "-sup"})[1]["access_token"])
+    assert any(c.get("rule_key") == "sale_return" for c in cases), "Debe existir el caso de devolución"
+    print("Devolución y gasto confirmados; esperado", exp1["cash_expected_cents"])
+
+    # RECIBIR / CONTAR producto
+    page.goto(APP + "/#/recibir")
+    page.wait_for_selector("text=Recibir producto")
+    page.click("[data-testid=qty-50] button[aria-label='Más 50 g']")
+    page.click("[data-testid=qty-50] button[aria-label='Más 50 g']")
+    page.click("[data-testid=receive-confirm]")
+    page.wait_for_selector("text=Producto recibido")
+    shot(page, "07d-recibir")
+    page.goto(APP + "/#/contar")
+    page.wait_for_selector("text=Contar producto")
+    page.wait_for_timeout(800)
+    page.click("[data-testid=count-confirm]")
+    page.wait_for_selector("text=Conteo registrado")
+    for _ in range(30):
+        if page.locator("text=Guardado").count() and not page.locator("text=Pendiente de enviar").count():
+            break
+        time.sleep(0.5)
 
     # CERRAR: paso 1
     page.goto(APP + "/#/cerrar")

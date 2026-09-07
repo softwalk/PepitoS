@@ -9,6 +9,8 @@ import Sell from './screens/Sell';
 import Help from './screens/Help';
 import CloseShift from './screens/CloseShift';
 import Settings from './screens/Settings';
+import Returns from './screens/Returns';
+import { Count, Receive } from './screens/Inventory';
 
 function Gate() {
   const { booted, session } = useApp();
@@ -44,6 +46,9 @@ function Gate() {
         <Route path="/ayuda" element={<Help />} />
         <Route path="/cerrar" element={<CloseShift />} />
         <Route path="/ajustes" element={<Settings />} />
+        <Route path="/devolucion" element={<Returns />} />
+        <Route path="/recibir" element={<Receive />} />
+        <Route path="/contar" element={<Count />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

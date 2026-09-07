@@ -140,8 +140,17 @@ export default function CloseShift() {
           <div className={`amount-display ${cash ? '' : 'empty'}`} aria-live="polite">
             {cash ? money(cashCents) : '$ ___'}
           </div>
+          {cash !== '' && expected && (() => {
+            const diff = cashCents - expected.cash_expected_cents;
+            const tone = diff === 0 ? 'ok' : Math.abs(diff) <= threshold ? 'warn' : 'bad';
+            return (
+              <div className={`cash-diff ${tone}`} data-testid="cash-diff" aria-live="polite">
+                {diff === 0 ? '✓ Cuadra exacto' : `${diff > 0 ? 'Sobra' : 'Falta'} ${money(Math.abs(diff))}${tone === 'bad' ? ' · el supervisor lo revisará' : ''}`}
+              </div>
+            );
+          })()}
           <Numpad value={cash} onChange={setCash} />
-          <button className="btn btn-primary" disabled={!expected || cash === ''} onClick={() => setStep(2)}>
+          <button className="btn btn-primary" disabled={!expected || cash === ''} onClick={() => { setStep(2); speak('Ahora cuenta el producto que queda en el carrito.'); }}>
             <span className="ico" aria-hidden>
               ➡️
             </span>
@@ -172,7 +181,7 @@ export default function CloseShift() {
               </div>
             </div>
           ))}
-          <button className="btn btn-primary" onClick={() => setStep(3)}>
+          <button className="btn btn-primary" onClick={() => { setStep(3); speak('Último paso: revisa la lista de salida y marca sí o no.'); }}>
             <span className="ico" aria-hidden>
               ➡️
             </span>

@@ -55,6 +55,8 @@ with sync_playwright() as p:
     yes = page.locator("button:has-text('Sí')")
     for i in range(yes.count()):
         yes.nth(i).click()
+    page.click("button:has-text('SIGUIENTE: FONDO DE CAJA')")
+    page.wait_for_selector("[data-testid=opening-cash]")
     page.click("button:has-text('LISTO'), button:has-text('SIGUIENTE: FOTO')")
     skip_photo_if_asked(page)
     page.wait_for_selector("text=LISTO PARA VENDER", timeout=30000)

@@ -8,6 +8,17 @@ function fmtTime(iso: string): string {
   return d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
 }
 
+/** Horario del turno en 24 h («14:00–00:00»): más claro que «2:00 p.m. – 12:00 a.m.». */
+function fmtRange(startIso: string, endIso: string): string {
+  const f = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/^24:/, '00:');
+  };
+  const end = f(endIso);
+  return `${f(startIso)}–${end === '00:00' ? 'medianoche' : end}`;
+}
+
 /** Tarjeta de estado del turno: qué está pasando ahora, en una línea. */
 function ShiftCard() {
   const { shift, assignment, sales } = useApp();
@@ -69,9 +80,7 @@ function ShiftCard() {
       </div>
       <div>
         <div className="t">Puesto cerrado</div>
-        <div className="s">
-          Turno {fmtTime(a.planned_start)} – {fmtTime(a.planned_end)}
-        </div>
+        <div className="s">Turno {fmtRange(a.planned_start, a.planned_end)}</div>
       </div>
     </div>
   );
@@ -138,7 +147,8 @@ export default function Home() {
       <RankingCard />
       <div className="home-grid">
         {open ? sellBtn : openBtn}
-        <div className="btn-row">
+        {/* Acciones secundarias: más pequeñas y separadas del botón principal para evitar toques equivocados. */}
+        <div className="btn-row home-secondary">
           <button className="btn btn-blue btn-huge" onClick={() => nav('/ayuda')}>
             <span className="ico" aria-hidden>
               🆘
@@ -152,6 +162,22 @@ export default function Home() {
             CERRAR PUESTO
           </button>
         </div>
+        {open && (
+          <div className="btn-row home-tertiary">
+            <button className="btn btn-outline" onClick={() => nav('/recibir')}>
+              <span className="ico" aria-hidden>
+                📦
+              </span>
+              Recibir producto
+            </button>
+            <button className="btn btn-outline" onClick={() => nav('/contar')}>
+              <span className="ico" aria-hidden>
+                🔢
+              </span>
+              Contar producto
+            </button>
+          </div>
+        )}
         {!open && sellBtn}
       </div>
     </>

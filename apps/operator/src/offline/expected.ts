@@ -14,10 +14,23 @@ export function countsAsSale(s: SaleLocalRecord): boolean {
   return s.status === 'pending' || s.status === 'synced' || s.status === 'failed';
 }
 
-export function computeLocalExpected(sales: SaleLocalRecord[], waste: WasteLocalRecord[] = []): LocalExpected {
+export interface CashAdjust {
+  opening_cents?: number;
+  cash_movements?: { kind: 'deposit' | 'withdrawal' | 'expense' | 'refund'; amount_cents: number }[];
+}
+
+/** Fondo + depósitos − retiros/gastos/devoluciones en efectivo (misma fórmula que el servidor, docs/INDICADORES.md). */
+export function cashAdjustCents(adj: CashAdjust | null | undefined): number {
+  if (!adj) return 0;
+  let v = adj.opening_cents ?? 0;
+  for (const m of adj.cash_movements ?? []) v += m.kind === 'deposit' ? m.amount_cents : -m.amount_cents;
+  return v;
+}
+
+export function computeLocalExpected(sales: SaleLocalRecord[], waste: WasteLocalRecord[] = [], adj: CashAdjust | null = null): LocalExpected {
   let sales_count = 0;
   let sales_total = 0;
-  let cash = 0;
+  let cash = cashAdjustCents(adj);
   let digital = 0;
   for (const s of sales) {
     if (!countsAsSale(s)) continue;

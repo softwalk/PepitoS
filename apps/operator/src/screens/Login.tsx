@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError, NetworkError } from '../api/client';
+import { GPS_REASON_TEXT, getPositionDetailed } from '../offline/gps';
+import { speak } from '../offline/speech';
 import { login } from '../state/actions';
 import { useApp } from '../state/store';
 
@@ -19,7 +21,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [welcome, setWelcome] = useState<{ name: string; point: string; cart: string } | null>(null);
+  const [welcome, setWelcome] = useState<{ name: string; point: string; cart: string; hours: string } | null>(null);
+  const [gpsTest, setGpsTest] = useState<'idle' | 'testing' | 'ok' | string>('idle');
 
   const remaining = lockedUntil ? Math.max(0, Math.ceil((lockedUntil - now) / 1000)) : 0;
 
@@ -48,12 +51,15 @@ export default function Login() {
         return;
       }
       const a = r.assignment;
+      const f = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
       setWelcome({
         name: a?.assignment ? 'Bienvenido' : 'Hola',
         point: a?.assignment?.point.name ?? 'Sin punto asignado hoy',
         cart: a?.assignment?.cart.code ?? '',
+        hours: a?.assignment ? `${f(a.assignment.planned_start)}–${f(a.assignment.planned_end)}` : '',
       });
-      setTimeout(() => void reload(), 1500);
+      // Bienvenida con «Probar GPS»: la pantalla se queda hasta que el operador toque Continuar (o 6 s).
+      setTimeout(() => void reload(), 6000);
     } catch (err) {
       if (err instanceof NetworkError) setError('No hay señal. Conéctate para iniciar sesión.');
       else if (err instanceof ApiError) {
@@ -82,10 +88,33 @@ export default function Login() {
               <span aria-hidden>📍</span> {welcome.point}
             </p>
             {welcome.cart && (
-              <p className="h2">
-                <img src="/icon-cart.png" alt="" aria-hidden className="icon-img icon-inline" /> Carrito {welcome.cart}
-              </p>
+              <div className="welcome-facts" data-testid="welcome-facts">
+                <div className="fact"><div className="k">Punto</div><div className="v">{welcome.point}</div></div>
+                <div className="fact"><div className="k">Carrito</div><div className="v">{welcome.cart}</div></div>
+                <div className="fact"><div className="k">Horario</div><div className="v">{welcome.hours}</div></div>
+              </div>
             )}
+            <button
+              type="button"
+              className="btn btn-outline"
+              data-testid="welcome-gps"
+              disabled={gpsTest === 'testing'}
+              onClick={async () => {
+                setGpsTest('testing');
+                const g = await getPositionDetailed(15000);
+                const text = g.gps ? 'ok' : GPS_REASON_TEXT[g.reason ?? 'unavailable'].title;
+                setGpsTest(text);
+                speak(g.gps ? 'Ubicación correcta' : text, true);
+              }}
+            >
+              <span className="ico" aria-hidden>
+                📡
+              </span>
+              {gpsTest === 'testing' ? 'Probando GPS…' : gpsTest === 'ok' ? '✓ GPS listo' : gpsTest === 'idle' ? 'Probar GPS' : `⚠️ ${gpsTest}`}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => void reload()}>
+              Continuar
+            </button>
           </div>
         </div>
       </div>

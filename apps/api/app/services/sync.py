@@ -8,6 +8,7 @@ from app.core.errors import ApiError
 from app.models.ops import Shift
 from app.models.sales import Sale
 from app.schemas.operator import (
+    CashMovementIn,
     CountIn,
     GpsBatchIn,
     HelpCaseIn,
@@ -68,6 +69,19 @@ def cmd_sale(db: Session, current, data: SaleIn) -> IdemResult:
         return {"sale_id": str(sale.id), "folio": sale.folio, "total_cents": sale.total_cents, "status": "recorded", "duplicate": False}, 201
 
     return run_idempotent(db, data.idempotency_key, current.id, data.model_dump(mode="json"), fn)
+
+
+def cmd_cash_movement(db: Session, current, shift_id: uuid.UUID, data: CashMovementIn, ip: str | None = None) -> IdemResult:
+    from app.services import cash_movements as cm
+
+    payload = {"shift_id": str(shift_id), **data.model_dump(mode="json")}
+
+    def fn():
+        shift = _open_shift_checked(db, current, shift_id)
+        m = cm.create_movement(db, shift, current, data, ip=ip)
+        return {"cash_movement_id": str(m.id), "kind": m.kind, "amount_cents": m.amount_cents}, 201
+
+    return run_idempotent(db, data.idempotency_key, current.id, payload, fn)
 
 
 def cmd_sale_cancel(db: Session, current, sale_id: uuid.UUID, data: SaleCancelIn, ip: str | None = None) -> IdemResult:
@@ -164,6 +178,9 @@ def execute_command(db: Session, current, cmd, ip: str | None = None) -> dict:
             res = cmd_receipt(db, current, _parse(ReceiptIn, payload, key))
         elif cmd.type == "inventory_count":
             res = cmd_count(db, current, _parse(CountIn, payload, key))
+        elif cmd.type == "cash_movement":
+            shift_id = _required_uuid(payload, "shift_id")
+            res = cmd_cash_movement(db, current, shift_id, _parse(CashMovementIn, payload, key), ip=ip)
         elif cmd.type == "sale_cancel":
             sale_id = _required_uuid(payload, "sale_id")
             res = cmd_sale_cancel(db, current, sale_id, _parse(SaleCancelIn, payload, key), ip=ip)

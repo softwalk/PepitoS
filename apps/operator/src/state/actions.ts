@@ -18,7 +18,7 @@ import { startGpsPings, stopGpsPings } from '../offline/gps';
 import { haversineM, openLimitM } from '../offline/geo';
 import * as queue from '../offline/queue';
 import { syncNow, trigger } from '../offline/sync';
-import type {
+import type { CashMovementKind, HelpTag,
   AssignmentResponse,
   CloseChecklist,
   LoginResponse,
@@ -217,7 +217,7 @@ export function localOpenExceptions(checklist: OpenChecklist): ShiftException[] 
  * Abre el puesto. `photos` (foto del puesto, key "puesto") sólo cuando `config.require_open_photo`; si la cámara falla
  * se abre igual con `photos: []`. La foto viaja dentro del comando `shift_open` (cola cifrada) cuando no hay red.
  */
-export async function openShift(checklist: OpenChecklist, gps: GPS | null, photos: Photo[] = []): Promise<ShiftStateRecord> {
+export async function openShift(checklist: OpenChecklist, gps: GPS | null, photos: Photo[] = [], opening_cents = 0): Promise<ShiftStateRecord> {
   const a = (await assignmentStore.get())?.data;
   if (!a?.assignment) throw new ApiError('NO_ASSIGNMENT', 'No tienes asignación para hoy', 409);
   const local_id = `local:${uuidv4()}`;
@@ -243,8 +243,10 @@ export async function openShift(checklist: OpenChecklist, gps: GPS | null, photo
     exceptions,
     last_expected: null,
     close_result: null,
+    opening_cents,
+    cash_movements: [],
   });
-  await queue.enqueue('shift_open', { assignment_id: a.assignment.id, opened_at, checklist, gps, photos });
+  await queue.enqueue('shift_open', { assignment_id: a.assignment.id, opened_at, checklist, gps, photos, opening_cents });
   // Si hay red, esperamos la confirmación para mostrar excepciones del servidor (geocerca, etc.).
   await syncNow();
   const st = (await shiftStore.get())!;
@@ -349,6 +351,58 @@ export async function undoSale(key: string): Promise<UndoOutcome> {
   return 'too_late';
 }
 
+/** Devolución: cancela la venta con motivo `return` (sin ventana de tiempo mientras el turno esté abierto);
+ *  el servidor abre un caso de revisión para el supervisor. */
+export async function returnSale(key: string, note?: string, photo_base64?: string): Promise<'queued' | 'not_synced'> {
+  const s = await salesLocalStore.get(key);
+  if (!s) return 'not_synced';
+  if (!s.sale_id) {
+    await syncNow();
+    const again = await salesLocalStore.get(key);
+    if (!again?.sale_id) return 'not_synced';
+  }
+  const cur = (await salesLocalStore.get(key))!;
+  await salesLocalStore.update(key, { status: 'cancel_pending' });
+  await queue.enqueue('sale_cancel', { sale_id: cur.sale_id, reason_code: 'return', note: note ?? null, photo_base64: photo_base64 ?? null });
+  trigger();
+  return 'queued';
+}
+
+/** Movimiento de efectivo del turno (fondo, retiro, gasto, devolución en efectivo). Se guarda local para el esperado
+ *  offline y se envía por la cola. */
+export async function recordCashMovement(kind: CashMovementKind, amount_cents: number, reason: string, note?: string): Promise<void> {
+  const st = await shiftStore.get();
+  if (!st || (st.status !== 'open' && st.status !== 'open_pending')) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno abierto', 409);
+  const key = uuidv4();
+  const occurred_at = new Date().toISOString();
+  await shiftStore.update({ cash_movements: [...(st.cash_movements ?? []), { key, kind, amount_cents, reason, occurred_at }] });
+  await queue.enqueue('cash_movement', { shift_id: currentShiftId(st), kind, amount_cents, reason, note: note ?? null, occurred_at }, key);
+  trigger();
+}
+
+export async function recordReceipt(lines: { presentation_id: string; qty: number; lot_code?: string }[], qr_code?: string): Promise<void> {
+  const st = await shiftStore.get();
+  if (!st || (st.status !== 'open' && st.status !== 'open_pending')) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno abierto', 409);
+  const clean = lines.filter((l) => l.qty > 0);
+  if (!clean.length) return;
+  await queue.enqueue('inventory_receipt', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), qr_code: qr_code || null, lines: clean });
+  // El esperado local sube con lo recibido.
+  const le = st.last_expected;
+  if (le) {
+    const pe = { ...le.product_expected };
+    for (const l of clean) pe[l.presentation_id] = (pe[l.presentation_id] ?? 0) + l.qty;
+    await shiftStore.update({ last_expected: { ...le, product_expected: pe } });
+  }
+  trigger();
+}
+
+export async function recordCount(counts: Record<string, number>): Promise<void> {
+  const st = await shiftStore.get();
+  if (!st || (st.status !== 'open' && st.status !== 'open_pending')) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno abierto', 409);
+  await queue.enqueue('inventory_count', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), counts });
+  trigger();
+}
+
 export async function cancelSale(key: string, reason_code: string): Promise<void> {
   const s = await salesLocalStore.get(key);
   if (!s?.sale_id) return;
@@ -369,7 +423,7 @@ export async function recordWaste(presentation_id: string, qty: number, reason_c
 }
 
 // ---------- ayuda ----------
-export async function requestHelp(category: HelpCategory, opts: { note?: string; photo_base64?: string; gps?: GPS | null } = {}): Promise<void> {
+export async function requestHelp(category: HelpCategory, opts: { note?: string; photo_base64?: string; gps?: GPS | null; tags?: HelpTag[] } = {}): Promise<void> {
   const st = await shiftStore.get();
   const payload: Record<string, unknown> = {
     shift_id: st && st.status !== 'closed' ? currentShiftId(st) : null,
@@ -378,6 +432,7 @@ export async function requestHelp(category: HelpCategory, opts: { note?: string;
     note: opts.note || undefined,
     photo_base64: opts.photo_base64 || undefined,
     gps: opts.gps ?? null,
+    tags: opts.tags && opts.tags.length ? opts.tags : undefined,
   };
   await queue.enqueue('help_case', payload);
   trigger();
@@ -420,7 +475,7 @@ export async function getExpected(): Promise<ExpectedView> {
     }
   }
   // Sin red: lo local + lo que el servidor ya tenía cuando se adoptó el turno (reabierto por el administrador).
-  const local = computeLocalExpected(sales, waste);
+  const local = computeLocalExpected(sales, waste, st);
   const base = st.server_sales;
   return {
     source: 'local',

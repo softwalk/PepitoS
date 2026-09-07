@@ -6,7 +6,7 @@ import { compressImage } from '../offline/image';
 import { speak } from '../offline/speech';
 import { requestHelp } from '../state/actions';
 import { useApp } from '../state/store';
-import type { HelpCategory } from '../types';
+import type { HelpTag, HelpCategory } from '../types';
 
 const CARDS: { code: HelpCategory; icon: string; label: string }[] = [
   { code: 'cart', icon: 'img:/icon-cart.png', label: 'Carrito' },
@@ -17,17 +17,26 @@ const CARDS: { code: HelpCategory; icon: string; label: string }[] = [
   { code: 'other', icon: '❓', label: 'Otro' },
 ];
 
+const TAGS: { code: HelpTag; label: string }[] = [
+  { code: 'rain', label: '🌧️ Lluvia' },
+  { code: 'planned_closure', label: '🚧 Cierre planeado' },
+  { code: 'traffic', label: '🚦 Tráfico / acceso' },
+  { code: 'low_footfall', label: '🚶 Poca gente' },
+  { code: 'stockout', label: '📦 Sin producto' },
+];
+
 export default function Help() {
   const nav = useNavigate();
   const { catalog, config, reload } = useApp();
   const [sent, setSent] = useState<HelpCategory | null>(null);
   const [other, setOther] = useState(false);
   const [note, setNote] = useState('');
+  const [tags, setTags] = useState<HelpTag[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const labels = new Map((catalog?.help_categories ?? []).map((c) => [c.code, c.label]));
 
-  const send = async (category: HelpCategory, extra: { note?: string; photo_base64?: string } = {}) => {
+  const send = async (category: HelpCategory, extra: { note?: string; photo_base64?: string; tags?: HelpTag[] } = {}) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -76,6 +85,14 @@ export default function Help() {
     return (
       <div className="stack">
         <h1 className="h1">¿Qué pasa?</h1>
+        {/* Contexto que no es una falla del vendedor: sirve para que los reportes separen «no vendió» de «no pudo vender». */}
+        <div className="flavor-chips" role="group" aria-label="Contexto">
+          {TAGS.map((t) => (
+            <button key={t.code} type="button" className={`chip ${tags.includes(t.code) ? 'active' : ''}`} aria-pressed={tags.includes(t.code)} onClick={() => setTags((v) => (v.includes(t.code) ? v.filter((x) => x !== t.code) : [...v, t.code]))}>
+              {t.label}
+            </button>
+          ))}
+        </div>
         <textarea placeholder="Escribe una nota corta (opcional)" value={note} maxLength={280} onChange={(e) => setNote(e.target.value)} />
         <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
           <span className="ico" aria-hidden>
@@ -92,7 +109,7 @@ export default function Help() {
             <div>{photoError}</div>
           </div>
         )}
-        <button className="btn btn-blue" disabled={busy} onClick={() => send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined })}>
+        <button className="btn btn-blue" disabled={busy} onClick={() => send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined, tags })}>
           <span className="ico" aria-hidden>
             📨
           </span>
