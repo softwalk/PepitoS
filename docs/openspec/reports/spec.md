@@ -101,3 +101,10 @@ programado es fase 2.
 
 Desktop, laptop y tablet completos. En móvil (≤ 768 px) MUST priorizar KPIs, hallazgos y tablas resumidas; las
 gráficas se apilan y las tablas anchas hacen scroll interno.
+
+### Requirement: Inventario en kilogramos (change 004)
+El reporte `inventory` SHALL expresar existencias y conteos físicos en piezas y en kilogramos teóricos (piezas × gramos nominales) con la misma fórmula que la PWA y `/v1/inventory/*`, y SHALL enlazar cada conteo a su detalle (fotos con sello) en el backoffice.
+
+#### Scenario: conteo con foto
+- **WHEN** un operador registra un conteo con foto desde la PWA
+- **THEN** el reporte del periodo lista el conteo con `counted_kg`, `diff_units`, `photos ≥ 1` y enlace `/inventario?count={id}`.

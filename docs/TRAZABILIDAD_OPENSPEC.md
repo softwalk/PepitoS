@@ -72,3 +72,6 @@ UX operador: 8/8 implementados; los tiempos (≤30 min aprendizaje, ≤2 min ape
 
 ## change 003 (operación v2)
 Trazabilidad detallada en `docs/openspec/changes/003-operacion-v2/tasks.md`; runbook en `docs/OPERACION.md`.
+
+## change 004 (inventario en kg y fotos con sello)
+Kilogramos teóricos en PWA/API/backoffice/reporte, fotos de conteo/recepción/incidente con fecha, hora, punto y GPS impresos en la imagen; detalle en `docs/openspec/changes/004-inventario-kg-fotos/tasks.md`.

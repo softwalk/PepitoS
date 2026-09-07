@@ -20,7 +20,7 @@ from app.models.system import Evidence
 from app.services import settings as settings_svc
 from app.services.storage import get_storage
 
-KINDS = {"help_case", "shift_open", "shift_close", "audit", "case_note"}
+KINDS = {"help_case", "shift_open", "shift_close", "audit", "case_note", "inventory_count", "inventory_receipt"}
 ALLOWED_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 _DATA_URL = re.compile(r"^data:(?P<mime>[\w.+-]+/[\w.+-]+)?(?:;[\w-]+=[\w-]+)*(?:;base64)?,(?P<data>.*)$", re.DOTALL)
 

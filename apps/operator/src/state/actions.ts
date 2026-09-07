@@ -380,12 +380,13 @@ export async function recordCashMovement(kind: CashMovementKind, amount_cents: n
   trigger();
 }
 
-export async function recordReceipt(lines: { presentation_id: string; qty: number; lot_code?: string }[], qr_code?: string): Promise<void> {
+/** Recepción de producto. `photo_base64`: foto del producto con sello de fecha/hora (viaja en el comando; opcional). */
+export async function recordReceipt(lines: { presentation_id: string; qty: number; lot_code?: string }[], qr_code?: string, photo_base64?: string): Promise<void> {
   const st = await shiftStore.get();
   if (!st || (st.status !== 'open' && st.status !== 'open_pending')) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno abierto', 409);
   const clean = lines.filter((l) => l.qty > 0);
   if (!clean.length) return;
-  await queue.enqueue('inventory_receipt', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), qr_code: qr_code || null, lines: clean });
+  await queue.enqueue('inventory_receipt', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), qr_code: qr_code || null, lines: clean, photo_base64: photo_base64 ?? null });
   // El esperado local sube con lo recibido.
   const le = st.last_expected;
   if (le) {
@@ -396,10 +397,11 @@ export async function recordReceipt(lines: { presentation_id: string; qty: numbe
   trigger();
 }
 
-export async function recordCount(counts: Record<string, number>): Promise<void> {
+/** Conteo físico. `photo_base64`: foto del producto contado con sello de fecha/hora (opcional, nunca bloquea). */
+export async function recordCount(counts: Record<string, number>, photo_base64?: string): Promise<void> {
   const st = await shiftStore.get();
   if (!st || (st.status !== 'open' && st.status !== 'open_pending')) throw new ApiError('SHIFT_NOT_OPEN', 'No hay turno abierto', 409);
-  await queue.enqueue('inventory_count', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), counts });
+  await queue.enqueue('inventory_count', { shift_id: currentShiftId(st), occurred_at: new Date().toISOString(), counts, photo_base64: photo_base64 ?? null });
   trigger();
 }
 

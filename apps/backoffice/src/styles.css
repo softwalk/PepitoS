@@ -574,3 +574,9 @@ html[data-theme='dark'] .btn { background: var(--panel-2); color: var(--text); b
 html[data-theme='dark'] .btn-primary { background: var(--primary); border-color: var(--primary); color: #0f1522; }
 html[data-theme='dark'] .btn-accent { color: #fff; }
 html[data-theme='dark'] .badge-light { background: var(--light-bg); color: var(--text-2); }
+
+/* Fila de totales en tablas (Inventario) */
+.table tr.total-row td {
+  border-top: 2px solid var(--border-strong);
+  background: var(--panel-2);
+}

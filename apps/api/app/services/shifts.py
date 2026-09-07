@@ -19,7 +19,7 @@ from app.services import settings as settings_svc
 from app.services.settings import cash_thresholds
 from app.services.cash import sales_summary
 from app.services.geo import haversine_m, in_geofence
-from app.services.inventory import add_movement, apply_count, balances_for_point, shift_units
+from app.services.inventory import add_movement, apply_count, balances_for_point, grams_of, kg_of, shift_units
 
 # out_of_geofence cuenta como crítica: el operador ve el aviso ("abierto con pendientes") y el supervisor recibe caso urgente.
 CRITICAL_OPEN_KEYS = {"cart_secure", "battery_ok", "product_ok", "pos_ok", "out_of_geofence"}
@@ -190,6 +190,7 @@ def expected(db: Session, shift: Shift) -> dict:
         "cash_out_cents": s["cash_out_cents"],
         "digital_total_cents": s["digital_total_cents"],
         "product_expected": {str(k): v for k, v in balances.items()},
+        "product_expected_kg": kg_of(balances, grams_of(db)),
         "waste_units": shift_units(db, shift.id, "waste"),
         "cancelled_count": s["cancelled_count"],
     }

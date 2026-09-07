@@ -5,6 +5,7 @@ import { useFetch } from '../lib/useFetch';
 import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { EvidenceGallery } from '../components/EvidenceGallery';
+import { IncidentMap } from '../components/PointsMap';
 import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, SlaChip, StatusBadge } from '../components/ui';
 import type { Action, Audit, AuditLogRow, Case, CaseStatus, Severity, User } from '../types';
 import { CATEGORY_LABEL, ageLabel, fmtDate, fmtDateTime, label, todayLocalISO } from '../lib/format';
@@ -21,6 +22,9 @@ export function CaseDetailPage() {
   const log = useFetch<AuditLogRow[]>(() => api.get(`/v1/audit-log?entity=case&entity_id=${id}&limit=100`), [id], { silent: true, enabled: hasRole('ops', 'admin', 'finance') });
   // Caso abierto por una auditoría: sus fotos también son evidencia del caso.
   const auditId = typeof c?.payload?.audit_id === 'string' ? (c.payload.audit_id as string) : null;
+  // Ubicación reportada por el operador al pedir AYUDA (la foto lleva el mismo sello: GPS, punto, fecha y hora).
+  const gps = c?.payload?.gps as { lat: number; lng: number; accuracy_m?: number | null; at?: string | null } | null | undefined;
+  const pointGeo = c?.point && typeof c.point.lat === 'number' && typeof c.point.lng === 'number' ? { name: c.point.name, lat: c.point.lat, lng: c.point.lng } : null;
   const audit = useFetch<Audit>(() => api.get(`/v1/audits/${auditId}`), [auditId], { silent: true, enabled: !!auditId && hasRole('supervisor', 'ops', 'admin') });
 
   const [desc, setDesc] = useState('');
@@ -129,6 +133,11 @@ export function CaseDetailPage() {
             )}
           </Card>
 
+          {gps && typeof gps.lat === 'number' && (
+            <Card title="Ubicación del incidente" testId="incident-location">
+              <IncidentMap gps={gps} point={pointGeo} />
+            </Card>
+          )}
           <Card title={`Evidencias (${(c.evidence?.length ?? 0) + (audit.data?.evidence.length ?? 0)})`} actions={auditId ? <Link to={`/auditorias/${auditId}`} className="btn small">Ver auditoría</Link> : undefined}>
             <EvidenceGallery items={c.evidence} emptyText={auditId ? 'Sin fotos propias del caso' : 'Sin fotos adjuntas'} />
             {audit.data && audit.data.evidence.length > 0 && (

@@ -77,7 +77,8 @@ with sync_playwright() as p:
     assert page.locator("[data-testid=points-table] tbody tr").count() >= 3, "Debe listar los 3 puntos"
     assert page.locator("[data-testid='kpi-Ventas hoy']").count() == 1
     assert page.locator("[data-testid='kpi-Ticket promedio']").count() == 1
-    assert page.locator(".leaflet-marker-icon").count() >= 3, "Mapa con marcadores"
+    # Con internet: marcadores Leaflet; sin tiles (LAN): mapa esquemático con los mismos puntos
+    assert page.locator(".leaflet-marker-icon").count() >= 3 or page.locator(".sm-pin").count() >= 3, "Mapa con marcadores"
     page.wait_for_timeout(1500)  # tiles
     shot(page, "ct")
 

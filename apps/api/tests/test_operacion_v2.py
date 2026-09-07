@@ -213,3 +213,38 @@ def test_hourly_profile_forecast(db_session):
     assert isinstance(prof, dict)
     s = summary(db_session, utcnow().date())
     assert s["totals"]["forecast_close_cents"] >= s["totals"]["sales_cents"]
+
+
+def test_inventory_kg_and_count_receipt_photos(fresh_operator, catalog, admin):
+    from tests.test_gate_6_20 import PNG_DATA_URL
+
+    a = fresh_operator()
+    sid = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
+    pres = sorted(catalog["presentations"], key=lambda p: p["sort"])
+    # Recepción con foto: 4 × 50 g + 2 × 100 g = 0.4 kg
+    r = a.post("/v1/inventory/receipts", json={"idempotency_key": new_key(), "shift_id": sid, "photo_base64": PNG_DATA_URL,
+                                               "lines": [{"presentation_id": pres[0]["id"], "qty": 4}, {"presentation_id": pres[2]["id"], "qty": 2}]})
+    assert r.status_code == 201 and len(r.json()["evidence_ids"]) == 1, r.text
+    exp = a.get(f"/v1/shifts/{sid}/expected").json()
+    assert exp["product_expected_kg"] >= 0.4
+    # Conteo con foto: lo esperado → sin diferencia; kg contados = kg esperados
+    r = a.post("/v1/inventory/counts", json={"idempotency_key": new_key(), "shift_id": sid, "counts": exp["product_expected"], "photo_base64": PNG_DATA_URL})
+    assert r.status_code == 200 and len(r.json()["evidence_ids"]) == 1, r.text
+    count_id = r.json()["count_id"]
+    rows = admin.get("/v1/inventory/counts", params={"point_id": a.point["id"]}).json()["counts"]
+    mine = [c for c in rows if c["id"] == count_id][0]
+    assert mine["counted_kg"] == mine["expected_kg"] == exp["product_expected_kg"] and mine["diff_units"] == 0
+    assert len(mine["evidence"]) == 1 and mine["evidence"][0]["kind"] == "inventory_count" and mine["evidence"][0]["url"]
+    recs = admin.get("/v1/inventory/receipts", params={"point_id": a.point["id"]}).json()["receipts"]
+    assert recs[0]["kg"] == 0.4 and recs[0]["units"] == 6 and recs[0]["evidence"][0]["kind"] == "inventory_receipt"
+    # Estado por punto en kg y listado de evidencias por entidad
+    st = admin.get("/v1/inventory/status").json()
+    pt = [p for p in st["points"] if p["point"]["id"] == a.point["id"]][0]
+    assert pt["total_kg"] == round(sum(i["balance"] * i["grams"] for i in pt["items"]) / 1000, 3) and st["total_kg"] >= pt["total_kg"]
+    ev = admin.get("/v1/evidence", params={"entity": "inventory_count", "entity_id": count_id}).json()
+    assert len(ev) == 1
+    # El reporte de inventario expone existencias y conteos en kg
+    rep = admin.get("/v1/reports/bi/inventory", params={"period": "today"}).json()
+    assert rep["version"] == "1.2" and any(k["key"] == "stock_kg" for k in rep["kpis"])
+    counts_tbl = [t for t in rep["tables"] if t["key"] == "counts"][0]
+    assert any(c["key"] == "counted_kg" for c in counts_tbl["columns"])
