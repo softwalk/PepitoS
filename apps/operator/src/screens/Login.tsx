@@ -1,3 +1,4 @@
+import InsecureBanner from '../components/InsecureBanner';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError, NetworkError } from '../api/client';
 import { GPS_REASON_TEXT, getPositionDetailed } from '../offline/gps';
@@ -126,6 +127,7 @@ export default function Login() {
 
   return (
     <div className="app">
+      <InsecureBanner />
       <div className="main" style={{ justifyContent: 'center' }}>
         <div className="login-brand">
           <img src="/logo.png" alt="PEPITO · Pepitas recién doradas al comal" className="logo" width={220} height={240} />

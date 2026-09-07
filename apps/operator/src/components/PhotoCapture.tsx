@@ -1,6 +1,7 @@
 // Botón "Tomar foto" reutilizable (conteo, recepción, incidente): comprime, estampa fecha/hora/punto/GPS dentro de
 // la imagen y devuelve base64 JPEG. Nunca bloquea: si la cámara falla, el operador sigue sin foto.
 import { useState, type ChangeEvent } from 'react';
+import { friendlyError } from '../offline/errors';
 import { compressImage, ImageTooLargeError, isSupportedImage, stampImage, stampLines, type StampInfo } from '../offline/image';
 import { useApp } from '../state/store';
 
@@ -49,7 +50,7 @@ export default function PhotoCapture({
       onChange(null);
       setInfo(null);
       setStatus('error');
-      setError(err instanceof ImageTooLargeError ? err.message : 'No se pudo procesar la foto. Puedes continuar sin ella.');
+      setError(err instanceof ImageTooLargeError ? err.message : friendlyError(err, 'No se pudo procesar la foto. Puedes continuar sin ella.'));
     }
   };
 

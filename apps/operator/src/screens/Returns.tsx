@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Numpad, { pesosToCents } from '../components/Numpad';
+import { friendlyError } from '../offline/errors';
 import { countsAsSale } from '../offline/expected';
 import { speak } from '../offline/speech';
 import { recordCashMovement, returnSale } from '../state/actions';
@@ -22,6 +23,7 @@ export default function Returns() {
   const [picked, setPicked] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [kind, setKind] = useState<CashMovementKind>('expense');
   const [reason, setReason] = useState('');
@@ -67,6 +69,8 @@ export default function Returns() {
       await reload();
       speak('Devolución registrada');
       setDone('Devolución registrada');
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -80,6 +84,8 @@ export default function Returns() {
       await reload();
       speak('Movimiento de caja registrado');
       setDone(`${KINDS.find((k) => k.kind === kind)?.label} registrado: ${money(cents)}`);
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -87,6 +93,14 @@ export default function Returns() {
 
   return (
     <div className="stack">
+      {error && (
+        <div className="exception" role="alert">
+          <span className="ico" aria-hidden>
+            ⚠️
+          </span>
+          <div>{error}</div>
+        </div>
+      )}
       <div className="segmented" role="tablist" aria-label="Tipo">
         <button type="button" role="tab" className={`cash ${tab === 'return' ? 'active' : ''}`} aria-selected={tab === 'return'} onClick={() => setTab('return')}>
           <span aria-hidden>↩️</span> Devolución

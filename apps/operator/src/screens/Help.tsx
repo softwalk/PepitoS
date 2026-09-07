@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { BatteryIcon, OtherIcon, PaymentIcon, SecurityIcon } from '../components/HelpIcons';
 import PhotoCapture from '../components/PhotoCapture';
+import { friendlyError } from '../offline/errors';
 import { getPosition, recentPosition } from '../offline/gps';
 import { speak } from '../offline/speech';
 import { requestHelp } from '../state/actions';
@@ -69,7 +70,7 @@ export default function Help() {
       speak('Enviado. Te contactan.');
       void reload().catch(() => undefined);
     } catch (err) {
-      setSendError(err instanceof Error && err.message ? err.message : 'No se pudo registrar el aviso. Inténtalo de nuevo.');
+      setSendError(friendlyError(err, 'No se pudo registrar el aviso. Inténtalo de nuevo; si sigue igual, llama al supervisor.'));
     } finally {
       setBusy(null);
     }
