@@ -38,7 +38,18 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql+psycopg://pepito:pepito@localhost:5433/pepito_test
           RUN_SCHEDULER: "false"
-        run: python -m pytest -q
+        # -rA: resumen con el nombre de cada prueba fallida; el traceback completo queda en pytest.log y en el
+        # resumen del job (pestaña Summary) para diagnosticar sin abrir el log.
+        run: python -m pytest -q -rA --tb=long 2>&1 | tee pytest.log; exit ${PIPESTATUS[0]}
+      - name: Resumen de fallos (Summary del job)
+        if: failure()
+        run: |
+          { echo "## API · pytest — fallos"; echo; echo '```'; grep -E "^(FAILED|ERROR) " pytest.log || true; echo; sed -n '/= FAILURES =/,/short test summary/p' pytest.log | head -400; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pytest-log
+          path: apps/api/pytest.log
 
   web:
     name: ${{ matrix.app }} · vitest + build
