@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, qs } from '../api/client';
 import { useFetch } from '../lib/useFetch';
-import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
+import { StateBox, stateFromError } from '../components/State';
+import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, SlaChip, StatusBadge } from '../components/ui';
 import type { Case, Point } from '../types';
 import { CATEGORY_LABEL, ageLabel, fmtDateTime, label } from '../lib/format';
 
@@ -14,7 +15,7 @@ export function CasesPage() {
   const severity = params.get('severity') ?? '';
   const pointId = params.get('point_id') ?? '';
 
-  const { data, loading } = useFetch<Case[]>(() => api.get(`/v1/cases${qs({ status, severity, point_id: pointId })}`), [status, severity, pointId], { every: 60_000 });
+  const { data, loading, error } = useFetch<Case[]>(() => api.get(`/v1/cases${qs({ status, severity, point_id: pointId })}`), [status, severity, pointId], { every: 60_000 });
   const points = useFetch<Point[]>(() => api.get('/v1/admin/points'), []);
 
   const sorted = useMemo(() => (data ? [...data].sort((a, b) => b.priority_score - a.priority_score) : []), [data]);
@@ -60,6 +61,7 @@ export function CasesPage() {
       </div>
       <Card title={`Casos (${sorted.length})`}>
         {loading && !data && <Loading />}
+        {error && !data && <StateBox kind={stateFromError(new Error(error))} error={error} />}
         {data && sorted.length === 0 && <Empty text="Sin casos con estos filtros" />}
         {sorted.length > 0 && (
           <div className="table-wrap">
@@ -84,7 +86,7 @@ export function CasesPage() {
                   <tr key={c.id}>
                     <td className="num mono">{c.priority_score.toFixed(1)}</td>
                     <td>
-                      <SeverityBadge severity={c.severity} />
+                      <SeverityBadge severity={c.severity} /> <SlaChip sla={c.sla} />
                     </td>
                     <td>
                       <Link to={`/casos/${c.id}`}>

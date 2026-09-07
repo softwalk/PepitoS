@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useFetch } from '../lib/useFetch';
+import { StateBox, stateFromError } from '../components/State';
 import { Badge, Empty, Loading, PageTitle, StatusBadge } from '../components/ui';
 import type { Case, PointStatus, SupervisorExceptions } from '../types';
 import { CATEGORY_LABEL, ageLabel, label, money, ratioPct } from '../lib/format';
+import { TransferShiftButton } from '../components/TransferShift';
 
 function CaseCard({ c }: { c: Case }) {
   const nav = useNavigate();
@@ -25,7 +27,7 @@ function CaseCard({ c }: { c: Case }) {
   );
 }
 
-function PointCard({ p }: { p: PointStatus }) {
+function PointCard({ p, onChanged }: { p: PointStatus; onChanged: () => Promise<void> }) {
   const progress = ratioPct(p.sales_cents, p.target_cents);
   return (
     <div className="point-card">
@@ -46,13 +48,14 @@ function PointCard({ p }: { p: PointStatus }) {
         <Link to={`/excepciones?point_id=${p.point.id}`} className="btn small btn-ghost">
           Casos
         </Link>
+        {p.shift_id && (p.status === 'open' || p.status === 'offline') && <TransferShiftButton shiftId={p.shift_id} pointName={p.point.name} onDone={onChanged} />}
       </div>
     </div>
   );
 }
 
 export function SupervisorPage() {
-  const { data, loading, reload } = useFetch<SupervisorExceptions>(() => api.get('/v1/supervisor/exceptions'), [], { every: 60_000 });
+  const { data, loading, error, reload } = useFetch<SupervisorExceptions>(() => api.get('/v1/supervisor/exceptions'), [], { every: 60_000 });
   const normalCases = data?.normal_cases ?? [];
   const pointsWithoutCases = (data?.normal ?? []).filter((p) => p.open_cases.urgent + p.open_cases.review === 0);
   return (
@@ -72,6 +75,7 @@ export function SupervisorPage() {
         }
       />
       {loading && !data && <Loading />}
+        {error && !data && <StateBox kind={stateFromError(new Error(error))} error={error} />}
       {data && (
         <>
           <section className="sev-block urgent" data-testid="block-urgent">
@@ -98,7 +102,7 @@ export function SupervisorPage() {
             {pointsWithoutCases.length > 0 && (
               <div className="sev-cards">
                 {pointsWithoutCases.map((p) => (
-                  <PointCard key={p.point.id} p={p} />
+                  <PointCard key={p.point.id} p={p} onChanged={() => reload(true)} />
                 ))}
               </div>
             )}

@@ -5,7 +5,7 @@ import { useFetch } from '../lib/useFetch';
 import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { EvidenceGallery } from '../components/EvidenceGallery';
-import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
+import { Badge, Card, Empty, Field, Loading, PageTitle, SeverityBadge, SlaChip, StatusBadge } from '../components/ui';
 import type { Action, Audit, AuditLogRow, Case, CaseStatus, Severity, User } from '../types';
 import { CATEGORY_LABEL, ageLabel, fmtDate, fmtDateTime, label, todayLocalISO } from '../lib/format';
 
@@ -90,7 +90,7 @@ export function CaseDetailPage() {
         title={c.title}
         subtitle={
           <span className="tag-line">
-            <SeverityBadge severity={c.severity} /> <StatusBadge status={c.status} /> {c.point && <span>{c.point.name}</span>} · abierto hace {ageLabel(c.age_minutes)} · prioridad {c.priority_score.toFixed(1)} · <Link to="/excepciones">← Excepciones</Link>
+            <SeverityBadge severity={c.severity} /> <SlaChip sla={c.sla} /> <StatusBadge status={c.status} /> {c.point && <span>{c.point.name}</span>} · abierto hace {ageLabel(c.age_minutes)} · prioridad {c.priority_score.toFixed(1)} · <Link to="/excepciones">← Excepciones</Link>
           </span>
         }
       />

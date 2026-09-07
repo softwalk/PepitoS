@@ -98,6 +98,8 @@ export function refreshSession(): Promise<LoginResponse | null> {
 
 interface ReqOpts {
   auth?: boolean;
+  /** Devuelve el cuerpo como texto crudo (CSV) en vez de JSON. */
+  raw?: boolean;
 }
 
 async function rawRequest<T>(method: string, path: string, body: unknown, opts: ReqOpts): Promise<T> {
@@ -112,6 +114,7 @@ async function rawRequest<T>(method: string, path: string, body: unknown, opts: 
   }
   let data: unknown = null;
   const text = await res.text();
+  if (opts.raw && res.ok) return text as unknown as T;
   if (text) {
     try {
       data = JSON.parse(text);
@@ -171,6 +174,8 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   del: <T>(path: string) => request<T>('DELETE', path),
+  /** GET con respuesta de texto (p. ej. CSV) y la misma autorización. */
+  text: (path: string) => request<string>('GET', path, undefined, { raw: true }),
 };
 
 export function qs(params: Record<string, string | number | undefined | null>): string {

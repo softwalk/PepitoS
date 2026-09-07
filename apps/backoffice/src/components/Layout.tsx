@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useAuth } from '../state/auth';
 import type { Role } from '../types';
 import { Icon, type IconName } from './icons';
+import { OfflineBanner } from './State';
 
 interface NavItem { to: string; label: string; icon: IconName; roles: Role[]; mobile?: boolean; group: string }
 
@@ -104,6 +105,9 @@ export function Layout() {
             </div>
           </div>
           <div className="side-user-actions">
+            <Link to="/seguridad" className="btn btn-ghost small" title="Seguridad y notificaciones" data-testid="nav-security">
+              <Icon name="shield" size={15} /> Seguridad y avisos
+            </Link>
             <Link to="/cambiar-contrasena" className="btn btn-ghost small" title="Cambiar contraseña">
               <Icon name="key" size={15} /> Cambiar contraseña
             </Link>
@@ -130,6 +134,7 @@ export function Layout() {
         </header>
         <main className="main">
           <Outlet />
+          <OfflineBanner />
         </main>
         <nav className="bottom-nav" aria-label="Principal (móvil)">
           {mobileItems.map((n) => (

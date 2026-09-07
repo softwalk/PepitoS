@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, commitSession, onSessionChanged, onUnauthorized, refreshSession as clientRefreshSession } from '../api/client';
-import type { AuthUser, LoginResponse, Role } from '../types';
+import type { AuthUser, LoginResponse, MfaChallenge, Role } from '../types';
 import { clearSession, getDeviceId, getSession, sessionFromLogin, type Session } from './session';
 
 interface AuthCtx {
@@ -8,7 +8,8 @@ interface AuthCtx {
   user: AuthUser | null;
   /** El servidor exige cambiar la contraseña antes de seguir. */
   mustChangePassword: boolean;
-  login: (username: string, password: string) => Promise<LoginResponse>;
+  login: (username: string, password: string) => Promise<LoginResponse | MfaChallenge>;
+  verifyMfa: (mfa_token: string, code: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
   /** Rota el refresh token y reemplaza ambos tokens (lock en el cliente HTTP). */
   refresh: () => Promise<LoginResponse | null>;
@@ -31,13 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<LoginResponse>('/v1/auth/login', {
+    const res = await api.post<LoginResponse | MfaChallenge>('/v1/auth/login', {
       username,
       password,
       device_id: getDeviceId(),
       device_name: navigator.userAgent.slice(0, 80),
       platform: 'web-backoffice',
     });
+    if ('mfa_required' in res && res.mfa_required) return res;
+    commitSession(sessionFromLogin(res as LoginResponse));
+    return res as LoginResponse;
+  }, []);
+
+  /** Segundo paso del login (TOTP). */
+  const verifyMfa = useCallback(async (mfa_token: string, code: string) => {
+    const res = await api.post<LoginResponse>('/v1/auth/mfa/verify', { mfa_token, code, device_id: getDeviceId(), device_name: navigator.userAgent.slice(0, 80), platform: 'web-backoffice' });
     commitSession(sessionFromLogin(res));
     return res;
   }, []);
@@ -66,12 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       mustChangePassword: !!session?.mustChangePassword,
       login,
+      verifyMfa,
       logout,
       refresh,
       changePassword,
       hasRole: (...roles: Role[]) => !!session && roles.includes(session.user.role),
     }),
-    [session, login, logout, refresh, changePassword],
+    [session, login, verifyMfa, logout, refresh, changePassword],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

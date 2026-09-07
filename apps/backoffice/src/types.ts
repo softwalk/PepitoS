@@ -56,6 +56,7 @@ export interface Case {
   impact_score: number;
   priority_score: number;
   assignee: Ref | null;
+  sla?: CaseSla;
   actions: Action[];
   ai: { suggested_category: string; confidence: number } | null;
   resolution: string | null;
@@ -331,3 +332,11 @@ export interface ReportPayload {
   kpis: ReportKpi[]; charts: ReportChart[]; tables: ReportTable[]; insights: ReportInsight[]; hidden: string[];
 }
 export interface ReportOptions { zones: { id: string; name: string }[]; points: { id: string; name: string; zone_id: string | null }[]; operators: { id: string; name: string; zone_id: string | null }[]; carts: { id: string; name: string }[]; presentations: { id: string; name: string }[]; methods: { id: string; name: string }[] }
+
+// ── MFA, notificaciones, costos, SLA ────────────────────────────────────────
+export interface MfaChallenge { mfa_required: true; mfa_token: string; user: { name: string; username: string } }
+export interface MfaStatus { enabled: boolean; enabled_at: string | null; pending_setup: boolean; required: boolean; enforced: boolean }
+export interface NotificationConfig { vapid_public_key: string | null; push_enabled: boolean; whatsapp_enabled: boolean; subscriptions: number; prefs: { push: boolean; whatsapp: boolean }; phone: string | null }
+export interface NotificationLogRow { id: string; channel: string; user_id: string | null; title: string; body: string; status: string; error: string | null; sent_at: string; url: string | null }
+export interface PointCost { id: string; point_id: string; valid_from: string; rent_month_cents: number; permit_month_cents: number; custody_month_cents: number; other_month_cents: number; monthly_cents: number; setup_cents: number; note: string | null; created_by: string | null; created_at: string | null }
+export interface CaseSla { due_at: string | null; remaining_min: number | null; breached: boolean; taken: boolean; minutes: number | null }

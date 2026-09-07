@@ -121,3 +121,36 @@ export function Field({ label: text, children, hint }: { label: string; children
     </label>
   );
 }
+
+
+/** Tarjeta de indicador unificada: nombre · cifra · unidad · comparativo/sub · semáforo (misma en Control Tower,
+ *  Ventas, Inventario y Reportes). */
+export function Kpi({ label, value, unit, sub, tone, wide, children, testId }: { label: string; value?: ReactNode; unit?: string; sub?: ReactNode; tone?: Light | null; wide?: boolean; children?: ReactNode; testId?: string }) {
+  return (
+    <div className={`kpi ${tone ? `tone-${tone}` : ''} ${wide ? 'kpi-wide' : ''}`} data-testid={testId ?? `kpi-${label}`}>
+      <div className="kpi-label">
+        <span>{label}</span>
+        {tone && <LightDot light={tone} text="" />}
+      </div>
+      {value !== undefined && (
+        <div className="kpi-value">
+          {value}
+          {unit && <span className="kpi-unit"> {unit}</span>}
+        </div>
+      )}
+      {sub && <div className="kpi-sub">{sub}</div>}
+      {children}
+    </div>
+  );
+}
+
+
+/** SLA de un caso: tiempo restante para tomarlo o «vencido». */
+export function SlaChip({ sla }: { sla?: { remaining_min: number | null; breached: boolean; taken: boolean; minutes: number | null } | null }) {
+  if (!sla || sla.minutes == null) return null;
+  if (sla.taken && !sla.breached) return <Badge tone="green" title="Caso tomado dentro del SLA">SLA ok</Badge>;
+  if (sla.breached) return <Badge tone="red" title="SLA vencido: escalado a Operaciones">SLA vencido</Badge>;
+  const m = sla.remaining_min ?? 0;
+  const txt = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+  return <Badge tone={m <= Math.max(5, sla.minutes * 0.25) ? 'amber' : 'blue'} title={`Tomar antes de ${sla.minutes} min`}><span className="sla-chip">SLA {txt}</span></Badge>;
+}

@@ -24,6 +24,7 @@ import { ChangePasswordPage } from './pages/ChangePassword';
 import { ReportsPage } from './pages/Reports';
 import { ReportViewPage } from './pages/ReportView';
 import { ReportPrintPage } from './pages/ReportPrint';
+import { SecurityPage } from './pages/Security';
 
 const CT: Role[] = ['ops', 'finance', 'admin'];
 const SUP: Role[] = ['supervisor', 'ops', 'admin'];
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/auditoria" element={<Guard roles={CT}><AuditLogPage /></Guard>} />
         <Route path="/admin" element={<Guard roles={CT}><AdminPage /></Guard>} />
         <Route path={CHANGE_PASSWORD_PATH} element={<Guard roles={STAFF}><ChangePasswordPage /></Guard>} />
+        <Route path="/seguridad" element={<Guard roles={STAFF}><SecurityPage /></Guard>} />
       </Route>
       {/* Vista de impresión: fuera del Layout (sin navegación), misma autorización que el reporte. */}
       <Route path="/reportes/:key/imprimir" element={<Guard roles={STAFF}><ReportPrintPage /></Guard>} />

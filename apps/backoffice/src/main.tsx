@@ -7,6 +7,11 @@ import App from './App';
 import { AuthProvider } from './state/auth';
 import { ToastProvider } from './components/Toast';
 
+import { applyTheme } from './lib/theme';
+
+applyTheme();
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyTheme());
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>

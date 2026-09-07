@@ -12,12 +12,14 @@ export function formatWait(seconds: number): string {
 }
 
 export function LoginPage() {
-  const { user, mustChangePassword, login } = useAuth();
+  const { user, mustChangePassword, login, verifyMfa } = useAuth();
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: string } };
   const toast = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [mfa, setMfa] = useState<{ token: string; name: string } | null>(null);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -44,6 +46,10 @@ export function LoginPage() {
     setBusy(true);
     try {
       const res = await login(username.trim(), password);
+      if ('mfa_required' in res) {
+        setMfa({ token: res.mfa_token, name: res.user.name });
+        return;
+      }
       const u = res.user;
       if (u.role === 'operator') {
         toast.toast('Este acceso es para supervisores y backoffice. Usa la app de operador.', 'error');
@@ -66,6 +72,48 @@ export function LoginPage() {
   };
 
   const minutes = Math.max(1, Math.ceil(remaining / 60));
+
+  const submitMfa = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!mfa) return;
+    setBusy(true);
+    try {
+      const res = await verifyMfa(mfa.token, code.trim());
+      nav(loc.state?.from || homeFor(res.user.role), { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'MFA_INVALID') toast.toast('Código incorrecto. Revisa la hora del teléfono e intenta de nuevo.', 'error');
+      else if (err instanceof ApiError && err.status === 401) {
+        toast.toast('El código de acceso caducó; vuelve a iniciar sesión.', 'error');
+        setMfa(null);
+      } else toast.error(err, 'No se pudo verificar');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (mfa) {
+    return (
+      <div className="login-wrap">
+        <form className="login-card" onSubmit={submitMfa} data-testid="mfa-form">
+          <div className="login-logo">
+            <img src="/logo.png" alt="PEPITO" width={140} height={152} />
+            <div className="brand-name">Verificación en dos pasos</div>
+            <div className="brand-sub">Hola {mfa.name}: escribe el código de tu app autenticadora</div>
+          </div>
+          <label className="field">
+            <span className="field-label">Código de 6 dígitos</span>
+            <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,8}" value={code} onChange={(e) => setCode(e.target.value)} required autoFocus style={{ fontSize: 24, letterSpacing: 6, textAlign: 'center' }} />
+          </label>
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy || code.replace(/\s/g, '').length < 6}>
+            {busy ? 'Verificando…' : 'Entrar'}
+          </button>
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => setMfa(null)}>
+            Volver
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="login-wrap">

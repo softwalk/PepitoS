@@ -6,6 +6,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts';
 import { Badge, Card, Empty, LightDot, StatusBadge } from './ui';
+import { DataTable, type DTColumn } from './DataTable';
 import { CHART_COLORS, INSIGHT_LABEL, INSIGHT_TONE, TONE_COLORS, columnLight, fillLink, fmtValue, toneToLight } from '../lib/reports';
 import type { ReportChart, ReportColumn, ReportInsight, ReportKpi, ReportTable, ValueFormat } from '../types';
 
@@ -220,13 +221,20 @@ function CellValue({ col, row }: { col: ReportColumn; row: Record<string, unknow
 
 const NUMERIC: ValueFormat[] = ['money', 'int', 'pct', 'float', 'delta'];
 
-export function TableBlock({ table, pageSize = 25 }: { table: ReportTable; pageSize?: number }) {
+export function TableBlock({ table, pageSize = 25, onExport, print = false }: { table: ReportTable; pageSize?: number; onExport?: (tableKey: string) => void; print?: boolean }) {
   const rows = table.rows;
+  const columns: DTColumn<Record<string, unknown>>[] = table.columns.map((c) => ({
+    key: c.key,
+    label: c.label || c.label_text || '',
+    numeric: NUMERIC.includes(c.format),
+    render: (row) => <CellValue col={c} row={row} />,
+    sortValue: (row) => (c.format === 'link' ? null : (row[c.key] as number | string | null | undefined)),
+  }));
   return (
-    <Card title={table.title} className="report-table" testId={`table-${table.key}`}>
+    <Card title={table.title} className="report-table" testId={`table-${table.key}`} actions={onExport && rows.length > 0 && !print ? <button type="button" className="btn btn-ghost small" onClick={() => onExport(table.key)} data-testid={`csv-${table.key}`}>⬇ CSV</button> : undefined}>
       {rows.length === 0 ? (
         <Empty text="Sin registros en el periodo" />
-      ) : (
+      ) : print ? (
         <div className="table-wrap">
           <table className="table compact">
             <thead>
@@ -248,14 +256,28 @@ export function TableBlock({ table, pageSize = 25 }: { table: ReportTable; pageS
               ))}
             </tbody>
           </table>
-          {rows.length > pageSize && <p className="muted small">Mostrando {pageSize} de {rows.length} filas.</p>}
         </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(r, i) => String(r.point_id ?? r.operator_id ?? r.shift_id ?? r.cart_id ?? r.id ?? i)}
+          pageSize={pageSize}
+          testId={`dt-${table.key}`}
+          detail={(r) => (
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              {table.columns.filter((c) => c.format !== 'link').map((c) => (
+                <span key={c.key}><span className="muted">{c.label}:</span> <CellValue col={c} row={r} /></span>
+              ))}
+            </div>
+          )}
+        />
       )}
     </Card>
   );
 }
 
-export function Insights({ items }: { items: ReportInsight[] }) {
+export function Insights({ items, onCreateCase }: { items: ReportInsight[]; onCreateCase?: (i: ReportInsight) => void }) {
   return (
     <Card title="Hallazgos y alertas" className="report-insights" testId="report-insights">
       {items.length === 0 ? (
@@ -266,11 +288,14 @@ export function Insights({ items }: { items: ReportInsight[] }) {
             <li key={n} className={`insight insight-${i.kind}`}>
               <Badge tone={INSIGHT_TONE[i.kind]}>{INSIGHT_LABEL[i.kind]}</Badge>
               <span>{i.text}</span>
-              {i.link && (
-                <Link to={i.link} className="insight-link">
-                  Ver →
-                </Link>
-              )}
+              <span className="insight-link" style={{ display: 'flex', gap: 8 }}>
+                {onCreateCase && (i.kind === 'alert' || i.kind === 'recommendation' || i.kind === 'hypothesis') && (
+                  <button type="button" className="btn btn-ghost small" onClick={() => onCreateCase(i)} data-testid="insight-create-case">
+                    + Crear caso
+                  </button>
+                )}
+                {i.link && <Link to={i.link}>Ver →</Link>}
+              </span>
             </li>
           ))}
         </ul>

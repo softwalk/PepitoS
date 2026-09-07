@@ -1,14 +1,17 @@
 /** Página de un reporte: filtros en la URL (periodo + dimensiones), KPIs, hallazgos, gráficas y tablas.
  *  El alcance real lo fija la API (`scope`): el supervisor ve su zona aunque cambie la URL. */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, qs } from '../api/client';
-import { Badge, Card, Loading, PageTitle } from '../components/ui';
+import { Badge, Card, Loading, Modal, PageTitle } from '../components/ui';
+import { useToast } from '../components/Toast';
+import { StateBox, stateFromError } from '../components/State';
 import { ChartBlock, Insights, KpiGrid, TableBlock } from '../components/ReportBlocks';
 import { useFetch } from '../lib/useFetch';
+import { useAuth } from '../state/auth';
 import { fmtDateTime } from '../lib/format';
-import { PRESETS, filtersFrom, filtersToQuery, type Filters } from '../lib/reports';
-import type { ReportKey, ReportOptions, ReportPayload } from '../types';
+import { PRESETS, downloadText, filtersFrom, filtersToQuery, type Filters } from '../lib/reports';
+import type { ReportInsight, ReportKey, ReportOptions, ReportPayload } from '../types';
 
 const KEYS: ReportKey[] = ['executive', 'sales', 'cash', 'points', 'people', 'inventory', 'quality', 'maintenance', 'compliance', 'expansion'];
 
@@ -127,13 +130,13 @@ export function ReportHeaderMeta({ r }: { r: ReportPayload }) {
   );
 }
 
-export function ReportBody({ r, print = false }: { r: ReportPayload; print?: boolean }) {
+export function ReportBody({ r, print = false, onExport, onCreateCase }: { r: ReportPayload; print?: boolean; onExport?: (tableKey: string) => void; onCreateCase?: (i: ReportInsight) => void }) {
   const charts = r.charts;
   return (
     <>
       <CoverageNote r={r} />
       <KpiGrid kpis={r.kpis} compareLabel={r.compare.label} />
-      <Insights items={r.insights} />
+      <Insights items={r.insights} onCreateCase={print ? undefined : onCreateCase} />
       {charts.length > 0 && (
         <div className={`report-charts ${print ? 'print' : ''}`}>
           {charts.map((c) => (
@@ -142,7 +145,7 @@ export function ReportBody({ r, print = false }: { r: ReportPayload; print?: boo
         </div>
       )}
       {r.tables.map((t) => (
-        <TableBlock key={t.key} table={t} pageSize={print ? Math.max(t.rows.length, 1) : 25} />
+        <TableBlock key={t.key} table={t} pageSize={print ? Math.max(t.rows.length, 1) : 25} onExport={onExport} print={print} />
       ))}
       {r.hidden.length > 0 && !print && (
         <p className="muted small">Secciones no disponibles para tu rol: {r.hidden.join(', ')}.</p>
@@ -162,6 +165,28 @@ export function ReportViewPage() {
   const rk = key as ReportKey;
   const onChange = (f: Filters) => setParams(new URLSearchParams(filtersToQuery(f).replace(/^\?/, '')), { replace: true });
   const printHref = `/reportes/${rk}/imprimir${filtersToQuery(filters)}`;
+  const toast = useToast();
+  const [sendOpen, setSendOpen] = useState(false);
+  const [emails, setEmails] = useState('');
+  const [caseFrom, setCaseFrom] = useState<ReportInsight | null>(null);
+  const exportCsv = async (tableKey?: string) => {
+    try {
+      const q = qs({ ...filters, table: tableKey });
+      const text = await api.text(`/v1/reports/bi/${rk}/export.csv${q}`);
+      downloadText(`pepito-${rk}${tableKey ? '-' + tableKey : ''}.csv`, text);
+    } catch (e) {
+      toast.error(e, 'No se pudo exportar');
+    }
+  };
+  const sendMail = async () => {
+    try {
+      const r = await api.post<{ status: string; channel: string; path?: string; error?: string }>(`/v1/reports/bi/${rk}/send`, { to: emails.split(/[,;\s]+/).filter(Boolean), period: filters.period ?? 'today', from: filters.from, to_date: filters.to, zone_id: filters.zone_id, point_id: filters.point_id, operator_id: filters.operator_id });
+      toast.toast(r.status === 'sent' ? 'Reporte enviado por correo' : r.path ? `Sin SMTP configurado: se guardó en el servidor (${r.path})` : `No se envió: ${r.error ?? r.status}`, r.status === 'sent' ? 'success' : 'info');
+      setSendOpen(false);
+    } catch (e) {
+      toast.error(e, 'No se pudo enviar');
+    }
+  };
   return (
     <>
       <PageTitle
@@ -173,9 +198,17 @@ export function ReportViewPage() {
           </>
         }
         actions={
-          <a className="btn btn-primary" href={printHref} target="_blank" rel="noopener" data-testid="export-pdf">
-            Exportar PDF
-          </a>
+          <>
+            <button type="button" className="btn" onClick={() => exportCsv()} data-testid="export-csv">
+              ⬇ CSV
+            </button>
+            <button type="button" className="btn" onClick={() => setSendOpen(true)} data-testid="send-mail">
+              ✉ Enviar
+            </button>
+            <a className="btn btn-primary" href={printHref} target="_blank" rel="noopener" data-testid="export-pdf">
+              Exportar PDF
+            </a>
+          </>
         }
       />
       <ReportFilters reportKey={rk} filters={filters} onChange={onChange} options={options} />
@@ -183,12 +216,88 @@ export function ReportViewPage() {
       {loading && !data && <Loading />}
       {error && !data && (
         <Card>
-          <p className="state-msg" data-testid="report-error">
-            <b>{/permiso/i.test(error) ? 'Sin permiso' : /conexi|red|network|fetch/i.test(error) ? 'Error de conexión' : 'No se pudo generar el reporte'}</b> · {error}
-          </p>
+          <div data-testid="report-error">
+            <StateBox kind={stateFromError(new Error(error))} error={error} />
+          </div>
         </Card>
       )}
-      {data && <ReportBody r={data} />}
+      {data && <ReportBody r={data} onExport={(k) => void exportCsv(k)} onCreateCase={(i) => setCaseFrom(i)} />}
+      {sendOpen && (
+        <Modal title="Enviar reporte por correo" onClose={() => setSendOpen(false)}>
+          <p className="muted small">Se envía con los filtros actuales y tu misma autorización (PDF si el servidor tiene WeasyPrint; si no, HTML). Queda en el audit log.</p>
+          <label className="field">
+            <span className="field-label">Destinatarios (separados por coma)</span>
+            <input value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="direccion@pepito.mx, finanzas@pepito.mx" data-testid="send-to" />
+          </label>
+          <div className="modal-actions" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button className="btn" onClick={() => setSendOpen(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={sendMail} data-testid="send-confirm">Enviar</button>
+          </div>
+        </Modal>
+      )}
+      {caseFrom && data && <CreateCaseModal insight={caseFrom} report={data} onClose={() => setCaseFrom(null)} />}
     </>
+  );
+}
+
+
+/** Alerta → trabajo: crea un caso con responsable, acción sugerida y fecha a partir de un hallazgo del reporte. */
+function CreateCaseModal({ insight, report, onClose }: { insight: ReportInsight; report: ReportPayload; onClose: () => void }) {
+  const toast = useToast();
+  const { data: options } = useFetch<ReportOptions>(() => api.get('/v1/reports/bi/options'), [], { silent: true });
+  const { data: users } = useFetch<{ id: string; name: string; role: string; is_active: boolean }[]>(() => api.get('/v1/admin/users'), [], { silent: true });
+  const linkPoint = insight.link?.match(/point_id=([0-9a-f-]{36})/)?.[1];
+  const [title, setTitle] = useState(insight.text.slice(0, 120));
+  const [pointId, setPointId] = useState(linkPoint ?? report.filters.point_id ?? '');
+  const [severity, setSeverity] = useState<'urgent' | 'review' | 'normal'>(insight.kind === 'alert' ? 'review' : 'normal');
+  const [assignee, setAssignee] = useState('');
+  const [action, setAction] = useState(insight.kind === 'recommendation' ? insight.text.slice(0, 200) : '');
+  const [due, setDue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const c = await api.post<{ id: string }>('/v1/cases', {
+        title, description: `${insight.text}\n\nOrigen: reporte «${report.title}» (${report.period.label}).`, point_id: pointId || null, severity, category: 'other',
+        assignee_id: assignee || null, action: action || null, action_due_date: due || null, source_ref: `report:${report.key}${filtersToQuery(report.filters as Filters)}`,
+      });
+      toast.toast('Caso creado', 'success');
+      onClose();
+      window.location.assign(`/casos/${c.id}`);
+    } catch (e) {
+      toast.error(e, 'No se pudo crear el caso');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const { user: me } = useAuth();
+  const supervisors = (users ?? []).filter((u) => u.is_active && (u.role === 'supervisor' || u.role === 'ops'));
+  if (me && !supervisors.some((u) => u.id === me.id)) supervisors.unshift({ id: me.id, name: `${me.name} (yo)`, role: me.role, is_active: true });
+  return (
+    <Modal title="Crear caso desde el hallazgo" onClose={onClose}>
+      <div style={{ display: 'grid', gap: 10 }} data-testid="create-case-modal">
+        <label className="field"><span className="field-label">Título</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label className="field"><span className="field-label">Punto</span>
+          <select value={pointId} onChange={(e) => setPointId(e.target.value)}>
+            <option value="">Sin punto</option>
+            {(options?.points ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <label className="field" style={{ flex: 1 }}><span className="field-label">Severidad</span>
+            <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof severity)}><option value="urgent">Urgente</option><option value="review">Revisar</option><option value="normal">Normal</option></select>
+          </label>
+          <label className="field" style={{ flex: 1 }}><span className="field-label">Responsable</span>
+            <select value={assignee} onChange={(e) => setAssignee(e.target.value)}><option value="">Sin asignar</option>{supervisors.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+          </label>
+        </div>
+        <label className="field"><span className="field-label">Acción sugerida</span><input value={action} onChange={(e) => setAction(e.target.value)} placeholder="Qué debe hacerse" /></label>
+        <label className="field"><span className="field-label">Fecha objetivo</span><input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></label>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" disabled={busy || title.length < 4} onClick={submit} data-testid="create-case-confirm">Crear caso</button>
+        </div>
+      </div>
+    </Modal>
   );
 }

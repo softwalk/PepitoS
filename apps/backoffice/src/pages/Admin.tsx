@@ -5,7 +5,7 @@ import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { SettingsTab } from './SettingsTab';
 import { Badge, Card, Empty, Field, Loading, Modal, PageTitle, StatusBadge } from '../components/ui';
-import type { Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, Setting, User, Zone } from '../types';
+import type { PointCost, Assignment, Cart, Device, Point, Presentation, PriceVersion, ResetPasswordResponse, Setting, User, Zone } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
 import { ROLE_LABEL } from '../components/Layout';
 import { ReopenShiftButton } from '../components/ReopenShift';
@@ -706,7 +706,60 @@ function PointSheetModal({ point, onClose }: { point: Point; onClose: () => void
         </tbody>
       </table>
       <p className="muted small" style={{ marginTop: 8 }}>{m.source}</p>
+      <PointCosts point={point} />
     </Modal>
+  );
+}
+
+/** Costos del punto con vigencia (renta, permiso, resguardo, otros; inversión inicial). Alimentan margen y payback en
+ *  Reportes → Expansión. Cada alta es una vigencia nueva; el histórico se conserva. */
+function PointCosts({ point }: { point: Point }) {
+  const toast = useToast();
+  const { data, reload } = useFetch<PointCost[]>(() => api.get(`/v1/admin/points/${point.id}/costs`), [point.id], { silent: true });
+  const [form, setForm] = useState({ valid_from: new Date().toISOString().slice(0, 10), rent: '', permit: '', custody: '', other: '', setup: '', note: '' });
+  const [busy, setBusy] = useState(false);
+  const toCents = (v: string) => Math.round(Number(v || 0) * 100);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post(`/v1/admin/points/${point.id}/costs`, { valid_from: form.valid_from, rent_month_cents: toCents(form.rent), permit_month_cents: toCents(form.permit), custody_month_cents: toCents(form.custody), other_month_cents: toCents(form.other), setup_cents: toCents(form.setup), note: form.note || null });
+      toast.toast('Costos guardados', 'success');
+      await reload(true);
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const f = (k: keyof typeof form) => ({ value: form[k], onChange: (e: { target: { value: string } }) => setForm((s) => ({ ...s, [k]: e.target.value })) });
+  return (
+    <div style={{ marginTop: 14 }} data-testid="point-costs">
+      <h4 style={{ margin: '0 0 6px' }}>Costos del punto (mensuales, $)</h4>
+      {data && data.length > 0 && (
+        <table className="table compact" style={{ marginBottom: 8 }}>
+          <thead><tr><th>Vigente desde</th><th className="num">Renta</th><th className="num">Permiso</th><th className="num">Resguardo</th><th className="num">Otros</th><th className="num">Total/mes</th><th className="num">Inversión</th><th>Nota</th></tr></thead>
+          <tbody>
+            {data.map((c) => (
+              <tr key={c.id}><td>{c.valid_from}</td><td className="num">{money(c.rent_month_cents, { decimals: 0 })}</td><td className="num">{money(c.permit_month_cents, { decimals: 0 })}</td><td className="num">{money(c.custody_month_cents, { decimals: 0 })}</td><td className="num">{money(c.other_month_cents, { decimals: 0 })}</td><td className="num"><b>{money(c.monthly_cents, { decimals: 0 })}</b></td><td className="num">{money(c.setup_cents, { decimals: 0 })}</td><td className="muted small">{c.note}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form onSubmit={submit} className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        <Field label="Vigente desde"><input type="date" {...f('valid_from')} required /></Field>
+        <Field label="Renta / mes"><input inputMode="decimal" {...f('rent')} placeholder="0" /></Field>
+        <Field label="Permiso / mes"><input inputMode="decimal" {...f('permit')} placeholder="0" /></Field>
+        <Field label="Resguardo y carga / mes"><input inputMode="decimal" {...f('custody')} placeholder="0" /></Field>
+        <Field label="Otros / mes"><input inputMode="decimal" {...f('other')} placeholder="0" /></Field>
+        <Field label="Inversión inicial (sin carrito)"><input inputMode="decimal" {...f('setup')} placeholder="0" /></Field>
+        <Field label="Nota"><input {...f('note')} maxLength={160} /></Field>
+        <div style={{ alignSelf: 'end' }}>
+          <button type="submit" className="btn btn-primary" disabled={busy} data-testid="point-costs-save">{busy ? 'Guardando…' : 'Guardar vigencia'}</button>
+        </div>
+      </form>
+      <p className="muted small">La materia prima se calcula aparte por gramos vendidos (parámetro «raw_cost_per_kg_cents»).</p>
+    </div>
   );
 }
 

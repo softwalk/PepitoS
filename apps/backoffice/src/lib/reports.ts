@@ -90,3 +90,17 @@ export function fillLink(template: string, row: Record<string, unknown>): string
 
 export const CHART_COLORS = ['#1f4e79', '#e8590c', '#1a7f46', '#e0951a', '#b3261e', '#1a56b3', '#6b4fbb', '#0f766e', '#a16207', '#7c3aed'];
 export const TONE_COLORS: Record<string, string> = { ok: '#1a7f46', warn: '#e0951a', bad: '#b3261e', info: '#1f4e79', neutral: '#5b6b7d' };
+
+
+/** Descarga un texto como archivo (sin enlaces a URLs con token: la petición lleva Authorization). */
+export function downloadText(filename: string, text: string, mime = 'text/csv;charset=utf-8'): void {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

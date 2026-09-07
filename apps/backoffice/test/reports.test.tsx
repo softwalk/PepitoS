@@ -158,7 +158,8 @@ describe('Centro de Reportes y página de reporte', () => {
   it('un 403 de la API se muestra como mensaje, nunca datos', async () => {
     mount('/reportes/cash?period=today');
     await screen.findByTestId('report-error');
-    expect(screen.getByTestId('report-error').textContent).toContain('Sin permiso');
+    expect(screen.getByTestId('report-error').textContent).toContain('No tienes permiso');
+    expect(screen.getByTestId('state-forbidden')).toBeTruthy();
     expect(screen.queryByTestId('report-kpis')).toBeNull();
   });
 

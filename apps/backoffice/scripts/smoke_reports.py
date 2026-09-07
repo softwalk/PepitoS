@@ -75,6 +75,40 @@ def run():
         page.click("button:has-text('Limpiar filtros')")
         page.wait_for_url(lambda u: "point_id=" not in u)
 
+        # CSV por tabla y global (descarga con Authorization), enviar por correo (sin SMTP → archivo), crear caso desde hallazgo
+        page.goto(APP + "/reportes/points?period=month")
+        page.wait_for_selector("[data-testid=report-kpis] .kpi")
+        with page.expect_download() as dl:
+            page.click("[data-testid=export-csv]")
+        assert dl.value.suggested_filename.endswith(".csv")
+        page.click("[data-testid=send-mail]")
+        page.fill("[data-testid=send-to]", "direccion@pepito.mx")
+        page.click("[data-testid=send-confirm]")
+        page.wait_for_selector("text=Sin SMTP configurado", timeout=15000)
+        # DataTable: ordenar y elegir columnas
+        page.click("[data-testid=dt-ranking] [data-testid=col-picker]")
+        assert page.locator("[data-testid=dt-ranking] .col-picker-menu label").count() >= 5
+        page.keyboard.press("Escape")
+        if page.locator("[data-testid=insight-create-case]").count():
+            page.click("[data-testid=insight-create-case] >> nth=0")
+            page.wait_for_selector("[data-testid=create-case-modal]")
+            page.fill("[data-testid=create-case-modal] input >> nth=0", "Caso desde reporte (smoke)")
+            page.click("[data-testid=create-case-confirm]")
+            page.wait_for_url("**/casos/**", timeout=15000)
+            page.wait_for_selector("text=Caso desde reporte (smoke)", timeout=15000)
+            shot(page, "03b-caso-desde-hallazgo")
+        # Seguridad y avisos: MFA setup (sin activar), notificaciones, tema oscuro
+        page.goto(APP + "/seguridad")
+        page.wait_for_selector("[data-testid=mfa-card]")
+        page.click("[data-testid=mfa-setup]")
+        page.wait_for_selector("[data-testid=mfa-secret]")
+        page.click("[data-testid=notify-test]")
+        page.select_option("[data-testid=theme-select]", "dark")
+        page.wait_for_timeout(300)
+        assert page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark"
+        shot(page, "03c-seguridad-oscuro", full=True)
+        page.select_option("[data-testid=theme-select]", "light")
+
         # Vista de impresión (noprint evita el diálogo del navegador headless)
         page.goto(APP + f"/reportes/executive/imprimir?period=month&point_id={first_point}&noprint=1")
         page.wait_for_selector("[data-testid=report-print]")
@@ -104,7 +138,7 @@ def run():
         shot(page, "06-supervisor-ventas", full=True)
         page.goto(APP + "/reportes/executive?period=month")
         page.wait_for_selector("[data-testid=report-error]")
-        assert "sin permiso" in page.inner_text("[data-testid=report-error]").lower()
+        assert "no tienes permiso" in page.inner_text("[data-testid=report-error]").lower()
         shot(page, "07-supervisor-403")
 
         # Móvil

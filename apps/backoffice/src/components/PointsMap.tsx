@@ -1,11 +1,12 @@
 import { MapContainer, Marker, Popup, TileLayer, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { PointStatus, RouteStop } from '../types';
 import { STATUS_LABEL, fmtTime, label, money } from '../lib/format';
 
-const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Tiles: VITE_TILES_URL permite un servidor propio (LAN sin internet). Si los tiles no cargan, se muestra el mapa esquemático.
+const TILES = (import.meta.env.VITE_TILES_URL as string | undefined) || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 function pin(status: string) {
@@ -28,14 +29,51 @@ export const MAP_LEGEND = [
   { key: 'not_scheduled', color: '#c3ccd6' },
 ];
 
+/** Mapa esquemático sin tiles: proyecta lat/lng en una cuadrícula. Se usa cuando OpenStreetMap no responde (LAN sin
+ *  salida a internet) para que Control Tower no pierda su elemento central. */
+export function SchematicMap({ items }: { items: { id: string; name: string; lat: number; lng: number; status: string; href?: string; label?: string }[] }) {
+  if (!items.length) return <div className="schematic-map"><span className="sm-note">Sin puntos</span></div>;
+  const lats = items.map((i) => i.lat);
+  const lngs = items.map((i) => i.lng);
+  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  const px = (v: number, min: number, max: number) => (max - min < 1e-6 ? 50 : 8 + ((v - min) * 84) / (max - min));
+  return (
+    <div className="schematic-map" data-testid="schematic-map" role="img" aria-label="Mapa esquemático de puntos">
+      {items.map((i) => (
+        <a key={i.id} className="sm-pin" href={i.href} style={{ left: `${px(i.lng, minLng, maxLng)}%`, top: `${100 - px(i.lat, minLat, maxLat)}%` }} title={i.name}>
+          <div className={`marker-pin s-${i.status}`} />
+          <span>{i.label ?? i.name}</span>
+        </a>
+      ))}
+      <span className="sm-note">Vista esquemática · el mapa detallado requiere conexión a internet (o VITE_TILES_URL)</span>
+    </div>
+  );
+}
+
+function useTilesOk() {
+  const [failed, setFailed] = useState(typeof navigator !== 'undefined' && !navigator.onLine);
+  return { failed, handlers: { tileerror: () => setFailed(true), tileload: () => setFailed(false) } };
+}
+
 export function PointsMap({ points, mini = false }: { points: PointStatus[]; mini?: boolean }) {
   const coords = useMemo(() => points.map((p) => [p.point.lat, p.point.lng] as [number, number]), [points]);
   const b = bounds(coords);
+  const tiles = useTilesOk();
+  if (tiles.failed) {
+    return (
+      <div>
+        <div className={`map ${mini ? 'mini' : ''}`}>
+          <SchematicMap items={points.map((p) => ({ id: p.point.id, name: p.point.name, lat: p.point.lat, lng: p.point.lng, status: p.status, href: `/excepciones?point_id=${p.point.id}`, label: `${p.point.name} · ${money(p.sales_cents, { decimals: 0 })}` }))} />
+        </div>
+        <Legend />
+      </div>
+    );
+  }
   return (
     <div>
       <div className={`map ${mini ? 'mini' : ''}`}>
         <MapContainer bounds={b} center={b ? undefined : [19.4326, -99.1332]} zoom={b ? undefined : 12} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
-          <TileLayer attribution={ATTR} url={TILES} />
+          <TileLayer attribution={ATTR} url={TILES} eventHandlers={tiles.handlers} />
           {points.map((p) => {
             const pos: [number, number] = p.last_gps ? [p.last_gps.lat, p.last_gps.lng] : [p.point.lat, p.point.lng];
             return (
@@ -64,13 +102,19 @@ export function PointsMap({ points, mini = false }: { points: PointStatus[]; min
           })}
         </MapContainer>
       </div>
-      <div className="legend">
-        {MAP_LEGEND.map((l) => (
-          <span key={l.key} style={{ ['--c' as string]: l.color }}>
-            {label(STATUS_LABEL, l.key)}
-          </span>
-        ))}
-      </div>
+      <Legend />
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="legend">
+      {MAP_LEGEND.map((l) => (
+        <span key={l.key} style={{ ['--c' as string]: l.color }}>
+          {label(STATUS_LABEL, l.key)}
+        </span>
+      ))}
     </div>
   );
 }

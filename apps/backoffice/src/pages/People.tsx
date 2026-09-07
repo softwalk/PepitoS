@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, qs } from '../api/client';
 import { useFetch } from '../lib/useFetch';
+import { StateBox, stateFromError } from '../components/State';
 import { Badge, Card, Empty, Loading, PageTitle, StatusBadge } from '../components/ui';
 import type { AttendanceRow, RankingRow } from '../types';
 import { fmtDateTime, fmtTime, money, todayLocalISO } from '../lib/format';
@@ -9,7 +10,7 @@ const ATT_LABEL: Record<string, string> = { present: 'Presente', late: 'Tarde', 
 
 export function PeoplePage() {
   const [date, setDate] = useState(todayLocalISO());
-  const { data, loading } = useFetch<{ date: string; rows: AttendanceRow[] }>(() => api.get(`/v1/people/attendance${qs({ date })}`), [date], { every: 60_000 });
+  const { data, loading, error } = useFetch<{ date: string; rows: AttendanceRow[] }>(() => api.get(`/v1/people/attendance${qs({ date })}`), [date], { every: 60_000 });
   const rows = data?.rows ?? [];
   const count = (s: string) => rows.filter((r) => r.status === s).length;
   const late = rows.filter((r) => (r.late_minutes ?? 0) > 0).length;
@@ -19,6 +20,7 @@ export function PeoplePage() {
     <div>
       <PageTitle title="Personas · asistencia" subtitle="Check-in/out por asignación, puntualidad y ausencias." actions={<input type="date" value={date} onChange={(e) => setDate(e.target.value)} />} />
       {loading && !data && <Loading />}
+        {error && !data && <StateBox kind={stateFromError(new Error(error))} error={error} />}
       {data && (
         <>
           <div className="kpis">

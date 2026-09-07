@@ -2,27 +2,29 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, qs } from '../api/client';
 import { useFetch } from '../lib/useFetch';
+import { StateBox, stateFromError } from '../components/State';
 import { useAuth } from '../state/auth';
 import { useToast } from '../components/Toast';
 import { PointsMap } from '../components/PointsMap';
-import { Badge, Card, Empty, LightDot, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
+import { Badge, Card, Empty, Kpi, LightDot, Loading, PageTitle, SeverityBadge, StatusBadge } from '../components/ui';
 import type { PointStatus, Summary } from '../types';
-import { fmtDateTime, fmtTime, money, ratioPct, salesLight, targetLight, ticketLight, todayLocalISO, type Light } from '../lib/format';
+import { fmtDateTime, fmtTime, money, ratioPct, salesLight, targetLight, ticketLight, todayLocalISO } from '../lib/format';
 import { Icon } from '../components/icons';
 import { ReopenShiftButton } from '../components/ReopenShift';
 
-function Kpi({ label, value, sub, tone, wide, children }: { label: string; value?: string; sub?: string; tone?: Light; wide?: boolean; children?: React.ReactNode }) {
-  return (
-    <div className={`kpi ${tone ? `tone-${tone}` : ''} ${wide ? 'kpi-wide' : ''}`} data-testid={`kpi-${label}`}>
-      <div className="kpi-label">
-        <span>{label}</span>
-        {tone && <LightDot light={tone} text="" />}
-      </div>
-      {value !== undefined && <div className="kpi-value">{value}</div>}
-      {sub && <div className="kpi-sub">{sub}</div>}
-      {children}
-    </div>
-  );
+/** Agrupa alertas repetidas (misma regla + mismo mensaje) mostrando la más reciente con «×n». */
+export function dedupeAlerts<T extends { rule_key: string; message: string; raised_at: string }>(alerts: T[]): { a: T; n: number }[] {
+  const out: { a: T; n: number }[] = [];
+  const idx = new Map<string, number>();
+  for (const a of alerts.slice().sort((x, y) => y.raised_at.localeCompare(x.raised_at))) {
+    const k = `${a.rule_key}|${a.message}`;
+    const i = idx.get(k);
+    if (i === undefined) {
+      idx.set(k, out.length);
+      out.push({ a, n: 1 });
+    } else out[i].n += 1;
+  }
+  return out;
 }
 
 function PointRow({ p, onChanged, canReopen }: { p: PointStatus; onChanged: () => Promise<void>; canReopen: boolean }) {
@@ -93,7 +95,7 @@ export function ControlTowerPage() {
   const toast = useToast();
   const [date, setDate] = useState(todayLocalISO());
   const [running, setRunning] = useState(false);
-  const { data, loading, reload, updatedAt } = useFetch<Summary>(() => api.get(`/v1/control-tower/summary${qs({ date })}`), [date], { every: 60_000 });
+  const { data, loading, error, reload, updatedAt } = useFetch<Summary>(() => api.get(`/v1/control-tower/summary${qs({ date })}`), [date], { every: 60_000 });
 
   const runRules = async () => {
     setRunning(true);
@@ -142,6 +144,7 @@ export function ControlTowerPage() {
       />
 
       {!data && loading && <Loading />}
+      {!data && error && <StateBox kind={stateFromError(new Error(error))} error={error} />}
       {data && t && (
         <>
           <div className="kpis">
@@ -199,10 +202,13 @@ export function ControlTowerPage() {
             <Card title="Alertas recientes">
               {data.alerts_recent.length === 0 && <Empty text="Sin alertas" />}
               <ul className="alert-list">
-                {data.alerts_recent.slice(0, 12).map((a) => (
+                {dedupeAlerts(data.alerts_recent).slice(0, 12).map(({ a, n }) => (
                   <li key={a.id}>
                     <SeverityBadge severity={a.severity} />
-                    <span style={{ flex: 1, minWidth: 0 }}>{a.case_id ? <Link to={`/casos/${a.case_id}`}>{a.message}</Link> : a.message}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      {a.case_id ? <Link to={`/casos/${a.case_id}`}>{a.message}</Link> : a.message}
+                      {n > 1 && <Badge tone="gray" title={`${n} alertas iguales`}>×{n}</Badge>}
+                    </span>
                     {a.status === 'resolved' && <Badge tone="green">Resuelta</Badge>}
                     <span className="muted small nowrap">{fmtDateTime(a.raised_at)}</span>
                   </li>

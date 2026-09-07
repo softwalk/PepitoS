@@ -492,3 +492,85 @@ pre.json { background: var(--panel-2); border: 1px solid var(--border); border-r
   .print-page .report-charts.print .card { break-inside: avoid; }
   .print-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
+
+/* ---------- Tema oscuro y densidad (Seguridad → Apariencia) ---------- */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1522;
+  --panel: #161e2e;
+  --panel-2: #1c2536;
+  --border: #2a3548;
+  --border-strong: #3a475e;
+  --text: #e6ebf3;
+  --text-2: #c2ccda;
+  --muted: #8f9db1;
+  --primary: #7fb0e6;
+  --primary-dark: #a9c9ef;
+  --primary-soft: #1d2f47;
+  --accent-soft: #3a2413;
+  --green: #4ccb82;
+  --green-bg: #113522;
+  --amber: #f0b64a;
+  --amber-fill: #e0951a;
+  --amber-bg: #3a2a08;
+  --red: #ff7b72;
+  --red-bg: #3d1614;
+  --blue: #7fb0e6;
+  --blue-bg: #17283f;
+  --gray: #9aa8bb;
+  --gray-bg: #232d3f;
+  --light: #7f8ca0;
+  --light-bg: #1a2233;
+  --side-bg: #0b111c;
+  --side-bg-2: #111a2a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --focus: 0 0 0 3px var(--panel), 0 0 0 5px var(--blue);
+}
+html[data-theme='dark'] .table tbody tr:hover { background: #1f2a3d; }
+html[data-theme='dark'] .btn-primary { color: #0f1522; }
+html[data-theme='dark'] .kpi-delta.green { color: var(--green); }
+html[data-theme='dark'] .insight-alert { background: #2d1614; }
+html[data-theme='dark'] .insight-recommendation { background: #10281a; }
+html[data-theme='dark'] .insight-hypothesis { background: #2c2208; }
+html[data-theme='dark'] .chart-tip { background: var(--panel-2); }
+html[data-theme='dark'] .print-page { background: #fff; color: #111; }
+html[data-theme='dark'] .map { filter: brightness(0.85) contrast(1.05); }
+html[data-density='compact'] { --radius-lg: 10px; font-size: 13px; }
+html[data-density='compact'] .card { padding: 10px 12px; margin-bottom: 10px; }
+html[data-density='compact'] .table th, html[data-density='compact'] .table td { padding: 4px 8px; }
+html[data-density='compact'] .kpi-value { font-size: 20px; }
+html[data-density='compact'] .kpis { gap: 8px; margin-bottom: 10px; }
+html[data-density='compact'] .page-title { margin-bottom: 8px; }
+.mfa-secret { font-size: 18px; letter-spacing: 2px; background: var(--panel-2); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); user-select: all; }
+
+/* ---------- Estados (vacío / sin permiso / sin conexión / error) ---------- */
+.state-box { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel-2); }
+.state-box .state-ico { font-size: 22px; line-height: 1; }
+.state-box b { display: block; margin-bottom: 2px; }
+.state-box.forbidden { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+.state-box.offline { border-color: var(--amber-fill); background: var(--amber-bg); color: var(--amber); }
+.state-box.error { border-color: var(--red); }
+.offline-banner { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60; background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-fill); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow-lg); }
+
+/* ---------- Mapa esquemático (sin tiles) ---------- */
+.schematic-map { position: relative; width: 100%; height: 100%; min-height: 240px; background: repeating-linear-gradient(0deg, transparent 0 39px, var(--border) 39px 40px), repeating-linear-gradient(90deg, transparent 0 39px, var(--border) 39px 40px), var(--panel-2); border-radius: 10px; overflow: hidden; }
+.schematic-map .sm-note { position: absolute; left: 8px; bottom: 6px; font-size: 11px; color: var(--muted); background: var(--panel); padding: 2px 6px; border-radius: 6px; }
+.schematic-map .sm-pin { position: absolute; transform: translate(-50%, -100%); text-decoration: none; color: var(--text); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.schematic-map .sm-pin .marker-pin { position: static; }
+.schematic-map .sm-pin span { background: var(--panel); border: 1px solid var(--border); padding: 1px 5px; border-radius: 6px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Tabla ordenable ---------- */
+.table th.sortable { cursor: pointer; user-select: none; }
+.table th.sortable:hover { color: var(--text); }
+.table th .sort-ind { opacity: 0.6; margin-left: 4px; font-size: 10px; }
+.col-picker { position: relative; display: inline-block; }
+.col-picker-menu { position: absolute; right: 0; top: 100%; z-index: 20; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 8px 10px; min-width: 200px; max-height: 320px; overflow: auto; }
+.col-picker-menu label { display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; }
+tr.row-detail td { background: var(--panel-2); font-size: 12.5px; }
+.sla-chip { font-variant-numeric: tabular-nums; }
+html[data-theme='dark'] input, html[data-theme='dark'] select, html[data-theme='dark'] textarea { background: var(--panel-2); color: var(--text); border-color: var(--border-strong); }
+html[data-theme='dark'] .btn { background: var(--panel-2); color: var(--text); border-color: var(--border-strong); }
+html[data-theme='dark'] .btn-primary { background: var(--primary); border-color: var(--primary); color: #0f1522; }
+html[data-theme='dark'] .btn-accent { color: #fff; }
+html[data-theme='dark'] .badge-light { background: var(--light-bg); color: var(--text-2); }
