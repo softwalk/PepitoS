@@ -27,6 +27,20 @@ const TAGS: { code: HelpTag; label: string }[] = [
   { code: 'stockout', label: '📦 Sin producto' },
 ];
 
+/** Resuelve con `null` si la promesa tarda más de `ms` (el GPS no puede retrasar un aviso de ayuda). */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), ms);
+    p.then((v) => {
+      clearTimeout(t);
+      resolve(v);
+    }).catch(() => {
+      clearTimeout(t);
+      resolve(null);
+    });
+  });
+}
+
 export default function Help() {
   const nav = useNavigate();
   const { catalog, reload } = useApp();
@@ -35,21 +49,29 @@ export default function Help() {
   const [note, setNote] = useState('');
   const [tags, setTags] = useState<HelpTag[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<HelpCategory | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const labels = new Map((catalog?.help_categories ?? []).map((c) => [c.code, c.label]));
 
+  /**
+   * Envía el aviso. Responde de inmediato: la tarjeta pasa a «Enviando…», el GPS se toma del último fix reciente o se
+   * espera como máximo 2.5 s (1.5 s en Seguridad) — nunca más — y cualquier error se muestra en pantalla en vez de
+   * quedarse en silencio. El aviso se encola offline, así que sin señal también sale.
+   */
   const send = async (category: HelpCategory, extra: { note?: string; photo_base64?: string; tags?: HelpTag[] } = {}) => {
     if (busy) return;
-    setBusy(true);
+    setBusy(category);
+    setSendError(null);
     try {
-      // Seguridad es prioritaria: no esperar al GPS más de 3 s.
-      const gps = (await getPosition(category === 'security' ? 3000 : 6000)) ?? recentPosition();
+      const gps = recentPosition() ?? (await withTimeout(getPosition(category === 'security' ? 1500 : 2500), category === 'security' ? 1800 : 3000));
       await requestHelp(category, { ...extra, gps });
-      await reload();
       setSent(category);
       speak('Enviado. Te contactan.');
+      void reload().catch(() => undefined);
+    } catch (err) {
+      setSendError(err instanceof Error && err.message ? err.message : 'No se pudo registrar el aviso. Inténtalo de nuevo.');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -84,8 +106,16 @@ export default function Help() {
           ))}
         </div>
         <textarea placeholder="Escribe una nota corta (opcional)" value={note} maxLength={280} onChange={(e) => setNote(e.target.value)} />
-        <PhotoCapture label="Incidente" value={photo} onChange={setPhoto} stamp={stampWithGps} disabled={busy} testId="help-photo" />
-        <button className="btn btn-blue" disabled={busy} onClick={() => send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined, tags })}>
+        <PhotoCapture label="Incidente" value={photo} onChange={setPhoto} stamp={stampWithGps} disabled={!!busy} testId="help-photo" />
+        {sendError && (
+          <div className="exception" role="alert" data-testid="help-error">
+            <span className="ico" aria-hidden>
+              ⚠️
+            </span>
+            <div>{sendError}</div>
+          </div>
+        )}
+        <button className="btn btn-blue" disabled={!!busy} onClick={() => void send('other', { note: note.trim() || undefined, photo_base64: photo ?? undefined, tags })}>
           <span className="ico" aria-hidden>
             📨
           </span>
@@ -101,18 +131,29 @@ export default function Help() {
   return (
     <div className="stack">
       <h1 className="h1">¿Con qué necesitas ayuda?</h1>
+      {sendError && (
+        <div className="exception" role="alert" data-testid="help-error">
+          <span className="ico" aria-hidden>
+            ⚠️
+          </span>
+          <div>{sendError}</div>
+        </div>
+      )}
       <div className="help-grid">
         {CARDS.map((c) => (
           <button
             key={c.code}
-            className={`help-card ${c.code}`}
-            disabled={busy}
-            onClick={() => (c.code === 'other' ? setOther(true) : send(c.code))}
+            type="button"
+            className={`help-card ${c.code} ${busy === c.code ? 'sending' : ''}`}
+            disabled={!!busy}
+            aria-busy={busy === c.code}
+            data-testid={`help-${c.code}`}
+            onClick={() => (c.code === 'other' ? setOther(true) : void send(c.code))}
             aria-label={c.code === 'security' ? 'Seguridad: envía ayuda prioritaria de inmediato' : labels.get(c.code) ?? c.label}
           >
             {typeof c.icon === 'string' ? <Icon icon={c.icon} /> : c.icon}
-            {labels.get(c.code) ?? c.label}
-            {c.code === 'security' && <small style={{ fontSize: '0.6em' }}>Envío inmediato</small>}
+            {busy === c.code ? 'Enviando…' : labels.get(c.code) ?? c.label}
+            {c.code === 'security' && busy !== c.code && <small style={{ fontSize: '0.6em' }}>Envío inmediato</small>}
           </button>
         ))}
       </div>

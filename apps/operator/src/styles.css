@@ -999,6 +999,22 @@ a.pill {
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.25);
   transition: transform 0.06s, box-shadow 0.06s;
 }
+.help-card.sending {
+  opacity: 0.85;
+  animation: help-pulse 0.9s ease-in-out infinite;
+}
+@keyframes help-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+}
+.help-card:disabled:not(.sending) {
+  opacity: 0.6;
+}
 .help-card:active:not(:disabled) {
   transform: translateY(4px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
