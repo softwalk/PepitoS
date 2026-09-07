@@ -782,7 +782,7 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
     out["tables"].append({"key": "bottom", "title": "Bottom 5 (con turno)", "columns": cols, "rows": list(reversed(with_sales))[:5]})
     ins = out["insights"]
     if with_sales:
-        meta_str = f" ({with_sales[0]['target_pct']:.0f} % de meta)." if with_sales[0]['target_pct'] is not None else "."
+        meta_str = f" ({with_sales[0]['target_pct']:.0f} % de meta)." if with_sales[0]['target_pct'] is not None else " (sin meta en el periodo)."
         ins.append(insight("fact", f"{with_sales[0]['point']} lidera con {_money(with_sales[0]['sales_cents'])}{meta_str}"))
         drops = sorted([r for r in with_sales if r["delta_pct"] is not None and r["delta_pct"] <= -15], key=lambda r: r["delta_pct"])
         for r in drops[:3]:

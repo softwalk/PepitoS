@@ -151,3 +151,20 @@ def test_cutoff_version_coverage_and_no_comparable(fresh_operator, catalog, admi
     # Un periodo pasado sin turnos abiertos queda "closed" y con corte = fin del periodo
     old = admin.get("/v1/reports/bi/executive", params={"period": "prev_month"}).json()
     assert old["partial"] is False and old["data_as_of"] == old["period"]["end"] and old["coverage"]["status"] == "closed"
+
+
+def test_point_with_zero_target_renders_cleanly(fresh_operator, catalog, admin, db_session):
+    """Punto con ventas pero meta 0/nula no debe romper ningún reporte por división o comparaciones NoneType."""
+    from app.models.org import Point
+    a = fresh_operator()
+    p = db_session.get(Point, uuid.UUID(a.point["id"]))
+    p.daily_target_cents = 0
+    db_session.commit()
+    sa = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()
+    a.post("/v1/sales", json=sale_payload(sa, catalog, pres_index=0))
+    for rep in ("executive", "points", "expansion"):
+        r = admin.get(f"/v1/reports/bi/{rep}", params={"period": "today"})
+        assert r.status_code == 200, f"{rep} failed: {r.text}"
+        body = r.json()
+        assert body["report"] == rep
+
