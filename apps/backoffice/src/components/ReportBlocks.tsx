@@ -219,7 +219,7 @@ function CellValue({ col, row }: { col: ReportColumn; row: Record<string, unknow
   return <>{content}</>;
 }
 
-const NUMERIC: ValueFormat[] = ['money', 'int', 'pct', 'float', 'delta'];
+const NUMERIC: ValueFormat[] = ['money', 'int', 'pct', 'float', 'delta', 'kg'];
 
 export function TableBlock({ table, pageSize = 25, onExport, print = false }: { table: ReportTable; pageSize?: number; onExport?: (tableKey: string) => void; print?: boolean }) {
   const rows = table.rows;

@@ -240,11 +240,16 @@ def test_inventory_kg_and_count_receipt_photos(fresh_operator, catalog, admin):
     # Estado por punto en kg y listado de evidencias por entidad
     st = admin.get("/v1/inventory/status").json()
     pt = [p for p in st["points"] if p["point"]["id"] == a.point["id"]][0]
-    assert pt["total_kg"] == round(sum(i["balance"] * i["grams"] for i in pt["items"]) / 1000, 3) and st["total_kg"] >= pt["total_kg"]
+    assert pt["total_kg"] == round(sum(i["balance"] * i["grams"] for i in pt["items"]) / 1000, 2) and st["total_kg"] >= pt["total_kg"]
+    assert all(len(str(v).split(".")[-1]) <= 2 for v in (pt["total_kg"], st["total_kg"], mine["counted_kg"], recs[0]["kg"]))
     ev = admin.get("/v1/evidence", params={"entity": "inventory_count", "entity_id": count_id}).json()
     assert len(ev) == 1
     # El reporte de inventario expone existencias y conteos en kg
     rep = admin.get("/v1/reports/bi/inventory", params={"period": "today"}).json()
     assert rep["version"] == "1.2" and any(k["key"] == "stock_kg" for k in rep["kpis"])
     counts_tbl = [t for t in rep["tables"] if t["key"] == "counts"][0]
-    assert any(c["key"] == "counted_kg" for c in counts_tbl["columns"])
+    assert any(c["key"] == "counted_kg" and c["format"] == "kg" for c in counts_tbl["columns"])
+    assert [k for k in rep["kpis"] if k["key"] == "stock_kg"][0]["format"] == "kg"
+    # 8025 g → 8.03 (mitad hacia arriba, 2 decimales) en la misma función que usa toda la API
+    from app.services.inventory import kg2
+    assert kg2(8025) == 8.03 and kg2(75) == 0.08 and kg2(2000) == 2.0

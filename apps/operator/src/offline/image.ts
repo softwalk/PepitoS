@@ -212,10 +212,16 @@ export async function stampImage(b64: string, info: StampInfo, opts: { maxBytes?
 /** Kilogramos teóricos de un mapa {presentation_id: piezas} según los gramos del catálogo. */
 export function kilograms(counts: Record<string, number>, presentations: { id: string; grams: number }[]): number {
   const g = new Map(presentations.map((p) => [p.id, p.grams]));
-  const total = Object.entries(counts).reduce((a, [id, q]) => a + (q || 0) * (g.get(id) ?? 0), 0);
-  return Math.round(total) / 1000;
+  const totalGrams = Object.entries(counts).reduce((a, [id, q]) => a + (q || 0) * (g.get(id) ?? 0), 0);
+  return gramsToKg(totalGrams);
 }
 
+/** Gramos → kg con exactamente 2 decimales, mitad hacia arriba (misma regla que la API `kg2`). */
+export function gramsToKg(grams: number): number {
+  return Math.round(grams / 10 + Number.EPSILON) / 100;
+}
+
+/** Siempre 2 decimales: "8.02 kg", "2.00 kg". */
 export function fmtKg(kg: number): string {
-  return `${kg.toLocaleString('es-MX', { minimumFractionDigits: kg % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })} kg`;
+  return `${kg.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
 }

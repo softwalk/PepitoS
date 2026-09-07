@@ -153,8 +153,8 @@ export function fmtBytes(bytes: number | null | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Kilogramos con hasta 2 decimales (es-MX). */
+/** Kilogramos siempre con 2 decimales (es-MX): 8.02 kg, 2.00 kg. La API ya entrega 2 decimales (mitad hacia arriba). */
 export function fmtKg(kg: number | null | undefined): string {
   if (kg == null || Number.isNaN(kg)) return '—';
-  return `${kg.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg`;
+  return `${kg.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
 }

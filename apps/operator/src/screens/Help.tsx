@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
+import { BatteryIcon, OtherIcon, PaymentIcon, SecurityIcon } from '../components/HelpIcons';
 import PhotoCapture from '../components/PhotoCapture';
 import { getPosition, recentPosition } from '../offline/gps';
 import { speak } from '../offline/speech';
@@ -8,13 +9,14 @@ import { requestHelp } from '../state/actions';
 import { useApp } from '../state/store';
 import type { HelpTag, HelpCategory } from '../types';
 
-const CARDS: { code: HelpCategory; icon: string; label: string }[] = [
+// Iconos: imágenes (/public) o SVG propios; nunca emojis, que en algunos Android no tienen fuente y salen como cuadros.
+const CARDS: { code: HelpCategory; icon: string | JSX.Element; label: string }[] = [
   { code: 'cart', icon: 'img:/icon-cart.png', label: 'Carrito' },
-  { code: 'battery', icon: '🔋', label: 'Batería' },
+  { code: 'battery', icon: <BatteryIcon />, label: 'Batería' },
   { code: 'product', icon: 'img:/icon-product.png', label: 'Producto' },
-  { code: 'payment', icon: '💳', label: 'Cobro' },
-  { code: 'security', icon: '🚨', label: 'Seguridad' },
-  { code: 'other', icon: '❓', label: 'Otro' },
+  { code: 'payment', icon: <PaymentIcon />, label: 'Cobro' },
+  { code: 'security', icon: <SecurityIcon />, label: 'Seguridad' },
+  { code: 'other', icon: <OtherIcon />, label: 'Otro' },
 ];
 
 const TAGS: { code: HelpTag; label: string }[] = [
@@ -108,7 +110,7 @@ export default function Help() {
             onClick={() => (c.code === 'other' ? setOther(true) : send(c.code))}
             aria-label={c.code === 'security' ? 'Seguridad: envía ayuda prioritaria de inmediato' : labels.get(c.code) ?? c.label}
           >
-            <Icon icon={c.icon} />
+            {typeof c.icon === 'string' ? <Icon icon={c.icon} /> : c.icon}
             {labels.get(c.code) ?? c.label}
             {c.code === 'security' && <small style={{ fontSize: '0.6em' }}>Envío inmediato</small>}
           </button>

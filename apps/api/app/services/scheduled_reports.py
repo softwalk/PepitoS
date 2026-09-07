@@ -39,6 +39,8 @@ def _fmt(v, fmt: str) -> str:
         return f"{v:.1f}%" if isinstance(v, float) and not float(v).is_integer() else f"{int(v)}%"
     if fmt == "delta":
         return f"{'+' if v > 0 else ''}{v:.0f} %"
+    if fmt == "kg":
+        return f"{v:,.2f} kg"
     if fmt in ("int", "float"):
         return f"{v:,}" if isinstance(v, int) else f"{v:,.1f}"
     return html.escape(str(v))
@@ -59,9 +61,9 @@ def render_html(payload: dict, generated_by: str | None = None) -> str:
     tables = []
     for t in payload["tables"]:
         cols = [c for c in t["columns"] if c["format"] != "link"]
-        head = "".join(f'<th style="text-align:{"right" if c["format"] in ("money", "int", "pct", "float", "delta") else "left"};padding:6px 8px;border-bottom:1px solid #c7cfdb;font-size:11px;text-transform:uppercase;color:#5b6b7d">{e(c["label"])}</th>' for c in cols)
+        head = "".join(f'<th style="text-align:{"right" if c["format"] in ("money", "int", "pct", "float", "delta", "kg") else "left"};padding:6px 8px;border-bottom:1px solid #c7cfdb;font-size:11px;text-transform:uppercase;color:#5b6b7d">{e(c["label"])}</th>' for c in cols)
         rows = "".join(
-            "<tr>" + "".join(f'<td style="text-align:{"right" if c["format"] in ("money", "int", "pct", "float", "delta") else "left"};padding:5px 8px;border-bottom:1px solid #eef1f5;font-size:12.5px">{_fmt(r.get(c["key"]), c["format"])}</td>' for c in cols) + "</tr>"
+            "<tr>" + "".join(f'<td style="text-align:{"right" if c["format"] in ("money", "int", "pct", "float", "delta", "kg") else "left"};padding:5px 8px;border-bottom:1px solid #eef1f5;font-size:12.5px">{_fmt(r.get(c["key"]), c["format"])}</td>' for c in cols) + "</tr>"
             for r in t["rows"][:60]
         ) or '<tr><td style="padding:8px;color:#5b6b7d">Sin registros en el periodo</td></tr>'
         tables.append(f'<h3 style="margin:18px 0 6px;font-size:14px">{e(t["title"])}</h3><table style="border-collapse:collapse;width:100%">{head and "<thead><tr>" + head + "</tr></thead>"}<tbody>{rows}</tbody></table>')
