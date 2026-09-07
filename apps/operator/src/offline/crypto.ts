@@ -1,10 +1,16 @@
 // Cifrado de la cola local: AES-GCM 256 con WebCrypto. La clave (bytes crudos) se guarda por sesión en IndexedDB.
 // Limitación conocida (CONTRATOS §9): el navegador no ofrece keystore de hardware; la clave vive junto a los datos.
 import { secretsStore } from './db';
+import { InsecureContextError } from './errors';
 
 let cachedKey: CryptoKey | null = null;
 
-const subtle = () => globalThis.crypto.subtle;
+/** WebCrypto sólo existe en contexto seguro (https/localhost); sin él avisamos en español en vez de un TypeError. */
+const subtle = () => {
+  const s = globalThis.crypto?.subtle;
+  if (!s || typeof s.importKey !== 'function') throw new InsecureContextError();
+  return s;
+};
 
 async function importKey(raw: ArrayBuffer): Promise<CryptoKey> {
   return subtle().importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);

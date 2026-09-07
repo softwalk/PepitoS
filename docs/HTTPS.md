@@ -55,3 +55,11 @@ La app lo diagnostica sola: pastilla roja **Sin GPS** en la barra superior y, en
 - Los puertos HTTP `8081/8082/8000` siguen expuestos para pruebas y scripts; se pueden quitar del compose en producción.
 - Detrás de Caddy, la API recibe `X-Forwarded-For` real, que es lo que usa el límite de intentos de login por IP.
 - Con `STORAGE_PUBLIC_URL` vacío las fotos se sirven a través de la API (`/v1/evidence/{id}/file`), con permisos; MinIO no se expone.
+
+## Síntoma en el teléfono: «Conexión no segura»
+
+Si la PWA se abre por `http://IP:puerto` (no `https://`), el navegador no expone WebCrypto ni GPS: la cola cifrada no
+puede guardar y **ninguna venta, aviso o conteo se registra**. Desde el change 004 la app lo detecta y muestra un aviso
+rojo fijo arriba («Conexión no segura…») y, al intentar registrar algo, el mensaje «La app se abrió sin conexión
+segura…» en lugar de un error técnico (`can't access property "importKey"…`). Solución: instalar/abrir la app desde la
+URL `https://` de Caddy (con la CA interna instalada en el teléfono, §2) — nunca desde el puerto http del contenedor.

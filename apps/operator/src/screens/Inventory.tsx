@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from '../components/PhotoCapture';
+import { friendlyError } from '../offline/errors';
 import { fmtKg, kilograms } from '../offline/image';
 import { speak } from '../offline/speech';
 import { getExpected, recordCount, recordReceipt } from '../state/actions';
@@ -61,6 +62,7 @@ export function Receive() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
   if (!shift || shift.status === 'closed') return <NoShift />;
   if (done) return <Done title="Producto recibido" sub="Ya cuenta en tu inventario. Se envía con señal." onBack={() => nav('/')} />;
@@ -72,6 +74,7 @@ export function Receive() {
       <QtyRows values={qty} onChange={(id, v) => setQty((s) => ({ ...s, [id]: v }))} />
       <KgTotal values={qty} testId="receive-kg" />
       <PhotoCapture label="Recepción" value={photo} onChange={setPhoto} disabled={busy} testId="receive-photo" />
+      {error && <ErrorBox text={error} />}
       <button
         className="btn btn-green"
         disabled={!total || busy}
@@ -83,6 +86,8 @@ export function Receive() {
             await reload();
             speak(`Recibiste ${total} piezas`);
             setDone(true);
+          } catch (e) {
+            setError(friendlyError(e));
           } finally {
             setBusy(false);
           }
@@ -108,6 +113,7 @@ export function Count() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     getExpected()
       .then((e) => {
@@ -132,6 +138,7 @@ export function Count() {
       )}
       <p className="muted small">Toma una foto del producto: queda con fecha y hora para el supervisor.</p>
       <PhotoCapture label="Conteo" value={photo} onChange={setPhoto} disabled={busy} testId="count-photo" />
+      {error && <ErrorBox text={error} />}
       <button
         className="btn btn-primary"
         disabled={busy}
@@ -143,6 +150,8 @@ export function Count() {
             await reload();
             speak('Conteo registrado');
             setDone(true);
+          } catch (e) {
+            setError(friendlyError(e));
           } finally {
             setBusy(false);
           }
@@ -156,6 +165,17 @@ export function Count() {
       <button className="btn btn-ghost" onClick={() => nav('/')}>
         Volver
       </button>
+    </div>
+  );
+}
+
+function ErrorBox({ text }: { text: string }) {
+  return (
+    <div className="exception" role="alert">
+      <span className="ico" aria-hidden>
+        ⚠️
+      </span>
+      <div>{text}</div>
     </div>
   );
 }

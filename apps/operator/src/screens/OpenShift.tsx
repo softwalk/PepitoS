@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Numpad, { pesosToCents } from '../components/Numpad';
+import { friendlyError } from '../offline/errors';
 import PhotoStep from '../components/PhotoStep';
 import YesNo from '../components/YesNo';
 import { GPS_REASON_TEXT, getPositionDetailed, type GpsReason } from '../offline/gps';
@@ -71,7 +72,7 @@ export default function OpenShift() {
       setResult({ ready: st.ready, exceptions: st.exceptions, pending: st.status === 'open_pending' });
       speak(st.ready ? 'Listo para vender' : 'Puesto abierto con excepciones. Revisa la lista.');
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'No se pudo abrir';
+      const msg = friendlyError(e, 'No se pudo abrir el puesto. Inténtalo de nuevo.');
       setResult({ ready: false, exceptions: [{ code: 'error', message: msg }], pending: false });
     } finally {
       setBusy(false);

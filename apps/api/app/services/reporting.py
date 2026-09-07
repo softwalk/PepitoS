@@ -763,7 +763,8 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
     avg = total / len(with_sales) if with_sales else 0
     for r in rows:
         r["vs_network_pct"] = _pct(r["sales_cents"], avg) if avg else None
-    on_target = sum(1 for r in with_sales if r["target_pct"] is not None and r["target_pct"] >= 100)
+    # target_pct es None cuando el punto vendió sin meta en el periodo (sin turno planeado): no cuenta en meta ni en rojo
+    on_target = sum(1 for r in with_sales if (r["target_pct"] or 0) >= 100)
     out["kpis"] = [
         kpi("points", "Puntos con ventas", len(with_sales), "int", None, "neutral", f"de {len(rows)} activos"),
         kpi("avg", "Promedio por punto", int(avg), "money", None, "neutral"),
@@ -782,8 +783,8 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
     out["tables"].append({"key": "bottom", "title": "Bottom 5 (con turno)", "columns": cols, "rows": list(reversed(with_sales))[:5]})
     ins = out["insights"]
     if with_sales:
-        meta_str = f" ({with_sales[0]['target_pct']:.0f} % de meta)." if with_sales[0]['target_pct'] is not None else " (sin meta en el periodo)."
-        ins.append(insight("fact", f"{with_sales[0]['point']} lidera con {_money(with_sales[0]['sales_cents'])}{meta_str}"))
+        lead = with_sales[0]
+        ins.append(insight("fact", f"{lead['point']} lidera con {_money(lead['sales_cents'])}" + (f" ({lead['target_pct']:.0f} % de meta)." if lead["target_pct"] is not None else " (sin meta en el periodo).")))
         drops = sorted([r for r in with_sales if r["delta_pct"] is not None and r["delta_pct"] <= -15], key=lambda r: r["delta_pct"])
         for r in drops[:3]:
             ins.append(insight("trend", f"{r['point']} cayó {abs(r['delta_pct']):.0f} % vs {prev.label}.", f"/reportes/points?point_id={r['point_id']}"))

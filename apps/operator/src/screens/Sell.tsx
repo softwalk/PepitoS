@@ -5,6 +5,7 @@ import { speak } from '../offline/speech';
 import { cancelSale, recordSale, recordWaste, undoSale, UNDO_WINDOW_MS } from '../state/actions';
 import { money, useApp } from '../state/store';
 import type { PaymentMethod, Presentation, WasteReason } from '../types';
+import { friendlyError } from '../offline/errors';
 
 type Toast = { key: string; text: string; method: PaymentMethod; until: number } | null;
 
@@ -23,6 +24,7 @@ export default function Sell() {
   const [showFlavors, setShowFlavors] = useState(false);
   const [flavor, setFlavor] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  const [saleError, setSaleError] = useState<string | null>(null);
   const [cancelFor, setCancelFor] = useState<string | null>(null);
   const [waste, setWaste] = useState<{ step: 'pres' | 'qty' | 'reason'; presentation?: Presentation; qty?: number } | null>(null);
   const [wasteDone, setWasteDone] = useState(false);
@@ -59,6 +61,7 @@ export default function Sell() {
       if (method !== 'cash') setMethod('cash');
       setFlavor(null);
     } catch (e) {
+      setSaleError(friendlyError(e, 'No se pudo registrar la venta. Inténtalo de nuevo.'));
       speak('No se pudo registrar la venta', true);
     } finally {
       setBusy(false);
@@ -210,6 +213,17 @@ export default function Sell() {
         </div>
       </div>
 
+      {saleError && (
+        <div className="exception" role="alert" data-testid="sale-error">
+          <span className="ico" aria-hidden>
+            ⚠️
+          </span>
+          <div>{saleError}</div>
+          <button type="button" className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setSaleError(null)} aria-label="Cerrar aviso">
+            ✕
+          </button>
+        </div>
+      )}
       {shift?.ready === false && (
         <div className="exception">
           <span className="ico" aria-hidden>

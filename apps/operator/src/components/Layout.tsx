@@ -1,3 +1,4 @@
+import InsecureBanner from './InsecureBanner';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { syncNow } from '../offline/sync';
@@ -72,6 +73,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const stripState = !sync.online ? 'is-offline' : sync.visible === 'help' ? 'is-help' : sync.visible === 'pending' ? 'is-pending' : '';
   return (
     <div className="app">
+      <InsecureBanner />
       <header className="topbar">
         <div className="topbar-row">
           <img src="/mark.png" alt="PEPITO" className="topbar-logo" width={36} height={36} />
