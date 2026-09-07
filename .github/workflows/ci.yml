@@ -67,7 +67,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: docker compose build
+        run: docker compose build --progress=plain
       - name: Up + health
         env:
           JWT_SECRET: ci-secret-solo-para-pruebas-de-integracion-0123456789
@@ -107,5 +107,10 @@ jobs:
           set +e
           docker compose run --rm -e APP_ENV=production -e SEED_MODE=demo -e JWT_SECRET=ci-secret-solo-para-pruebas-de-integracion-0123456789 -e CORS_ORIGINS=http://localhost api python -m app.seed
           [ $? -ne 0 ] && echo "OK: seed demo rechazado en producción" || { echo "ERROR: seed demo aceptado en producción"; exit 1; }
+      - name: Logs de todos los servicios (diagnóstico)
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail=200
       - if: always()
         run: docker compose down -v

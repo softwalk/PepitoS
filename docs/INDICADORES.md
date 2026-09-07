@@ -12,7 +12,8 @@ Fuente única de qué se cuenta, con qué denominador y dónde se calcula. Cualq
 | Umbrales de caja | `settings.cash_difference_threshold_cents` / `_severe_cents` (rules.params tiene precedencia) | $20 · $100 |
 | Distancia de apertura | `settings.open_max_distance_m` | 50 m (puntos verificados) |
 | Tolerancia de conteo | `settings.inventory_count_tolerance_units` | 3 u. |
-| Costos, renta por punto | — (fase 2) | no capturados: ningún reporte muestra "utilidad" |
+| Costos por punto | `point_costs` (renta, permiso, resguardo, otros/mes; inversión inicial; con vigencia) | Administración → Puntos → Ficha → Costos; sin costos capturados el margen aparece vacío |
+| Materia prima | `settings.raw_cost_per_kg_cents` | $70/kg |
 
 Los documentos de negocio con precios distintos ($20/$30/$40 del estudio de mercado; $30/$40/$50 en borradores)
 son históricos o hipótesis: no alimentan reportes. Una venta guarda `price_version_id` y `unit_price_cents`, así que un
@@ -26,23 +27,31 @@ cambio de precio nunca reescribe ventas anteriores.
 | Transacciones (tx) | número de ventas `recorded` | canceladas |
 | Unidades (piezas) | Σ `sale_lines.qty` de ventas `recorded`; una pieza = una presentación (50/75/100 g) | — |
 | Kilogramos teóricos | Σ qty × gramos de la presentación (peso nominal, no peso entregado) | — |
-| Ticket promedio | Ventas ($) ÷ tx. Sin descuentos en el catálogo MVP; devoluciones no existen (se cancela y se registra de nuevo) | canceladas |
+| Ticket promedio | Ventas ($) ÷ tx. Sin descuentos en el catálogo MVP; una devolución cancela la venta (`reason_code=return`) y sale del cálculo | canceladas y devueltas |
 | Meta del periodo | Σ por punto de (días con turno en el periodo × meta diaria). Un punto del catálogo sin turno no suma meta | — |
 | Avance vs meta | Ventas ($) ÷ meta del periodo | — |
 | Meta "60" | se refiere a **transacciones** por día por punto (`daily_target_tx`); la meta en pesos es `daily_target_cents` | — |
 
 ## Caja
 
-Efectivo esperado del turno = fondo inicial (`cash_sessions.opening_cents`, hoy 0: el operador no recibe fondo) +
-cobros en efectivo de ventas `recorded` − 0 (no hay salidas ni devoluciones en efectivo en el MVP; si se habilitan,
-entran aquí como movimientos con actor y motivo). Efectivo contado = `shifts.cash_counted_cents`. Diferencia = contado −
-esperado; `close_status = difference` si |diferencia| ≥ umbral; ≥ umbral grave → caso urgente + aprobación de Finanzas.
+Efectivo esperado del turno = fondo inicial (`cash_sessions.opening_cents`, capturado al abrir) + cobros en efectivo
+de ventas `recorded` + depósitos − retiros − gastos − devoluciones en efectivo (`cash_movements`, cada uno con actor,
+motivo y hora; un retiro/gasto ≥ `cash_out_max_cents` abre caso de revisión; no se permite retirar más de lo que hay).
+Efectivo contado = `shifts.cash_counted_cents`. Diferencia = contado − esperado; `close_status = difference` si
+|diferencia| ≥ umbral; ≥ umbral grave → caso urgente + aprobación de Finanzas. Una devolución (`reason_code=return`)
+saca la venta del esperado y abre un caso de revisión para el supervisor.
 
 Pagos digitales (QR/tarjeta): son **importes declarados por el operador**; el sistema no recibe confirmación del
 adquirente (fase 2). Los reportes los muestran como "digital declarado", nunca como cobro confirmado.
 
 Un ajuste posterior no reescribe el cierre: la diferencia histórica se conserva y el ajuste queda como caso/aprobación
 con actor, antes/después y motivo (`audit_log`).
+
+## Rentabilidad (expansión)
+
+Margen del punto en el periodo = ventas − materia prima (gramos vendidos × `raw_cost_per_kg_cents`) − costos fijos
+mensuales vigentes × días con turno ÷ 30. Payback (meses) = inversión inicial ÷ margen mensualizado. Sólo se muestra
+para puntos con costos capturados; nunca se llama "utilidad neta" a una cifra que no descuenta todo lo anterior.
 
 ## Merma e inventario
 

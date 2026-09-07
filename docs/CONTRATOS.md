@@ -106,6 +106,13 @@ Códigos: `AUTH_INVALID`, `DEVICE_REVOKED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATIO
 | GET | `/v1/control-tower/summary?date=` | `{date, totals:{points, open, late, closed, offline, sales_cents, target_cents, tx, ticket_cents, forecast_close_cents}, exceptions:{urgent, review, normal}, points:[PointStatus], alerts_recent:[Alert]}` |
 | GET | `/v1/control-tower/briefing?date=` | `{date, headline, decisions:[{title, why, recommendation, case_id?}], numbers:{...}}` |
 | GET | `/v1/reports/daily?date=` | `{date, rows:[{point, shift_id, operator, sales_cents, tx, cash_expected_cents, cash_counted_cents, difference_cents, waste_units, waste_pct, status}]}` |
+| POST/GET | `/v1/shifts/{id}/cash-movements` | Fondo (`deposit`), retiro, gasto, devolución en efectivo `{idempotency_key, kind, amount_cents, reason, note?}`; ≥ `cash_out_max_cents` abre caso de revisión; también como comando de sync `cash_movement`. `expected` incluye `opening_cents`, `cash_in_cents`, `cash_out_cents` |
+| POST | `/v1/sales/{id}/cancel` con `reason_code=return` | Devolución: permitida al operador fuera de la ventana mientras el turno esté abierto; caso `sale_return` de revisión; `photo_base64` opcional |
+| POST | `/v1/cases` | Caso manual `{title, point_id?, severity, category, assignee_id?, action?, action_due_date?, source_ref?}` (supervisor: sólo su zona) |
+| GET/POST/PUT/DELETE | `/v1/notifications/config` · `/subscriptions` · `/prefs` · `/test` · `/log` | Web Push (VAPID), preferencias push/WhatsApp, teléfono, prueba y bitácora |
+| POST/GET | `/v1/auth/mfa/setup` · `/enable` · `/disable` · `/verify` · `GET /v1/auth/mfa` · `POST /v1/admin/users/{id}/mfa-reset` | TOTP; el login devuelve `{mfa_required, mfa_token}` cuando está activo |
+| GET/POST | `/v1/admin/points/{id}/costs` | Costos con vigencia (renta, permiso, resguardo, otros, inversión) |
+| GET | `/v1/reports/bi/{key}/export.csv?table=` · POST `/v1/reports/bi/{key}/send {to[], period…}` | CSV con el mismo alcance; envío por correo (auditado) |
 | GET | `/v1/reports/bi` · `/v1/reports/bi/options` · `/v1/reports/bi/{key}?period=&from=&to=&zone_id=&point_id=&operator_id=&cart_id=&presentation_id=&method=&export=` | Módulo de Reportes (BI): catálogo por rol, opciones de filtro en alcance y payload declarativo `{kpis, charts, tables, insights, hidden, period, compare, scope}`; alcance por zona/operador aplicado en la consulta; cada consulta se audita (`report.view` / `report.export`). Detalle en `docs/REPORTES.md` |
 | GET/PUT | `/v1/rules` · `/v1/rules/{key}` | `[{key, name, enabled, params:{}, severity}]`; PUT `{enabled?, params?, severity?}` |
 | POST | `/v1/rules/run` | ejecuta motor ahora → `{alerts_created, cases_created}` |

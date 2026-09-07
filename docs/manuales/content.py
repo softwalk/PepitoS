@@ -580,6 +580,37 @@ REPORTS_BY_ROLE = {
 }
 
 
+OPS_V2 = """
+<h3 id="v2-avisos">Avisos al teléfono (push y WhatsApp)</h3>
+<p>Entra a <b>Seguridad y avisos</b> (menú inferior izquierdo) → <span class="ui p">Activar en este navegador</span>. Desde entonces los casos <b>urgentes</b> y <b>por revisar</b> de tu zona y los <b>SLA vencidos</b> llegan como notificación aunque tengas la app cerrada. Si el push no se entrega y el caso es urgente, llega por WhatsApp al teléfono que captures ahí (formato +52…). <span class="ui">Enviar prueba</span> confirma que todo funciona.</p>
+<h3 id="v2-sla">SLA de los casos</h3>
+<p>Cada caso <b>urgente</b> debe tomarse (asignar responsable o ponerlo en proceso) en <b>15 min</b>; uno <b>por revisar</b>, en <b>4 h</b>. En Excepciones verás el chip <span class="badge b-blue">SLA 12 min</span> con el tiempo restante; si vence sin tomarse, pasa a urgente, se escala a Operaciones y aparece <span class="badge b-red">SLA vencido</span>.</p>
+<h3 id="v2-caja">Fondo de caja, gastos y devoluciones del operador</h3>
+<p>El operador captura al abrir el <b>fondo de caja</b> que recibió y durante el turno puede registrar <b>gastos</b>, <b>retiros</b> y <b>devoluciones</b>. Todo entra en el efectivo esperado del cierre (fondo + efectivo − salidas). Un retiro o gasto grande (≥ $200, parámetro <code>cash_out_max_cents</code>) y cada devolución abren un caso de revisión para ti: verifica el comprobante o el producto devuelto y ciérralo.</p>
+<h3 id="v2-transfer">Transferir un turno desde el teléfono</h3>
+<p>En <b>Supervisor</b>, cada punto abierto tiene <span class="ui">Transferir turno</span>: elige al operador entrante, cuenta el efectivo (verás <i>Cuadra / Falta / Sobra</i>) y el producto. El turno saliente se cierra con ese conteo y el entrante abre con el mismo carrito.</p>
+<h3 id="v2-ruta">Visitas de muestreo en la ruta</h3>
+<p>La ruta sugerida agrega puntos <b>sin casos</b> como «Visita de muestreo» (parámetro <code>route_sampling_normal_pct</code>, 10 %): el mismo punto sale sorteado el mismo día para todos, así no se repite ni se olvida.</p>
+<h3 id="v2-mfa">Verificación en dos pasos</h3>
+<p>Administradores y Finanzas activan MFA en <b>Seguridad y avisos</b>: agrega la clave a tu app autenticadora y confirma con el código. Al entrar se pedirá el código después de la contraseña. Si pierdes el teléfono, un administrador lo restablece.</p>
+<h3 id="v2-apariencia">Tema oscuro y densidad</h3>
+<p>En <b>Seguridad y avisos → Apariencia</b> eliges tema claro/oscuro (o el del sistema) y densidad compacta para monitores grandes. Las tablas de Reportes se ordenan tocando el encabezado, permiten elegir columnas y muestran el detalle al pulsar una fila; cada tabla tiene <span class="ui">⬇ CSV</span> y el reporte <span class="ui">✉ Enviar</span> por correo. Desde un hallazgo puedes <span class="ui">+ Crear caso</span> con responsable y fecha.</p>
+"""
+
+OP_V2 = """
+<h3 id="op-v2-fondo">Fondo de caja al abrir</h3>
+<p>Después del checklist, la app pregunta <b>¿Con cuánto efectivo empiezas?</b> Escribe el fondo que te dieron (o deja $0). Al cerrar, «Debes tener» ya lo incluye.</p>
+<h3 id="op-v2-devolucion">Devolución / caja</h3>
+<p>En VENDER, el botón <span class="ui">↩️ Devolución / caja</span> abre dos pestañas: <b>Devolución</b> (elige la venta que el cliente regresó; se registra y el supervisor la revisa) y <b>Caja</b> (gasto, retiro o entrada de efectivo con motivo: hielo, bolsas, entrega al supervisor…). No puedes retirar más efectivo del que hay en caja.</p>
+<h3 id="op-v2-producto">Recibir y contar producto</h3>
+<p>Con el puesto abierto, en Inicio verás <span class="ui">📦 Recibir producto</span> (escanea o escribe el código de la entrega y marca cuántas piezas llegaron) y <span class="ui">🔢 Contar producto</span> (ajusta lo que tienes; si hay diferencia, se avisa al supervisor). Funciona sin señal.</p>
+<h3 id="op-v2-enviar">Enviar ahora</h3>
+<p>Cuando la tira dice «Pendiente de enviar (n)» aparece <span class="ui">Enviar ahora</span>: tócalo si ya tienes señal y no quieres esperar. Al cerrar, <b>Cuadra exacto / Falta / Sobra</b> se ve en vivo mientras escribes lo que tienes.</p>
+<h3 id="op-v2-ajustes">Alto contraste, voz y contexto</h3>
+<p>Ajustes → <b>Alto contraste (sol directo)</b> pone fondos blancos y texto negro. Con <b>Leer instrucciones en voz alta</b> la app te guía en apertura y cierre. En NECESITO AYUDA → «otro» puedes marcar 🌧️ Lluvia, 🚧 Cierre planeado, 🚦 Tráfico, 🚶 Poca gente o 📦 Sin producto para que nadie piense que «no vendiste» cuando «no pudiste vender».</p>
+"""
+
+
 def reports_section(role):
     allowed, scope, notes = REPORTS_BY_ROLE[role]
     rows = []
@@ -618,6 +649,7 @@ MANUALS = {
         {"id": "que", "title": "Qué puedes hacer", "html": OP_INTRO},
         {"id": "rapida", "title": "Guía rápida", "html": OP_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": OP_DETAIL},
+        {"id": "v2", "title": "Fondo de caja, devoluciones, producto y ajustes", "html": OP_V2},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": OP_STEPS},
     ], "PWA Operador · teléfono · funciona sin señal"),
     "supervisor": ("supervisor", "Supervisor", "Cómo atender los casos de tu zona por prioridad, planear la ruta y auditar en sitio.", [
@@ -625,6 +657,7 @@ MANUALS = {
         {"id": "rapida", "title": "Guía rápida", "html": SUP_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": SUP_DETAIL},
         {"id": "reportes", "title": "Reportes", "html": reports_section("supervisor")},
+        {"id": "v2", "title": "Avisos, SLA, caja y seguridad", "html": OPS_V2},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": SUP_STEPS},
     ], "Backoffice · teléfono o computadora · sólo tu zona"),
     "operaciones": ("ops", "Operaciones", "Cómo monitorear toda la red desde el Control Tower, ajustar las reglas y gestionar inventario, activos y mantenimiento.", [
@@ -632,6 +665,7 @@ MANUALS = {
         {"id": "rapida", "title": "Guía rápida", "html": OPS_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": OPS_DETAIL},
         {"id": "reportes", "title": "Reportes", "html": reports_section("ops")},
+        {"id": "v2", "title": "Avisos, SLA, caja y seguridad", "html": OPS_V2},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": OPS_STEPS},
     ], "Backoffice · toda la red"),
     "finanzas": ("finance", "Finanzas", "Cómo decidir aprobaciones, revisar caja y ventas, y auditar cambios.", [
@@ -639,6 +673,7 @@ MANUALS = {
         {"id": "rapida", "title": "Guía rápida", "html": FIN_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": FIN_DETAIL},
         {"id": "reportes", "title": "Reportes", "html": reports_section("finance")},
+        {"id": "v2", "title": "Avisos, SLA, caja y seguridad", "html": OPS_V2},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": FIN_STEPS},
     ], "Backoffice · toda la red · lectura + aprobaciones"),
     "administrador": ("admin", "Administrador", "Cómo configurar usuarios, puntos, precios y parámetros, y resolver las excepciones que sólo el administrador puede.", [
@@ -646,6 +681,7 @@ MANUALS = {
         {"id": "rapida", "title": "Guía rápida", "html": ADM_QUICK},
         {"id": "detalle", "title": "Detalle de cada pantalla", "html": ADM_DETAIL},
         {"id": "reportes", "title": "Reportes", "html": reports_section("admin")},
+        {"id": "v2", "title": "Avisos, SLA, caja y seguridad", "html": OPS_V2},
         {"id": "pasos", "title": "Paso a paso con ejemplos", "html": ADM_STEPS},
     ], "Backoffice · todos los permisos"),
 }

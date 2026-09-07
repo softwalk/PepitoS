@@ -36,6 +36,24 @@ services:
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-pepito}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-pepito-minio-cambiar}
       STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-}
+      # Notificaciones, correo y límites (ver .env.example)
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:ops@pepito.mx}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-reportes@pepito.mx}
+      REPORTS_EMAIL_TO: ${REPORTS_EMAIL_TO:-}
+      REPORTS_DAILY_HOUR_LOCAL: ${REPORTS_DAILY_HOUR_LOCAL:-7}
+      REPORTS_OUT_DIR: /app/reports_out
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
+    volumes:
+      - reportsout:/app/reports_out
     depends_on:
       db:
         condition: service_healthy
@@ -120,8 +138,25 @@ services:
       - caddydata:/data
       - caddyconfig:/config
 
+  # Respaldo diario de Postgres (pg_dump comprimido, 14 días) en el volumen `backups`; ver docs/OPERACION.md.
+  backup:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-pepito}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-8}
+    volumes:
+      - backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh", "loop"]
+
 volumes:
   pgdata:
   miniodata:
+  backups:
+  reportsout:
   caddydata:
   caddyconfig:

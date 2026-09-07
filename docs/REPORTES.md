@@ -21,11 +21,11 @@ Candidatos evaluados (26) y decisión:
 | Comercial | Ranking de puntos con score estratégico | **Top 10 · points** |
 | Comercial | Sabores más vendidos | Incluido como dimensión futura (sale_lines.flavor_id); hoy el sabor es opcional y escaso |
 | Finanzas | Caja y conciliación (esperado/contado/diferencias/aprobaciones/arqueos/reaperturas) | **Top 10 · cash** |
-| Finanzas | Rentabilidad por punto (costos, renta, payback) | Fase 2: no hay captura de costos. Campos preparados en `expansion` (`cost_cents`, `rent_cents`, `margin_cents`, `payback_days`) |
+| Finanzas | Rentabilidad por punto (costos, renta, payback) | **Incluido en `expansion`** (change 003): margen y payback por punto con costos capturados en `point_costs` y materia prima por gramos |
 | Finanzas | Conciliación de pagos digitales vs terminal | Fase 2: requiere integración con el adquirente |
 | Operación | Productividad de vendedores (ventas/hora, ticket, merma, caja, asistencia, cancelaciones, ranking) | **Top 10 · people** |
 | Operación | Cumplimiento y GPS (tarde/sin abrir/fuera de punto/geocerca/sync/fotos) | **Top 10 · compliance** |
-| Operación | Tiempos de respuesta a casos (SLA por severidad) | Fusionado como KPI en `quality` (acciones vencidas) y pendiente de SLA formal (fase 2) |
+| Operación | Tiempos de respuesta a casos (SLA por severidad) | SLA formal implementado (`services/sla.py`, chip en Excepciones y escalado); pendiente un reporte histórico de cumplimiento de SLA |
 | Operación | Transferencias de turno | Volumen bajo; visible en Control Tower. Descartado |
 | Inventario | Consumo, merma, ajustes, existencias, días de inventario, lotes bloqueados | **Top 10 · inventory** |
 | Inventario | Trazabilidad por lote (de recepción a venta) | Fase 2: las ventas no llevan lote todavía |
@@ -128,4 +128,4 @@ Periodo anterior: misma longitud inmediatamente anterior; `month` → mismos dí
 
 ## 7. Fase 2 (documentado, no implementado)
 
-Rentabilidad por punto (captura de costos y rentas → margen y payback en `expansion`), trazabilidad por lote hasta la venta, SLA por severidad de caso, MTBF, canibalización entre puntos cercanos, conciliación con el adquirente de pagos digitales y **PDF servidor** para envío programado (evaluar WeasyPrint; la vista de impresión actual ya es el HTML fuente).
+Trazabilidad por lote hasta la venta, reporte histórico de cumplimiento de SLA, MTBF, canibalización entre puntos cercanos, conciliación con el adquirente de pagos digitales. Ya implementado en change 003: costos y margen/payback en `expansion`, SLA por severidad, exportación CSV, envío por correo y reporte diario programado (PDF si WeasyPrint está instalado; si no, HTML).

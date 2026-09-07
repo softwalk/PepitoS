@@ -63,11 +63,21 @@ Sólo `admin` (`shift.reopen`). `POST /v1/shifts/{id}/reopen {reason}` exige: `s
 ## Módulo de Reportes (BI)
 `services/reporting.py` calcula cada reporte sobre la fuente de verdad (sin agregados) con periodos locales (`parse_period`/`previous_period`), alcance por rol (`build_scope`: supervisor → zona fija, operador → sólo él) y hallazgos etiquetados (hecho · tendencia · alerta · hipótesis · recomendación) generados a partir de los datos. El router `reports_bi.py` aplica los permisos `reports.*`, audita cada consulta/exportación y devuelve un payload declarativo que el backoffice renderiza con componentes genéricos (`ReportBlocks.tsx`); la vista de impresión reutiliza el mismo endpoint y `window.print()`. Índices en la migración 0008. Ver `docs/REPORTES.md`.
 
+## Caja, devoluciones y SLA
+`cash_movements` registra fondo inicial, retiros, gastos y devoluciones en efectivo del turno; el efectivo esperado
+(`services/cash.py`) es fondo + efectivo de ventas vigentes + depósitos − salidas, tanto en el servidor como en el
+cálculo offline de la PWA (`offline/expected.ts`). Una devolución es una cancelación con `reason_code=return` que abre
+un caso de revisión. `services/sla.py` escala los casos sin tomar cuando vence `sla_*_minutes` y `services/notifications.py`
+avisa por Web Push (cifrado RFC 8291 propio en `services/webpush.py`) y WhatsApp (Twilio) con dedupe y bitácora.
+
 ## Seguridad
 
 JWT HS256 12 h con `jti` revocable · dispositivo registrado y revocable (`401 DEVICE_REVOKED`) · bcrypt · RBAC por permiso en cada
 ruta + filtrado por operador/zona · audit log con antes/después/actor/motivo/IP · segregación (quien solicita una aprobación
 no la decide) · en `APP_ENV=production` el arranque falla con `JWT_SECRET` débil o `CORS_ORIGINS=*`.
+
+## Operación
+MFA TOTP (`services/mfa.py`), rate limit por IP (`core/ratelimit.py`), cabeceras en Caddy, respaldos (`scripts/backup.sh`, servicio `backup`), reportes programados (`services/scheduled_reports.py`, job 07:05). Ver `docs/OPERACION.md`.
 
 ## Observabilidad
 

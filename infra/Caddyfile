@@ -7,21 +7,43 @@
 	default_sni {$PUBLIC_HOST:localhost}
 }
 
+# Cabeceras de seguridad comunes (OWASP). HSTS sólo tiene efecto con TLS; con CA interna es inocuo.
+(seguridad) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(self), camera=(self), microphone=(), payment=()"
+		-Server
+	}
+}
+# CSP para las SPA: mismo origen + tiles de OpenStreetMap + data:/blob: (fotos, mapa, PDF).
+(csp_spa) {
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.tile.openstreetmap.org; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+}
+
 {$SITE_OPERATOR} {
 	{$CADDY_TLS}
+	import seguridad
+	import csp_spa
 	encode gzip
 	reverse_proxy operator:80
 }
 
 {$SITE_BACKOFFICE} {
 	{$CADDY_TLS}
+	import seguridad
+	import csp_spa
 	encode gzip
 	reverse_proxy backoffice:80
 }
 
 {$SITE_API} {
 	{$CADDY_TLS}
+	import seguridad
 	encode gzip
+	# Límite adicional de conexiones por IP lo aplica la API (RATE_LIMIT_PER_MINUTE); aquí sólo cabeceras y TLS.
 	reverse_proxy api:8000
 }
 
