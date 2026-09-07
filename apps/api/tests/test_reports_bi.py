@@ -1,4 +1,6 @@
 """Módulo de Reportes (BI): catálogo por rol, RBAC en la API, alcance por zona/operador, periodos, hallazgos y auditoría."""
+import uuid
+
 import pytest
 
 from tests.conftest import Api, open_payload, sale_payload
