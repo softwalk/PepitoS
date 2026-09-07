@@ -6,6 +6,7 @@ import uuid
 os.environ.setdefault("TEST_DATABASE_URL", "postgresql+psycopg://pepito:pepito@localhost:5433/pepito_test")
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ["RUN_SCHEDULER"] = "false"
+os.environ["RATE_LIMIT_PER_MINUTE"] = "0"  # el TestClient comparte IP; el middleware se prueba aparte
 os.environ.setdefault("STORAGE_BACKEND", "local")
 os.environ.setdefault("STORAGE_LOCAL_DIR", os.path.join(tempfile.gettempdir(), f"pepito-evidence-test-{os.getpid()}"))
 os.environ.setdefault("JWT_SECRET", "secreto-de-pruebas-suficientemente-largo-32b")

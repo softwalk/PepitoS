@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.core.timeutil import iso, local_today, utcnow
-from app.models.cases import Alert, Approval, Case, Rule
+from app.models.cases import Alert, Approval, Case
 from app.models.catalog import Presentation
 from app.models.ops import CashSession, ChecklistResult, GpsPing, Shift
 from app.models.org import Assignment, Attendance, Point, User
@@ -16,7 +16,7 @@ from app.services import audit, events
 from app.services import evidence as evidence_svc
 from app.services.cases import open_case_if_new
 from app.services import settings as settings_svc
-from app.services.settings import cash_thresholds, get_setting
+from app.services.settings import cash_thresholds
 from app.services.cash import sales_summary
 from app.services.geo import haversine_m, in_geofence
 from app.services.inventory import add_movement, apply_count, balances_for_point, shift_units
@@ -64,6 +64,7 @@ def _open_shift_for(
     ready: bool,
     gps: dict | None,
     transferred_from: uuid.UUID | None = None,
+    opening_cents: int = 0,
 ) -> Shift:
     if db.query(Shift).filter(Shift.operator_id == operator.id, Shift.status == "open").first():
         raise ApiError("SHIFT_ALREADY_OPEN")
@@ -83,7 +84,7 @@ def _open_shift_for(
         if "uq_shifts_operator_open" in msg:
             raise ApiError("SHIFT_ALREADY_OPEN")
         raise ApiError("CART_IN_USE")
-    db.add(CashSession(shift_id=shift.id, point_id=point_id, opened_at=opened_at, opening_cents=0, status="open"))
+    db.add(CashSession(shift_id=shift.id, point_id=point_id, opened_at=opened_at, opening_cents=max(0, int(opening_cents or 0)), status="open"))
     late = 0
     if assignment is not None:
         late = max(0, int((opened_at - assignment.planned_start).total_seconds() // 60))
@@ -136,6 +137,7 @@ def open_shift(db: Session, current, data) -> dict:
     shift = _open_shift_for(
         db, operator=current.user, assignment=assignment, point_id=assignment.point_id, cart_id=assignment.cart_id,
         opened_at=opened_at, device_id=current.device_id, exceptions=exceptions, ready=ready, gps=gps,
+        opening_cents=getattr(data, "opening_cents", 0) or 0,
     )
     for key, ok in checklist.items():
         db.add(ChecklistResult(shift_id=shift.id, kind="open", key=key, value=ok, at=opened_at))
@@ -182,6 +184,10 @@ def expected(db: Session, shift: Shift) -> dict:
         "sales_count": s["sales_count"],
         "sales_total_cents": s["sales_total_cents"],
         "cash_expected_cents": s["cash_expected_cents"],
+        "cash_sales_cents": s["cash_sales_cents"],
+        "opening_cents": s["opening_cents"],
+        "cash_in_cents": s["cash_in_cents"],
+        "cash_out_cents": s["cash_out_cents"],
         "digital_total_cents": s["digital_total_cents"],
         "product_expected": {str(k): v for k, v in balances.items()},
         "waste_units": shift_units(db, shift.id, "waste"),

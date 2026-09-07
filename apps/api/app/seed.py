@@ -153,7 +153,10 @@ def seed(db: Session, today=None) -> dict:
     for username, name, role, password, zone_name in USERS:
         u = db.query(User).filter(User.username == username).first()
         if u is None:
-            u = User(username=username, name=name, role=role, password_hash=hash_password(password), zone_id=zone.id if zone_name else None)
+            # Fuera de development las cuentas demo obligan a cambiar la contraseña en el primer acceso: las credenciales
+            # de demostración no deben usarse con operación real (docs/SEGURIDAD.md).
+            u = User(username=username, name=name, role=role, password_hash=hash_password(password), zone_id=zone.id if zone_name else None,
+                     must_change_password=settings.APP_ENV != "development")
             db.add(u)
             created["users"] += 1
         users[username] = u

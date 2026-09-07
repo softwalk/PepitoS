@@ -1,9 +1,11 @@
-"""Caja: efectivo esperado = pagos cash del turno menos cancelaciones; resumen de ventas."""
+"""Caja: efectivo esperado = fondo inicial + pagos cash de ventas vigentes + depósitos − retiros/gastos/devoluciones
+en efectivo (`cash_movements`); resumen de ventas. Las ventas canceladas no cuentan (docs/INDICADORES.md)."""
 import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.ops import CashMovement, CashSession
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine
 
 
@@ -33,10 +35,21 @@ def sales_summary(db: Session, shift_id: uuid.UUID) -> dict:
         .join(Sale, Sale.id == SaleLine.sale_id)
         .where(Sale.shift_id == shift_id, Sale.status == "recorded")
     ).scalar_one()
+    cs = db.execute(select(CashSession).where(CashSession.shift_id == shift_id)).scalar_one_or_none()
+    opening = int(cs.opening_cents) if cs else 0
+    mov = db.execute(select(CashMovement.kind, func.coalesce(func.sum(CashMovement.amount_cents), 0)).where(CashMovement.shift_id == shift_id).group_by(CashMovement.kind)).all()
+    movements = {k: int(a) for k, a in mov}
+    cash_in = movements.get("deposit", 0)
+    cash_out = sum(v for k, v in movements.items() if k != "deposit")
     return {
         "sales_count": int(count),
         "sales_total_cents": int(total),
-        "cash_expected_cents": cash,
+        "cash_sales_cents": cash,
+        "opening_cents": opening,
+        "cash_in_cents": cash_in,
+        "cash_out_cents": cash_out,
+        "cash_movements": movements,
+        "cash_expected_cents": opening + cash + cash_in - cash_out,
         "digital_total_cents": digital,
         "by_method": by_method,
         "cancelled_count": int(cancelled_count),

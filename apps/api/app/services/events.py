@@ -14,6 +14,7 @@ EVENT_TYPES = {
     "WasteRecorded", "InventoryMoved", "CashDifferenceDetected", "PointLate", "PointOffline", "HelpRequested",
     "AlertRaised", "AlertResolved", "AuditCompleted", "MaintenanceTicketCreated", "LotBlocked",
     "ApprovalRequested", "ApprovalDecided", "AIRecommendationCreated",
+    "CashMovementRecorded", "CaseSlaBreached",
 }
 
 

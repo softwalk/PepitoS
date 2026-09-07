@@ -113,6 +113,8 @@ def get_current_user(
     except jwt.PyJWTError:
         raise ApiError("AUTH_INVALID", "Token inválido")
 
+    if claims.get("purpose") == "mfa":
+        raise ApiError("MFA_REQUIRED")
     jti = claims.get("jti")
     if jti and db.get(RevokedToken, jti):
         raise ApiError("AUTH_INVALID", "La sesión fue cerrada")
@@ -125,6 +127,11 @@ def get_current_user(
         raise ApiError("AUTH_INVALID", "Usuario inválido o inactivo")
     if user.must_change_password and not _password_change_exempt(request.url.path):
         raise ApiError("PASSWORD_CHANGE_REQUIRED", details={"change_password_url": "/v1/auth/change-password"})
+    if user.role in ("admin", "finance") and not user.mfa_enabled and not _password_change_exempt(request.url.path):
+        from app.services.settings import get_setting
+
+        if get_setting(db, "mfa_enforce"):
+            raise ApiError("MFA_ENROLLMENT_REQUIRED", details={"setup_url": "/v1/auth/mfa/setup"})
 
     device_id = claims.get("device_id")
     if device_id:

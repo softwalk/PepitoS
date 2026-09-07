@@ -10,9 +10,10 @@ from app.core.errors import ApiError
 from app.core.security import create_access_token, hash_password, verify_password
 from app.core.timeutil import iso
 from app.models.org import Device, RevokedToken, User
-from app.schemas.backoffice import ChangePasswordIn, LoginIn, RefreshIn
+from app.schemas.backoffice import ChangePasswordIn, LoginIn, MfaCodeIn, MfaVerifyIn, RefreshIn
 from app.services import audit
 from app.services import auth as auth_svc
+from app.services import mfa as mfa_svc
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -67,10 +68,62 @@ def login(data: LoginIn, request: Request, db: Session = Depends(get_db)):
     device.last_seen_at = now
 
     auth_svc.record_success(db, data.username, ip, now)
+    if user.mfa_enabled:
+        # Segundo paso: la sesión se emite en /auth/mfa/verify con el código TOTP.
+        db.commit()
+        return {"mfa_required": True, "mfa_token": mfa_svc.issue_challenge(user, data.device_id), "user": {"name": user.name, "username": user.username}}
     refresh_raw, refresh_row = auth_svc.issue_refresh_token(db, user, data.device_id, now)  # revoca los anteriores del device
     body = _session_payload(user, data.device_id, refresh_raw, refresh_row)
     db.commit()
     return body
+
+
+@router.post("/mfa/verify")
+def mfa_verify(data: MfaVerifyIn, request: Request, db: Session = Depends(get_db)):
+    """Segundo paso del login: código TOTP + mfa_token (5 min) → sesión completa."""
+    now = auth_svc.current_time()
+    ip = auth_svc.request_ip(request)
+    auth_svc.check_ip_allowed(db, ip, now)
+    user = mfa_svc.verify_challenge(db, data.mfa_token, data.device_id, data.code)
+    if user is None:
+        auth_svc.record_failure(db, None, ip, now)
+        db.commit()
+        raise ApiError("MFA_INVALID")
+    device = db.query(Device).filter(Device.device_id == data.device_id).first()
+    if device is not None and device.revoked:
+        raise ApiError("DEVICE_REVOKED")
+    refresh_raw, refresh_row = auth_svc.issue_refresh_token(db, user, data.device_id, now)
+    body = _session_payload(user, data.device_id, refresh_raw, refresh_row)
+    audit.log(db, actor_id=user.id, action="auth.mfa_login", entity="user", entity_id=user.id, ip=ip, device_id=data.device_id)
+    db.commit()
+    return body
+
+
+@router.get("/mfa")
+def mfa_status(current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    return mfa_svc.status(db, current.user)
+
+
+@router.post("/mfa/setup")
+def mfa_setup(current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Genera (o regenera, si aún no está activo) el secreto TOTP y devuelve el otpauth:// para la app autenticadora."""
+    out = mfa_svc.setup(db, current.user)
+    db.commit()
+    return out
+
+
+@router.post("/mfa/enable")
+def mfa_enable(data: MfaCodeIn, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    mfa_svc.enable(db, current.user, data.code, ip=auth_svc.request_ip(request), device_id=current.device_id)
+    db.commit()
+    return mfa_svc.status(db, current.user)
+
+
+@router.post("/mfa/disable")
+def mfa_disable(data: MfaCodeIn, request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    mfa_svc.disable(db, current.user, data.code, ip=auth_svc.request_ip(request), device_id=current.device_id)
+    db.commit()
+    return mfa_svc.status(db, current.user)
 
 
 @router.post("/refresh")

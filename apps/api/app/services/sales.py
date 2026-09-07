@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError
 from app.core.timeutil import utcnow
 from app.models.catalog import Flavor, Presentation, PriceItem, PriceVersion
+from app.models.cases import Case
 from app.models.ops import Shift
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine
 from app.core.config import settings
@@ -121,13 +122,15 @@ def cancel_sale(db: Session, sale: Sale, current, data, cancel_window_minutes: i
         cancel_window_minutes = settings_svc.get_int(db, "cancel_window_minutes")
     shift = db.get(Shift, sale.shift_id)
     now = utcnow()
+    is_return = data.reason_code == "return"
     if current.role == "operator":
         if sale.operator_id != current.id:
             raise ApiError("CANCEL_NOT_ALLOWED", "Sólo puedes cancelar tus propias ventas")
         if shift is None or shift.status != "open":
             raise ApiError("CANCEL_NOT_ALLOWED", "El turno ya no está abierto")
-        if now - sale.created_at > timedelta(minutes=cancel_window_minutes):
-            raise ApiError("CANCEL_NOT_ALLOWED", f"Sólo puedes cancelar dentro de {cancel_window_minutes} minutos", details={"cancel_window_minutes": cancel_window_minutes})
+        # Devolución: fuera de la ventana de cancelación, mientras el turno esté abierto; queda en revisión del supervisor.
+        if not is_return and now - sale.created_at > timedelta(minutes=cancel_window_minutes):
+            raise ApiError("CANCEL_NOT_ALLOWED", f"Sólo puedes cancelar dentro de {cancel_window_minutes} minutos; si el cliente devolvió el producto registra una devolución", details={"cancel_window_minutes": cancel_window_minutes})
     elif not current.has("sale.cancel"):
         raise ApiError("FORBIDDEN")
     if not data.reason_code:
@@ -155,6 +158,21 @@ def cancel_sale(db: Session, sale: Sale, current, data, cancel_window_minutes: i
         db, actor_id=current.id, action="sale.cancel", entity="sale", entity_id=sale.id, before=before,
         after={"status": "cancelled", "reason_code": data.reason_code}, reason=data.note or data.reason_code, ip=ip, device_id=current.device_id,
     )
+    if is_return:
+        from app.services import evidence as evidence_svc
+        from app.services.cases import open_case_if_new
+
+        photos = evidence_svc.store_photos(db, [data.photo_base64] if getattr(data, "photo_base64", None) else [], kind="case_note", entity="sale", entity_id=sale.id, uploaded_by=current.id, point_id=sale.point_id, shift_id=sale.shift_id)
+        case = open_case_if_new(
+            db, rule_key="sale_return", point_id=sale.point_id, shift_id=sale.shift_id, severity="review", category="sales",
+            title=f"Devolución {sale.folio}: ${sale.total_cents / 100:,.0f}", description=data.note or "Devolución registrada por el operador; verificar producto y efectivo devuelto.",
+            source="operator", actor_id=current.id, dedupe_date=now, payload={"sale_id": str(sale.id), "cancellation_id": str(c.id), "amount_cents": sale.total_cents, "evidence_ids": [str(e.id) for e in photos]},
+        )
+        if case is None:  # ya hay un caso de devolución hoy en el punto: se anexa
+            existing = db.query(Case).filter(Case.rule_key == "sale_return", Case.point_id == sale.point_id, Case.status.in_(("open", "in_progress"))).order_by(Case.opened_at.desc()).first()
+            if existing is not None:
+                existing.payload = {**(existing.payload or {}), "returns": (existing.payload or {}).get("returns", []) + [{"sale_id": str(sale.id), "folio": sale.folio, "amount_cents": sale.total_cents}]}
+                existing.title = f"Devoluciones en el punto ({len(existing.payload['returns']) + 1})"
     if shift is not None:
         shift.last_seen_at = now
     return c

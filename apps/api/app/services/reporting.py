@@ -1388,6 +1388,16 @@ def report_expansion(db: Session, p: Period, prev: Period, sc: Scope, current, f
     cat = load_catalog()
     cat_by_rank = {int(r["ranking"]): r for r in cat["points"]}
     active_ranks = {int(r["meta"].get("ranking")) for r in rows if r["meta"].get("ranking") is not None}
+    # Costos vigentes por punto (última vigencia ≤ fin del periodo) y gramos vendidos para materia prima.
+    from app.models.org import PointCost
+
+    cost_rows = db.execute(select(PointCost).where(PointCost.valid_from <= p.end_day).order_by(PointCost.point_id, PointCost.valid_from.desc())).scalars().all()
+    costs: dict = {}
+    for c in cost_rows:
+        costs.setdefault(c.point_id, c)
+    gq = select(Sale.point_id, func.coalesce(func.sum(SaleLine.qty * Presentation.grams), 0)).join(Sale, Sale.id == SaleLine.sale_id).join(Presentation, Presentation.id == SaleLine.presentation_id).where(_sales_where(p)).group_by(Sale.point_id)
+    grams_by_point = {r[0]: int(r[1]) for r in db.execute(_apply_sale_scope(gq, sc, pids)).all()}
+    raw_kg = get_int(db, "raw_cost_per_kg_cents")
     verdicts = {"GO": 0, "AJUSTAR": 0, "NO GO": 0, "SIN DATOS": 0}
     for r in rows:
         d = r["days_open"]
@@ -1406,8 +1416,19 @@ def report_expansion(db: Session, p: Period, prev: Period, sc: Scope, current, f
         verdicts[v] += 1
         m = r["meta"]
         r.update({"alcaldia": m.get("alcaldia"), "node_type": m.get("node_type"), "risk": m.get("riesgo"), "catalog_rank": m.get("ranking"), "afluencia": m.get("afluencia")})
-        # Fase 2: rentabilidad (costos / renta / payback) — campos preparados
-        r.update({"cost_cents": None, "rent_cents": None, "margin_cents": None, "payback_days": None})
+        # Rentabilidad: costos fijos vigentes (point_costs) prorrateados a los días con turno + materia prima
+        # (gramos vendidos × costo/kg). Sin costos capturados → None (nunca se muestra una "utilidad" sin base).
+        cost = costs.get(uuid.UUID(r["point_id"]))
+        grams = grams_by_point.get(uuid.UUID(r["point_id"]), 0)
+        raw_cents = int(grams / 1000 * raw_kg)
+        if cost is not None:
+            fixed = int(cost.monthly_cents * d / 30) if d else 0
+            margin = r["sales_cents"] - raw_cents - fixed
+            monthly_margin = int(margin * 30 / d) if d else 0
+            r.update({"fixed_cost_cents": fixed, "raw_cost_cents": raw_cents, "margin_cents": margin, "margin_pct": round(margin * 100 / r["sales_cents"], 1) if r["sales_cents"] else None,
+                      "setup_cents": cost.setup_cents, "payback_months": round(cost.setup_cents / monthly_margin, 1) if monthly_margin > 0 and cost.setup_cents else None})
+        else:
+            r.update({"fixed_cost_cents": None, "raw_cost_cents": raw_cents, "margin_cents": None, "margin_pct": None, "setup_cents": None, "payback_months": None})
     # Candidatos del catálogo aún sin punto activo
     candidates = [c for rk, c in sorted(cat_by_rank.items()) if rk not in active_ranks]
     out["kpis"] = [
@@ -1431,8 +1452,11 @@ def report_expansion(db: Session, p: Period, prev: Period, sc: Scope, current, f
         {"key": "verdict", "label": "Semáforo", "format": "verdict"}, {"key": "point", "label": "Punto", "format": "text", "link": "/reportes/points?point_id={point_id}"}, {"key": "alcaldia", "label": "Alcaldía", "format": "text"}, {"key": "node_type", "label": "Tipo de nodo", "format": "text"},
         {"key": "score", "label": "Score", "format": "int"}, {"key": "risk", "label": "Riesgo", "format": "text"}, {"key": "days_open", "label": "Días c/turno", "format": "int"}, {"key": "sales_cents", "label": "Ventas", "format": "money"},
         {"key": "target_pct_open_days", "label": "% meta", "format": "pct", "tone": "target"}, {"key": "ticket_cents", "label": "Ticket", "format": "money", "tone": "ticket"}, {"key": "waste_pct", "label": "Merma", "format": "pct", "tone": "waste"},
-        {"key": "open_cases", "label": "Casos", "format": "int"}, {"key": "verdict_why", "label": "Criterio", "format": "text"},
+        {"key": "open_cases", "label": "Casos", "format": "int"}, {"key": "margin_cents", "label": "Margen", "format": "money", "tone": "diff"}, {"key": "margin_pct", "label": "Margen %", "format": "pct"},
+        {"key": "payback_months", "label": "Payback (meses)", "format": "float"}, {"key": "verdict_why", "label": "Criterio", "format": "text"},
     ]
+    with_costs = [r for r in rows if r["margin_cents"] is not None]
+    out["kpis"].append(kpi("with_costs", "Puntos con costos capturados", len(with_costs), "int", None, "neutral", "margen y payback sólo para estos"))
     order = {"NO GO": 0, "AJUSTAR": 1, "GO": 2, "SIN DATOS": 3}
     out["tables"].append({"key": "verdicts", "title": "Decisión por punto", "columns": cols, "rows": sorted(rows, key=lambda r: (order[r["verdict"]], -r["sales_cents"]))[:TABLE_LIMIT]})
     out["tables"].append({"key": "candidates", "title": "Ubicaciones del catálogo aún sin punto (mejor score primero)", "columns": [
@@ -1448,7 +1472,15 @@ def report_expansion(db: Session, p: Period, prev: Period, sc: Scope, current, f
     if candidates:
         c = candidates[0]
         ins.append(insight("recommendation", f"Siguiente apertura sugerida: #{c['ranking']} {c['name']} ({c['alcaldia']}, score {c['score']}, riesgo {c.get('riesgo', '—')}). Validar en campo: {c.get('validacion', 'permiso y resguardo')}."))
-    ins.append(insight("fact", "Rentabilidad por punto (costos, renta, payback) queda en fase 2: los campos existen en el payload pero no hay captura de costos todavía."))
+    if with_costs:
+        neg = [r for r in with_costs if r["margin_cents"] < 0 and r["days_open"] >= 3]
+        for r in neg[:3]:
+            ins.append(insight("alert", f"{r['point']} opera con margen negativo ({_money(r['margin_cents'])}) tras costos fijos y materia prima.", f"/reportes/points?point_id={r['point_id']}"))
+        best = max(with_costs, key=lambda r: r["margin_cents"])
+        if best["margin_cents"] > 0:
+            ins.append(insight("fact", f"Mejor margen: {best['point']} {_money(best['margin_cents'])} ({best['margin_pct']} %)" + (f", payback {best['payback_months']} meses" if best["payback_months"] else "") + "."))
+    else:
+        ins.append(insight("fact", "Sin costos capturados: margen y payback aparecen vacíos. Captúralos en Administración → Puntos → Costos (renta, permiso, resguardo, inversión)."))
     return out
 
 

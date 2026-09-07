@@ -2,9 +2,10 @@
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.timeutil import iso, local_day_bounds, utcnow
 from app.models.cases import Alert, Case
 from app.models.catalog import DailyTarget
@@ -145,6 +146,40 @@ def serialize_alert(a: Alert) -> dict:
     }
 
 
+def hourly_profiles(db: Session, now: datetime, days: int = 28) -> dict:
+    """Fracción de la venta diaria por hora local (0–23) de los últimos `days` días, por punto y para la red (clave None).
+    Sólo días con ventas; puntos con < 3 días de historial usan el perfil de red."""
+    start = now - timedelta(days=days)
+    local = func.timezone(settings.TZ_NAME, Sale.occurred_at)
+    rows = db.execute(
+        select(Sale.point_id, cast(local, Date), func.extract("hour", local), func.coalesce(func.sum(Sale.total_cents), 0))
+        .where(Sale.status == "recorded", Sale.occurred_at >= start, Sale.occurred_at < now.replace(hour=0, minute=0, second=0, microsecond=0))
+        .group_by(Sale.point_id, cast(local, Date), func.extract("hour", local))
+    ).all()
+    by_point: dict = {}
+    for pid, d, h, cents in rows:
+        by_point.setdefault(pid, {}).setdefault(d, {})[int(h)] = int(cents)
+    out: dict = {}
+    net_hours: dict[int, float] = {}
+    net_days = 0
+    for pid, days_map in by_point.items():
+        hours: dict[int, float] = {}
+        for d, hm in days_map.items():
+            tot = sum(hm.values())
+            if not tot:
+                continue
+            for h, c in hm.items():
+                hours[h] = hours.get(h, 0.0) + c / tot
+                net_hours[h] = net_hours.get(h, 0.0) + c / tot
+            net_days += 1
+        n = len(days_map)
+        if n >= 3:
+            out[pid] = {h: v / n for h, v in hours.items()}
+    if net_days:
+        out[None] = {h: v / net_days for h, v in net_hours.items()}
+    return out
+
+
 def summary(db: Session, day: date, now: datetime | None = None) -> dict:
     now = now or utcnow()
     points = point_statuses(db, day, now=now)
@@ -152,20 +187,28 @@ def summary(db: Session, day: date, now: datetime | None = None) -> dict:
     sales_cents = sum(p["sales_cents"] for p in points)
     tx = sum(p["tx"] for p in points)
     target = sum(p["target_cents"] for p in scheduled)
-    # Proyección de cierre: ritmo actual de puntos abiertos extrapolado a su jornada planeada.
+    # Proyección de cierre por perfil horario: con historial (28 días) se usa la fracción de venta acumulada hasta la
+    # hora actual del perfil del punto (o de la red); sin historial, ritmo lineal amortiguado y acotado a 1.5× meta.
     forecast = sales_cents
+    profiles = hourly_profiles(db, now)
+    local_hour = now.astimezone(settings.tz).hour + now.astimezone(settings.tz).minute / 60
     for p in points:
         if p["status"] in ("open", "offline") and p["opened_at"]:
             opened = datetime.fromisoformat(p["opened_at"].replace("Z", "+00:00"))
             hours = (now - opened).total_seconds() / 3600
-            remaining = max(0.0, 10 - hours)
-            # Ritmo amortiguado: con menos de 1 h abierta el ritmo se calcula sobre 1 h para no extrapolar
-            # unas pocas ventas a toda la jornada; además se acota a 1.5× la meta del punto.
-            rate = p["sales_cents"] / max(1.0, hours)
-            projected = p["sales_cents"] + int(rate * remaining)
+            prof = profiles.get(uuid.UUID(p["point"]["id"])) or profiles.get(None)
+            projected = None
+            if prof and hours >= 0.5:
+                done_share = sum(v for h, v in prof.items() if h < local_hour) + (prof.get(int(local_hour), 0.0) * (local_hour % 1))
+                if done_share >= 0.15:
+                    projected = int(p["sales_cents"] / done_share)
+            if projected is None:
+                remaining = max(0.0, 10 - hours)
+                rate = p["sales_cents"] / max(1.0, hours)
+                projected = p["sales_cents"] + int(rate * remaining)
             if p["target_cents"]:
                 projected = min(projected, int(p["target_cents"] * 1.5))
-            forecast += projected - p["sales_cents"]
+            forecast += max(projected, p["sales_cents"]) - p["sales_cents"]
     exc = db.execute(select(Case.severity, func.count(Case.id)).where(Case.status.in_(("open", "in_progress"))).group_by(Case.severity)).all()
     exc_map = {"urgent": 0, "review": 0, "normal": 0}
     for sev, n in exc:

@@ -25,6 +25,9 @@ DEFAULT_MESSAGES = {
     "CONFLICT": "Conflicto con el estado actual",
     "PASSWORD_CHANGE_REQUIRED": "Debes cambiar tu contraseña antes de continuar",
     "RATE_LIMITED": "Demasiados intentos. Intenta más tarde",
+    "MFA_REQUIRED": "Se requiere el código de verificación (MFA)",
+    "MFA_INVALID": "Código de verificación incorrecto",
+    "MFA_ENROLLMENT_REQUIRED": "Tu rol requiere activar la verificación en dos pasos (MFA)",
 }
 
 DEFAULT_STATUS = {
@@ -38,6 +41,9 @@ DEFAULT_STATUS = {
     "CART_IN_USE": 409,
     "SHIFT_NOT_OPEN": 409,
     "IDEMPOTENCY_CONFLICT": 409,
+    "MFA_REQUIRED": 401,
+    "MFA_INVALID": 401,
+    "MFA_ENROLLMENT_REQUIRED": 403,
     "PRICE_VERSION_INVALID": 422,
     "CANCEL_NOT_ALLOWED": 403,
     "LOT_BLOCKED": 409,

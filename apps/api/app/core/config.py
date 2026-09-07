@@ -42,6 +42,24 @@ class Settings(BaseSettings):
     STORAGE_LOCAL_DIR: str = "./evidence"
     EVIDENCE_MAX_BYTES: int = 3 * 1024 * 1024
     EVIDENCE_RETENTION_DAYS: int = 180
+    # Notificaciones (opcional): Web Push (VAPID) y WhatsApp/SMS por Twilio. Sin claves → sólo bitácora.
+    VAPID_PUBLIC_KEY: str | None = None
+    VAPID_PRIVATE_KEY: str | None = None
+    VAPID_SUBJECT: str = "mailto:ops@pepito.mx"
+    TWILIO_ACCOUNT_SID: str | None = None
+    TWILIO_AUTH_TOKEN: str | None = None
+    TWILIO_WHATSAPP_FROM: str | None = None  # p. ej. whatsapp:+14155238886
+    # Correo para reportes programados (opcional). Sin SMTP_HOST → se guarda el PDF/HTML en REPORTS_OUT_DIR.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM: str = "reportes@pepito.mx"
+    REPORTS_OUT_DIR: str = "./reports_out"
+    REPORTS_EMAIL_TO: str | None = None  # destinatarios separados por coma para el resumen ejecutivo diario
+    REPORTS_DAILY_HOUR_LOCAL: int = 7
+    # Límite de peticiones por IP (ventana de 60 s). 0 = desactivado.
+    RATE_LIMIT_PER_MINUTE: int = 600
     # Ventana de gracia para ventas offline con versión de precio desactivada (B8)
     PRICE_OFFLINE_GRACE_HOURS: int = 72
 

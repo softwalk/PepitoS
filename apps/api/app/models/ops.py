@@ -90,3 +90,53 @@ class CashSession(UUIDMixin, TimestampMixin, Base):
     counted_cents: Mapped[int | None] = mapped_column(Integer)
     difference_cents: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)  # open|reconciled|difference
+
+
+class CashMovement(UUIDMixin, Base):
+    """Movimientos de efectivo del turno distintos de ventas: fondo inicial (deposit), retiros/gastos autorizados
+    (withdrawal/expense) y devoluciones en efectivo (refund). Entran en el efectivo esperado del cierre."""
+    __tablename__ = "cash_movements"
+    __table_args__ = (Index("ix_cash_movements_shift", "shift_id", "occurred_at"),)
+    shift_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("shifts.id"), nullable=False)
+    point_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("points.id"), nullable=False)
+    actor_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # deposit|withdrawal|expense|refund
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)  # siempre positivo; el signo lo da `kind`
+    reason: Mapped[str] = mapped_column(String(160), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    case_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("cases.id"))
+
+    @property
+    def signed_cents(self) -> int:
+        return self.amount_cents if self.kind == "deposit" else -self.amount_cents
+
+
+class PushSubscription(UUIDMixin, Base):
+    """Suscripción Web Push de un usuario (una por navegador/dispositivo)."""
+    __tablename__ = "push_subscriptions"
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    p256dh: Mapped[str] = mapped_column(Text, nullable=False)
+    auth: Mapped[str] = mapped_column(Text, nullable=False)
+    user_agent: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationLog(UUIDMixin, Base):
+    """Bitácora de notificaciones enviadas (push, whatsapp, email) con dedupe por clave."""
+    __tablename__ = "notification_log"
+    __table_args__ = (Index("ix_notification_log_key", "dedupe_key"),)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)  # push|whatsapp|email|log
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"))
+    dedupe_key: Mapped[str | None] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)  # sent|failed|skipped
+    error: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

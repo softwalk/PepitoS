@@ -10,12 +10,12 @@ from app.core.errors import ApiError
 from app.core.timeutil import iso, local_today, utcnow
 from app.models.cases import Action, Audit, Case
 from app.models.ops import Shift
-from app.models.org import Point, User
+from app.models.org import Assignment, Point, User
 from app.schemas.backoffice import AuditIn
 from app.services import audit as audit_log
 from app.services import events
 from app.services import evidence as evidence_svc
-from app.services.cases import open_case_if_new, scope_cases_query, serialize_case
+from app.services.cases import open_case_if_new, scope_cases_query
 from app.services.cash import sales_summary
 from app.services.control_tower import point_statuses, serialize_cases
 from app.services.geo import haversine_m
@@ -86,7 +86,31 @@ def route(current: CurrentUser = Depends(require("supervisor.read", "cases.read"
                 "case_ids": e["case_ids"], "distance_from_previous_m": int(haversine_m(last.lat, last.lng, p.lat, p.lng)) if last else 0,
             })
             last = p
-    return {"date": local_today(now).isoformat(), "stops": stops}
+    # Muestreo de puntos sin casos (visita preventiva): determinístico por día y punto, `route_sampling_normal_pct`.
+    import hashlib
+
+    from app.services.settings import get_int
+
+    pct = get_int(db, "route_sampling_normal_pct")
+    day = local_today(now).isoformat()
+    if pct > 0:
+        q = db.query(Point).filter(Point.is_active.is_(True), Point.id.notin_(list(by_point.keys())) if by_point else True)
+        if current.role == "supervisor":
+            q = q.filter(Point.zone_id == current.zone_id)
+        scheduled = {a.point_id for a in db.query(Assignment).filter(Assignment.shift_date == local_today(now)).all()}
+        for p in q.all():
+            if p.id not in scheduled:
+                continue
+            bucket = int(hashlib.sha256(f"{day}:{p.id}".encode()).hexdigest()[:8], 16) % 100
+            if bucket < pct:
+                order += 1
+                stops.append({
+                    "order": order, "point": {"id": str(p.id), "name": p.display_name, "lat": p.lat, "lng": p.lng},
+                    "reason": "Visita de muestreo (sin casos abiertos)", "severity": "normal", "priority_score": 0.0, "case_ids": [], "sampling": True,
+                    "distance_from_previous_m": int(haversine_m(last.lat, last.lng, p.lat, p.lng)) if last else 0,
+                })
+                last = p
+    return {"date": day, "stops": stops, "sampling_pct": pct}
 
 
 @router.post("/audits", status_code=201)

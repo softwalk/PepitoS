@@ -3,7 +3,7 @@ import base64
 import uuid
 from datetime import timedelta
 
-from tests.conftest import Api, new_key, open_payload, sale_payload
+from tests.conftest import new_key, open_payload, sale_payload
 
 # PNG 1x1 válido (firma real: el servidor valida por magic bytes)
 PNG_1X1 = base64.b64decode(
@@ -118,7 +118,6 @@ def test_shift_open_close_and_audit_photos(fresh_operator, sup1, ops):
 
 
 def test_retention_purges_expired_evidence(fresh_operator, ops, db_session):
-    import os
 
     from app.core.timeutil import utcnow
     from app.models.system import Evidence

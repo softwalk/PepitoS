@@ -14,6 +14,18 @@ class LoginIn(BaseModel):
     platform: str | None = None
 
 
+class MfaVerifyIn(BaseModel):
+    mfa_token: str
+    code: str = Field(min_length=6, max_length=8)
+    device_id: str = Field(min_length=4, max_length=120)
+    device_name: str | None = None
+    platform: str | None = None
+
+
+class MfaCodeIn(BaseModel):
+    code: str = Field(min_length=6, max_length=8)
+
+
 class RefreshIn(BaseModel):
     refresh_token: str = Field(min_length=16, max_length=200)
     device_id: str = Field(min_length=4, max_length=120)

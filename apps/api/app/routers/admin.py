@@ -1,12 +1,12 @@
 """CRUD administrativo: usuarios, puntos, carritos, asignaciones, presentaciones, precios, dispositivos, zonas."""
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Callable
 
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import CurrentUser, client_ip, require
@@ -55,7 +55,7 @@ def ser_zone(z: Zone) -> dict:
 
 
 def ser_user(u: User) -> dict:
-    out = {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active, "must_change_password": u.must_change_password}
+    out = {"id": _u(u.id), "username": u.username, "name": u.name, "role": u.role, "zone_id": _u(u.zone_id), "phone": u.phone, "is_active": u.is_active, "must_change_password": u.must_change_password, "mfa_enabled": bool(u.mfa_enabled)}
     if u.role == "operator":
         out["ranking"] = {"day": u.sales_rank_day, "month": u.sales_rank_month, "year": u.sales_rank_year, "day_cents": u.sales_day_cents, "month_cents": u.sales_month_cents, "year_cents": u.sales_year_cents}
     return out
@@ -382,3 +382,59 @@ def unrevoke_device(device_id: str, request: Request, current: CurrentUser = Dep
     audit.log(db, actor_id=current.id, action="device.unrevoke", entity="device", entity_id=d.id, before={"revoked": True}, after={"revoked": False}, ip=client_ip(request))
     db.commit()
     return ser_device(d)
+
+
+# ───────────────────────────── Costos por punto (fase 2 → activa) ─────────────────────────────
+from pydantic import BaseModel as _BM, Field as _F  # noqa: E402
+
+from app.models.org import PointCost  # noqa: E402
+
+
+class PointCostIn(_BM):
+    valid_from: date
+    rent_month_cents: int = _F(default=0, ge=0)
+    permit_month_cents: int = _F(default=0, ge=0)
+    custody_month_cents: int = _F(default=0, ge=0)
+    other_month_cents: int = _F(default=0, ge=0)
+    setup_cents: int = _F(default=0, ge=0)
+    note: str | None = None
+
+
+def ser_cost(c: PointCost) -> dict:
+    return {"id": str(c.id), "point_id": str(c.point_id), "valid_from": c.valid_from.isoformat(), "rent_month_cents": c.rent_month_cents, "permit_month_cents": c.permit_month_cents,
+            "custody_month_cents": c.custody_month_cents, "other_month_cents": c.other_month_cents, "monthly_cents": c.monthly_cents, "setup_cents": c.setup_cents, "note": c.note,
+            "created_by": str(c.created_by) if c.created_by else None, "created_at": iso(c.created_at)}
+
+
+@router.get("/points/{point_id}/costs")
+def list_point_costs(point_id: uuid.UUID, _: CurrentUser = Depends(require("admin.users", "reports.expansion")), db: Session = Depends(get_db)):
+    if db.get(Point, point_id) is None:
+        raise ApiError("NOT_FOUND")
+    rows = db.query(PointCost).filter(PointCost.point_id == point_id).order_by(PointCost.valid_from.desc()).all()
+    return [ser_cost(c) for c in rows]
+
+
+@router.post("/points/{point_id}/costs", status_code=201)
+def create_point_cost(point_id: uuid.UUID, data: PointCostIn, request: Request, current: CurrentUser = Depends(require("admin.users")), db: Session = Depends(get_db)):
+    """Nueva vigencia de costos del punto (no edita las anteriores: el histórico se conserva para reportes pasados)."""
+    if db.get(Point, point_id) is None:
+        raise ApiError("NOT_FOUND")
+    c = PointCost(point_id=point_id, created_by=current.id, created_at=utcnow(), updated_at=utcnow(), **data.model_dump())
+    db.add(c)
+    db.flush()
+    audit.log(db, actor_id=current.id, action="point_cost.create", entity="point", entity_id=point_id, after=ser_cost(c), reason=data.note, ip=client_ip(request))
+    db.commit()
+    return ser_cost(c)
+
+
+@router.post("/users/{user_id}/mfa-reset")
+def mfa_reset(user_id: uuid.UUID, request: Request, current: CurrentUser = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Quita el MFA de un usuario (teléfono perdido). Queda en audit_log; el usuario deberá volver a activarlo."""
+    from app.services import mfa as mfa_svc
+
+    u = db.get(User, user_id)
+    if u is None:
+        raise ApiError("NOT_FOUND")
+    mfa_svc.admin_reset(db, current.id, u, ip=client_ip(request))
+    db.commit()
+    return ser_user(u)

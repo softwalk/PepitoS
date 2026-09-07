@@ -121,6 +121,9 @@ def open_case_if_new(
         db, "AlertRaised", actor_id=actor_id, point_id=point_id, shift_id=shift_id, entity="alert", entity_id=alert.id,
         payload={"rule_key": rule_key, "severity": severity, "case_id": case.id, "title": title},
     )
+    from app.services.notifications import notify_case
+
+    notify_case(db, case)
     return case
 
 
@@ -160,6 +163,10 @@ def create_help_case(db: Session, user: User, data, shift: Shift | None) -> Case
             case.severity = HELP_SEVERITY[ai_info["category"]]
     db.add(case)
     db.flush()
+    if getattr(data, "tags", None):
+        case.payload = {**case.payload, "tags": list(data.tags)}
+        if case.severity == "normal" and any(t in ("rain", "planned_closure") for t in data.tags):
+            case.title = f"{case.title} · {'lluvia' if 'rain' in data.tags else 'cierre planeado'}"
     if data.photo_base64:
         ev = evidence_svc.store_photo(
             db, data.photo_base64, kind="help_case", entity="case", entity_id=case.id, uploaded_by=user.id,
@@ -186,6 +193,9 @@ def create_help_case(db: Session, user: User, data, shift: Shift | None) -> Case
     )
     if shift is not None:
         shift.last_seen_at = now
+    from app.services.notifications import notify_case
+
+    notify_case(db, case)
     return case
 
 
@@ -200,6 +210,28 @@ def serialize_action(a: Action) -> dict:
         "status": a.status,
         "done_at": iso(a.done_at),
     }
+
+
+_SLA_CACHE: dict = {}
+
+
+def _sla(c: Case, now: datetime) -> dict:
+    """SLA sin consultar settings por cada caso: se cachea por 60 s en memoria del proceso."""
+    from app.services.sla import sla_info
+
+    key = c.severity
+    cached = _SLA_CACHE.get(key)
+    if cached is None or (now - cached[1]).total_seconds() > 60:
+        from app.core.db import SessionLocal
+        from app.services.sla import sla_minutes
+
+        db = SessionLocal()
+        try:
+            cached = (sla_minutes(db, c.severity), now)
+        finally:
+            db.close()
+        _SLA_CACHE[key] = cached
+    return sla_info(c, cached[0], now)
 
 
 def serialize_case(c: Case, now: datetime | None = None) -> dict:
@@ -223,6 +255,7 @@ def serialize_case(c: Case, now: datetime | None = None) -> dict:
         "impact_score": c.impact_score,
         "priority_score": priority_score(c.severity, c.impact_score, c.opened_at, now),
         "assignee": {"id": str(assignee.id), "name": assignee.name} if assignee else None,
+        "sla": _sla(c, now),
         "actions": [serialize_action(a) for a in c.actions],
         "ai": {"suggested_category": c.ai_suggested_category, "confidence": c.ai_confidence}
         if c.ai_suggested_category

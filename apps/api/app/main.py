@@ -21,6 +21,7 @@ from app.routers import (
     help,
     inventory,
     me,
+    notifications,
     reports,
     reports_bi,
     rules,
@@ -44,6 +45,9 @@ async def lifespan(app: FastAPI):
     if settings.RUN_SCHEDULER:
         scheduler = BackgroundScheduler(timezone="UTC")
         scheduler.add_job(run_rules_job, "interval", seconds=settings.RULES_INTERVAL_SECONDS, id="rules_engine", max_instances=1, coalesce=True)
+        from app.services.scheduled_reports import run_daily_reports_job
+
+        scheduler.add_job(run_daily_reports_job, "cron", hour=settings.REPORTS_DAILY_HOUR_LOCAL, minute=5, timezone=settings.TZ_NAME, id="daily_reports", max_instances=1, coalesce=True)
         scheduler.start()
         log.info("Motor de reglas programado cada %s s", settings.RULES_INTERVAL_SECONDS)
     yield
@@ -70,7 +74,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     install_error_handlers(app)
-    for r in (health, auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor, cases, control_tower, rules, approvals, reports, reports_bi, assets, admin, evidence):
+    from app.core.ratelimit import RateLimitMiddleware
+
+    app.add_middleware(RateLimitMiddleware)
+    for r in (health, auth, me, shifts, sales, waste, help, inventory, gps, sync, supervisor, cases, control_tower, rules, approvals, reports, reports_bi, assets, admin, evidence, notifications):
         app.include_router(r.router)
     return app
 

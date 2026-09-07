@@ -82,3 +82,82 @@ def report(
     audit.log(db, actor_id=current.id, action=action, entity="report", after={"report": key, "filters": applied, "result": "allowed", "role": current.role, "scope": payload["scope"]}, ip=client_ip(request), device_id=current.device_id)
     db.commit()
     return payload
+
+
+@router.get("/{key}/export.csv")
+def export_csv(
+    key: str,
+    request: Request,
+    table: str | None = None,
+    period: str | None = None,
+    date_from: str | None = Query(None, alias="from"),
+    date_to: str | None = Query(None, alias="to"),
+    zone_id: uuid.UUID | None = None,
+    point_id: uuid.UUID | None = None,
+    operator_id: uuid.UUID | None = None,
+    cart_id: uuid.UUID | None = None,
+    presentation_id: uuid.UUID | None = None,
+    method: str | None = None,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Exporta una tabla del reporte (o todas, separadas por una línea en blanco) a CSV con el mismo alcance y
+    autorización que la pantalla; queda auditado como `report.export`. Excel lo abre directo (UTF-8 con BOM)."""
+    import csv
+    import io
+
+    from fastapi.responses import Response
+
+    payload = report(key, request, period, date_from, date_to, zone_id, point_id, operator_id, cart_id, presentation_id, method, True, current, db)
+    tables = [t for t in payload["tables"] if (table is None or t["key"] == table)]
+    if table is not None and not tables:
+        raise ApiError("NOT_FOUND", "Tabla no encontrada en el reporte")
+    buf = io.StringIO()
+    buf.write("﻿")
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow([payload["title"], payload["period"]["label"], f"corte {payload['data_as_of']}", f"v{payload['version']}", "alcance " + ("zona" if payload["scope"]["zone_locked"] else "propio" if payload["scope"]["operator_locked"] else "red")])
+    w.writerow([])
+    for t in tables:
+        w.writerow([t["title"]])
+        cols = [c for c in t["columns"] if c["format"] != "link"]
+        w.writerow([c["label"] for c in cols])
+        for row in t["rows"]:
+            out = []
+            for c in cols:
+                v = row.get(c["key"])
+                if c["format"] == "money" and isinstance(v, (int, float)):
+                    v = round(v / 100, 2)
+                out.append("" if v is None else v)
+            w.writerow(out)
+        w.writerow([])
+    fname = f"pepito-{key}-{payload['period']['from']}_{payload['period']['to']}" + (f"-{table}" if table else "") + ".csv"
+    return Response(content=buf.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+from pydantic import BaseModel as _BM, Field as _F  # noqa: E402
+
+
+class SendIn(_BM):
+    to: list[str] = _F(default_factory=list, max_length=10)
+    period: str | None = None
+    date_from: str | None = _F(default=None, alias="from")
+    date_to: str | None = _F(default=None, alias="to_date")
+    zone_id: uuid.UUID | None = None
+    point_id: uuid.UUID | None = None
+    operator_id: uuid.UUID | None = None
+
+
+@router.post("/{key}/send")
+def send_now(key: str, data: SendIn, current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Envía el reporte por correo (PDF si hay WeasyPrint, si no HTML) con la autorización del usuario que lo pide.
+    Sin SMTP configurado se guarda en REPORTS_OUT_DIR y se informa la ruta."""
+    from app.services.scheduled_reports import send_report
+
+    if key not in REPORTS:
+        raise ApiError("NOT_FOUND", "Reporte no encontrado")
+    if not can_view(current, key):
+        raise ApiError("FORBIDDEN", details={"required": [REPORTS[key]["perm"]], "role": current.role})
+    out = send_report(db, key=key, current=current, period=data.period, date_from=data.date_from, date_to=data.date_to,
+                      filters={"zone_id": data.zone_id, "point_id": data.point_id, "operator_id": data.operator_id, "cart_id": None, "presentation_id": None, "method": None}, to=data.to)
+    db.commit()
+    return out

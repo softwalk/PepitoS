@@ -1,6 +1,6 @@
 """Importa todos los modelos para que Base.metadata esté completo (Alembic)."""
-from app.models.org import Assignment, Asset, Attendance, Cart, Device, LoginAttempt, Point, RefreshToken, RevokedToken, User, Zone  # noqa: F401
-from app.models.ops import CashSession, Checklist, ChecklistResult, GpsPing, Shift  # noqa: F401
+from app.models.org import Assignment, Asset, Attendance, Cart, Device, LoginAttempt, Point, PointCost, RefreshToken, RevokedToken, User, Zone  # noqa: F401
+from app.models.ops import CashMovement, CashSession, Checklist, ChecklistResult, GpsPing, NotificationLog, PushSubscription, Shift  # noqa: F401
 from app.models.catalog import DailyTarget, Flavor, Presentation, PriceItem, PriceVersion, Product  # noqa: F401
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine  # noqa: F401
 from app.models.inventory import InventoryCount, InventoryMovement, Lot, Receipt, Warehouse, Waste  # noqa: F401

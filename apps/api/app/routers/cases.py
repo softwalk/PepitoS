@@ -84,3 +84,51 @@ def patch_action(action_id: uuid.UUID, data: ActionPatch, current: CurrentUser =
     db.commit()
     db.refresh(a)
     return serialize_action(a)
+
+
+from datetime import date as _date  # noqa: E402
+
+from pydantic import BaseModel as _BM, Field as _F  # noqa: E402
+
+
+class CaseCreateIn(_BM):
+    """Caso manual desde el backoffice (p. ej. a partir de un hallazgo de reporte): título, punto, severidad,
+    responsable y acción sugerida con fecha."""
+    title: str = _F(min_length=4, max_length=200)
+    description: str | None = None
+    point_id: uuid.UUID | None = None
+    severity: str = _F(default="review", pattern="^(urgent|review|normal)$")
+    category: str = _F(default="other", max_length=40)
+    assignee_id: uuid.UUID | None = None
+    action: str | None = _F(default=None, max_length=300)
+    action_due_date: _date | None = None
+    source_ref: str | None = _F(default=None, max_length=200)  # p. ej. "report:points?point_id=…"
+
+
+@router.post("/cases", status_code=201)
+def create_case(data: CaseCreateIn, request: Request, current: CurrentUser = Depends(require("cases.update")), db: Session = Depends(get_db)):
+    from app.services.cases import open_case_if_new
+
+    if data.point_id is not None:
+        point = db.get(Point, data.point_id)
+        if point is None:
+            raise ApiError("NOT_FOUND", "Punto no encontrado")
+        if current.role == "supervisor" and point.zone_id != current.zone_id:
+            raise ApiError("FORBIDDEN", "El punto no pertenece a tu zona")
+    now = utcnow()
+    case = open_case_if_new(
+        db, rule_key=f"manual:{uuid.uuid4().hex[:8]}", point_id=data.point_id, severity=data.severity, category=data.category, title=data.title,
+        description=data.description or data.title, source="supervisor", actor_id=current.id, dedupe_date=now, payload={"source_ref": data.source_ref} if data.source_ref else {},
+    )
+    assert case is not None
+    if data.assignee_id is not None:
+        if db.get(User, data.assignee_id) is None:
+            raise ApiError("NOT_FOUND", "Responsable no encontrado")
+        case.assignee_id = data.assignee_id
+        case.status = "in_progress"
+    if data.action:
+        db.add(Action(case_id=case.id, description=data.action, owner_id=data.assignee_id or current.id, due_date=data.action_due_date, status="pending", created_by=current.id))
+    audit.log(db, actor_id=current.id, action="case.create", entity="case", entity_id=case.id, after={"title": data.title, "severity": data.severity, "point_id": str(data.point_id) if data.point_id else None, "source_ref": data.source_ref}, ip=client_ip(request))
+    db.commit()
+    db.refresh(case)
+    return serialize_case(case)

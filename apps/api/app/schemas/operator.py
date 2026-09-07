@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 
 
 class GPS(BaseModel):
@@ -42,6 +42,16 @@ class ShiftOpenIn(BaseModel):
     checklist: OpenChecklist
     gps: GPS | None = None
     photos: list[Photo] | None = None
+    opening_cents: int = Field(default=0, ge=0, le=1_000_000)  # fondo de caja recibido
+
+
+class CashMovementIn(BaseModel):
+    idempotency_key: str = Field(min_length=8, max_length=120)
+    kind: Literal["deposit", "withdrawal", "expense", "refund"]
+    amount_cents: int = Field(ge=1, le=10_000_000)
+    reason: str = Field(min_length=2, max_length=160)
+    note: str | None = None
+    occurred_at: datetime | None = None
 
 
 class ShiftCloseIn(BaseModel):
@@ -91,8 +101,11 @@ class SaleIn(BaseModel):
 
 class SaleCancelIn(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=120)
+    # `return` = devolución: el operador puede registrarla fuera de la ventana de cancelación mientras el turno esté
+    # abierto; abre un caso de revisión para el supervisor y admite foto opcional.
     reason_code: str = Field(min_length=2, max_length=40)
     note: str | None = None
+    photo_base64: str | None = None
 
 
 class WasteIn(BaseModel):
@@ -113,6 +126,8 @@ class HelpCaseIn(BaseModel):
     note: str | None = None
     photo_base64: str | None = None
     gps: GPS | None = None
+    # Contexto operativo (no es una falla del vendedor): lluvia, cierre planeado, tráfico/afluencia, desabasto.
+    tags: list[Literal["rain", "planned_closure", "traffic", "low_footfall", "stockout"]] = Field(default_factory=list)
 
 
 class ReceiptLineIn(BaseModel):

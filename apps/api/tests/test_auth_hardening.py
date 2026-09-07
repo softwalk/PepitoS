@@ -11,7 +11,6 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.core.timeutil import utcnow
 from app.services import auth as auth_svc
-from tests.conftest import Api
 
 
 def _login(client, username, password, device_id, **kw):

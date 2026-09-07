@@ -34,6 +34,12 @@ class User(UUIDMixin, TimestampMixin, Base):
     sales_month_cents: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     sales_year_cents: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     sales_rank_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # MFA (TOTP) para admin y finanzas: secreto en base32; `mfa_enabled` sólo tras verificar un código.
+    totp_secret: Mapped[str | None] = mapped_column(String(64))
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    mfa_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Notificaciones: teléfono WhatsApp (E.164) opcional; preferencias {push: bool, whatsapp: bool}
+    notify_prefs: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}", nullable=False)
 
     zone: Mapped["Zone | None"] = relationship()
 
@@ -124,6 +130,26 @@ class Point(UUIDMixin, TimestampMixin, Base):
     def display_name(self) -> str:
         """Nombre que se muestra en todo el sistema: «Nombre - Score» cuando hay score estratégico."""
         return f"{self.name} - {self.score}" if self.score is not None else self.name
+
+
+class PointCost(UUIDMixin, TimestampMixin, Base):
+    """Costos del punto con vigencia: renta, permiso, resguardo/carga, otros (mensuales) e inversión inicial.
+    Alimentan margen y payback en el reporte de expansión; la fuente de verdad es esta tabla, no los documentos."""
+    __tablename__ = "point_costs"
+    __table_args__ = (Index("ix_point_costs_point_valid", "point_id", "valid_from"),)
+    point_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("points.id"), nullable=False)
+    valid_from: Mapped[date] = mapped_column(Date, nullable=False)
+    rent_month_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    permit_month_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    custody_month_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    other_month_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    setup_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # inversión inicial del punto (sin carrito)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"))
+
+    @property
+    def monthly_cents(self) -> int:
+        return self.rent_month_cents + self.permit_month_cents + self.custody_month_cents + self.other_month_cents
 
 
 class Cart(UUIDMixin, TimestampMixin, Base):

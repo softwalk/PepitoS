@@ -11,11 +11,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.timeutil import local_day_bounds, local_today, utcnow
 from app.models.cases import Alert, Case, Rule
 from app.models.catalog import DailyTarget
-from app.models.inventory import InventoryCount, InventoryMovement, Waste
+from app.models.inventory import InventoryCount, Waste
 from app.models.ops import GpsPing, Shift
 from app.models.org import Assignment, Asset, Point
 from app.models.sales import Sale, SaleCancellation, SaleLine
@@ -352,6 +351,17 @@ def run_rules(db: Session, now: datetime | None = None) -> dict:
             continue
         cases_created += ctx.created
         alerts_created += ctx.created
+    # SLA: casos urgentes/revisar sin tomar → escalado + notificación a Operaciones.
+    from app.services.notifications import notify_sla_breach
+    from app.services.sla import check_sla
+
+    try:
+        for c in check_sla(db, now):
+            notify_sla_breach(db, c)
+        db.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("Fallo evaluando SLA")
+        db.rollback()
     # Ranking de vendedores (día/mes/año) guardado en users.
     from app.services.ranking import recompute_rankings
 
