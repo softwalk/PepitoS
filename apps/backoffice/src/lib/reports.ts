@@ -1,5 +1,5 @@
 // Módulo de Reportes: filtros en la URL, formato de valores y semáforos por columna (docs/REPORTES.md).
-import { money, pct, targetLight, ticketLight, wasteLight, type Light } from './format';
+import { fmtKg, money, pct, targetLight, ticketLight, wasteLight, type Light } from './format';
 import type { ReportPreset, Tone, ValueFormat } from '../types';
 
 export const FILTER_KEYS = ['period', 'from', 'to', 'zone_id', 'point_id', 'operator_id', 'cart_id', 'presentation_id', 'method'] as const;
@@ -43,6 +43,8 @@ export function fmtValue(v: unknown, format: ValueFormat): string {
       return Number(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
     case 'float':
       return Number(v).toLocaleString('es-MX', { maximumFractionDigits: 1 });
+    case 'kg':
+      return fmtKg(Number(v));
     case 'delta': {
       const n = Number(v);
       const sign = n > 0 ? '+' : '';

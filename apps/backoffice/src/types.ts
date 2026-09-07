@@ -347,7 +347,7 @@ export interface Device { id: string; device_id: string; user_id: string | null;
 // ── Módulo de Reportes (BI) ─────────────────────────────────────────────────
 export type ReportKey = 'executive' | 'sales' | 'cash' | 'points' | 'people' | 'inventory' | 'quality' | 'maintenance' | 'compliance' | 'expansion';
 export type ReportPreset = 'today' | 'yesterday' | 'last7' | 'week' | 'month' | 'prev_month' | 'year' | 'custom';
-export type ValueFormat = 'money' | 'int' | 'pct' | 'float' | 'text' | 'delta' | 'status' | 'link' | 'verdict';
+export type ValueFormat = 'money' | 'int' | 'pct' | 'float' | 'kg' | 'text' | 'delta' | 'status' | 'link' | 'verdict';
 export type Tone = 'ok' | 'warn' | 'bad' | 'neutral';
 export type InsightKind = 'fact' | 'trend' | 'alert' | 'hypothesis' | 'recommendation';
 export interface ReportCatalogItem { key: ReportKey; title: string; description: string; decision: string; frequency: string; orientation: 'portrait' | 'landscape'; scope: 'network' | 'zone' | 'self' }

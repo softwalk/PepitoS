@@ -1,6 +1,7 @@
 """Inventario reconstruible desde `inventory_movements`. Balance = SUM(qty) por punto/presentación."""
 import uuid
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -68,9 +69,15 @@ def grams_of(db: Session) -> dict[str, int]:
     return {str(p.id): int(p.grams) for p in db.query(Presentation).all()}
 
 
+def kg2(grams_total: int | float) -> float:
+    """Gramos → kilogramos con exactamente 2 decimales (redondeo mitad hacia arriba, igual que la PWA y el backoffice).
+    Única conversión del sistema: cualquier cifra en kg pasa por aquí."""
+    return float(Decimal(str(grams_total)).scaleb(-3).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def kg_of(counts: dict, grams: dict[str, int]) -> float:
     """Kilogramos teóricos de un dict {presentation_id: piezas}."""
-    return round(sum(int(v) * grams.get(str(k), 0) for k, v in (counts or {}).items()) / 1000, 3)
+    return kg2(sum(int(v) * grams.get(str(k), 0) for k, v in (counts or {}).items()))
 
 
 def balance(db: Session, point_id: uuid.UUID, presentation_id: uuid.UUID) -> int:

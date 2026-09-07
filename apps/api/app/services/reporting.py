@@ -27,6 +27,7 @@ from app.models.cases import Action, Approval, Audit, Case, MaintenanceTicket
 from app.models.catalog import Presentation
 from app.models.inventory import InventoryCount, InventoryMovement, Lot, Waste
 from app.models.system import Evidence
+from app.services.inventory import kg2
 from app.models.ops import GpsPing, Shift
 from app.models.org import Asset, Assignment, Attendance, Cart, Point, User, Zone
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine
@@ -980,12 +981,12 @@ def report_inventory(db: Session, p: Period, prev: Period, sc: Scope, current, f
             g = int(q) * (pres[prid].grams if prid in pres else 0)
             stock_g += g
             stock_rows.append({"point_id": str(pid), "point": points[pid].display_name if pid in points else "—", "presentation": pres[prid].name if prid in pres else "—",
-                               "stock": int(q), "stock_kg": round(g / 1000, 2), "daily_consumption": round(daily, 1), "days_of_stock": round(int(q) / daily, 1) if daily else None})
+                               "stock": int(q), "stock_kg": kg2(g), "daily_consumption": round(daily, 1), "days_of_stock": round(int(q) / daily, 1) if daily else None})
         stock_rows.sort(key=lambda r: (r["days_of_stock"] if r["days_of_stock"] is not None else 999, r["stock"]))
-        out["kpis"].append(kpi("stock_kg", "Existencia total", round(stock_g / 1000, 1), "float", None, "neutral", f"{sum(int(r[2]) for r in bal)} piezas en {len({r[0] for r in bal})} punto(s)", unit="kg"))
+        out["kpis"].append(kpi("stock_kg", "Existencia total", kg2(stock_g), "kg", None, "neutral", f"{sum(int(r[2]) for r in bal)} piezas en {len({r[0] for r in bal})} punto(s)"))
         out["tables"].append({"key": "stock", "title": "Existencias y días de inventario", "columns": [
             {"key": "point", "label": "Punto", "format": "text"}, {"key": "presentation", "label": "Presentación", "format": "text"}, {"key": "stock", "label": "Existencia (u.)", "format": "int"},
-            {"key": "stock_kg", "label": "kg", "format": "float"}, {"key": "daily_consumption", "label": "Consumo/día", "format": "float"}, {"key": "days_of_stock", "label": "Días", "format": "float", "tone": "days"}], "rows": stock_rows[:TABLE_LIMIT]})
+            {"key": "stock_kg", "label": "kg", "format": "kg"}, {"key": "daily_consumption", "label": "Consumo/día", "format": "float"}, {"key": "days_of_stock", "label": "Días", "format": "float", "tone": "days"}], "rows": stock_rows[:TABLE_LIMIT]})
         # Movimientos por día
         dq = select(_local_bucket(InventoryMovement.occurred_at, False).label("b"), InventoryMovement.movement_type, func.coalesce(func.sum(InventoryMovement.qty), 0)).where(
             InventoryMovement.occurred_at >= p.start, InventoryMovement.occurred_at < p.end).group_by("b", InventoryMovement.movement_type).order_by("b")
@@ -1016,10 +1017,10 @@ def report_inventory(db: Session, p: Period, prev: Period, sc: Scope, current, f
                 photo_counts[eid] = int(n)
         out["tables"].append({"key": "counts", "title": "Conteos físicos", "columns": [
             {"key": "at", "label": "Fecha", "format": "text"}, {"key": "point", "label": "Punto", "format": "text"}, {"key": "kind", "label": "Tipo", "format": "text"},
-            {"key": "counted_units", "label": "Contado (u.)", "format": "int"}, {"key": "counted_kg", "label": "Contado (kg)", "format": "float"}, {"key": "diff_units", "label": "Dif. (u.)", "format": "int"},
+            {"key": "counted_units", "label": "Contado (u.)", "format": "int"}, {"key": "counted_kg", "label": "Contado (kg)", "format": "kg"}, {"key": "diff_units", "label": "Dif. (u.)", "format": "int"},
             {"key": "photos", "label": "Fotos", "format": "int"}, {"key": "count_id", "label": "", "format": "link", "link": "/inventario?count={count_id}", "label_text": "Ver"}],
             "rows": [{"at": c.occurred_at.astimezone(settings.tz).strftime("%d/%m %H:%M"), "point": cpoints[c.point_id].display_name if c.point_id in cpoints else "—", "kind": c.kind,
-                      "counted_units": sum(int(v) for v in (c.counts or {}).values()), "counted_kg": round(sum(int(v) * grams.get(str(k), 0) for k, v in (c.counts or {}).items()) / 1000, 2),
+                      "counted_units": sum(int(v) for v in (c.counts or {}).values()), "counted_kg": kg2(sum(int(v) * grams.get(str(k), 0) for k, v in (c.counts or {}).items())),
                       "diff_units": sum(abs(int(v)) for v in (c.differences or {}).values()), "photos": photo_counts.get(c.id, 0), "count_id": str(c.id)} for c in counts][:TABLE_LIMIT]})
         low = [r for r in stock_rows if r["days_of_stock"] is not None and r["days_of_stock"] < 1.5]
         if low:

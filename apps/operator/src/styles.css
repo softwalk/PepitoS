@@ -1267,6 +1267,16 @@ textarea {
   width: auto;
   max-width: 110px;
 }
+.help-card .help-svg {
+  width: 64px;
+  height: 64px;
+  display: block;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+}
+.help-card.security .help-svg {
+  width: 56px;
+  height: 56px;
+}
 
 
 /* --- diferencia de caja en vivo (cierre) --- */

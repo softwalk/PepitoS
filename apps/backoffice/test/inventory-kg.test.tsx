@@ -40,12 +40,12 @@ describe('Inventario en kg y fotos', () => {
       const u = String(url);
       const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { 'Content-Type': 'application/json' } });
       if (u.startsWith('/v1/inventory/status')) {
-        return json({ min_units: 10, total_units: 108, total_kg: 8.025, points: [{ point: { id: 'p1', name: 'Metro Insurgentes' }, stock_risk: 'ok', total_units: 108, total_kg: 8.025,
-          items: [{ presentation_id: 'a', name: '50 g', grams: 50, balance: 37, theoretical: 37, min_units: 10, kg: 1.85 }, { presentation_id: 'b', name: '75 g', grams: 75, balance: 37, theoretical: 37, min_units: 10, kg: 2.775 }, { presentation_id: 'c', name: '100 g', grams: 100, balance: 34, theoretical: 34, min_units: 10, kg: 3.4 }] }] });
+        return json({ min_units: 10, total_units: 108, total_kg: 8.03, points: [{ point: { id: 'p1', name: 'Metro Insurgentes' }, stock_risk: 'ok', total_units: 108, total_kg: 8.03,
+          items: [{ presentation_id: 'a', name: '50 g', grams: 50, balance: 37, theoretical: 37, min_units: 10, kg: 1.85 }, { presentation_id: 'b', name: '75 g', grams: 75, balance: 37, theoretical: 37, min_units: 10, kg: 2.78 }, { presentation_id: 'c', name: '100 g', grams: 100, balance: 34, theoretical: 34, min_units: 10, kg: 3.4 }] }] });
       }
       if (u.startsWith('/v1/inventory/counts')) {
         return json({ days: 7, counts: [{ id: 'c1', occurred_at: '2026-09-07T14:05:09Z', kind: 'manual', shift_id: 's1', point: { id: 'p1', name: 'Metro Insurgentes' }, actor: { id: 'u1', name: 'Juan Operador' },
-          counts: { a: 36, b: 37, c: 34 }, theoretical: { a: 37, b: 37, c: 34 }, differences: { a: -1, b: 0, c: 0 }, counted_units: 107, counted_kg: 7.975, expected_kg: 8.025, diff_units: 1, diff_kg: -0.05, evidence: [EVID] }] });
+          counts: { a: 36, b: 37, c: 34 }, theoretical: { a: 37, b: 37, c: 34 }, differences: { a: -1, b: 0, c: 0 }, counted_units: 107, counted_kg: 7.98, expected_kg: 8.03, diff_units: 1, diff_kg: -0.05, evidence: [EVID] }] });
       }
       if (u.startsWith('/v1/inventory/receipts')) return json({ days: 7, receipts: [{ id: 'r1', occurred_at: '2026-09-07T09:00:00Z', shift_id: 's1', qr_code: 'ENT-1', point: { id: 'p1', name: 'Metro Insurgentes' }, actor: { id: 'u1', name: 'Juan Operador' }, lines: [{ presentation_id: 'a', qty: 4, lot_code: null }], units: 4, kg: 0.2, evidence: [] }] });
       if (u.startsWith('/v1/admin/presentations')) return json([{ id: 'a', name: '50 g', grams: 50, sort: 1, is_active: true, product_id: null }, { id: 'b', name: '75 g', grams: 75, sort: 2, is_active: true, product_id: null }, { id: 'c', name: '100 g', grams: 100, sort: 3, is_active: true, product_id: null }]);
@@ -64,8 +64,9 @@ describe('Inventario en kg y fotos', () => {
   });
 
   it('fmtKg', () => {
-    expect(fmtKg(8.025)).toBe('8.03 kg');
-    expect(fmtKg(2)).toBe('2 kg');
+    expect(fmtKg(8.03)).toBe('8.03 kg');
+    expect(fmtKg(2)).toBe('2.00 kg');
+    expect(fmtKg(0.2)).toBe('0.20 kg');
     expect(fmtKg(null)).toBe('—');
   });
 
@@ -83,7 +84,7 @@ describe('Inventario en kg y fotos', () => {
     expect(detail.textContent).toContain('-1');
     expect(screen.getByTestId('evidence-gallery')).toBeTruthy();
     expect(screen.getByTestId('evidence-thumb-e1')).toBeTruthy();
-    expect(screen.getByTestId('receipts-card').textContent).toContain('0.2 kg');
+    expect(screen.getByTestId('receipts-card').textContent).toContain('0.20 kg');
   });
 
   it('abre el conteo indicado en ?count= (enlace desde el reporte)', async () => {

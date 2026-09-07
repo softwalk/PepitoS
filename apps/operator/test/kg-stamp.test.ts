@@ -13,9 +13,13 @@ describe('kilogramos', () => {
     expect(kilograms({}, PRES)).toBe(0);
     expect(kilograms({ zzz: 10 }, PRES)).toBe(0); // presentación desconocida no suma
   });
-  it('formatea sin decimales cuando es entero', () => {
-    expect(fmtKg(2)).toBe('2 kg');
+  it('siempre 2 decimales, mitad hacia arriba (misma regla que la API)', () => {
+    expect(kilograms({ a: 37, b: 37, c: 34 }, PRES)).toBe(8.03); // 8025 g
+    expect(kilograms({ a: 1 }, PRES)).toBe(0.05);
+    expect(kilograms({ b: 1 }, PRES)).toBe(0.08); // 75 g
+    expect(fmtKg(2)).toBe('2.00 kg');
     expect(fmtKg(0.65)).toBe('0.65 kg');
+    expect(fmtKg(8.03)).toBe('8.03 kg');
   });
 });
 
