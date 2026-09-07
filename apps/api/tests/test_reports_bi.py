@@ -1,4 +1,6 @@
 """Módulo de Reportes (BI): catálogo por rol, RBAC en la API, alcance por zona/operador, periodos, hallazgos y auditoría."""
+import uuid
+
 import pytest
 
 from tests.conftest import Api, open_payload, sale_payload
@@ -151,3 +153,24 @@ def test_cutoff_version_coverage_and_no_comparable(fresh_operator, catalog, admi
     # Un periodo pasado sin turnos abiertos queda "closed" y con corte = fin del periodo
     old = admin.get("/v1/reports/bi/executive", params={"period": "prev_month"}).json()
     assert old["partial"] is False and old["data_as_of"] == old["period"]["end"] and old["coverage"]["status"] == "closed"
+
+
+def test_points_report_with_sales_but_no_target(fresh_operator, catalog, admin, db_session):
+    """Regresión CI: un punto con ventas y meta 0 (o sin turno contado en el periodo) deja `target_pct=None`;
+    el reporte de puntos debe renderizar igual (no comparar None con int ni formatearlo)."""
+    from app.models.org import Point
+
+    a = fresh_operator()
+    pt = db_session.get(Point, uuid.UUID(a.point["id"]))
+    pt.daily_target_cents = 0
+    pt.daily_target_tx = 0
+    db_session.commit()
+    sid = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
+    a.post("/v1/sales", json=sale_payload(sid, catalog))
+    for preset in ("today", "last7"):
+        r = admin.get("/v1/reports/bi/points", params={"period": preset})
+        assert r.status_code == 200, r.text
+        row = [x for x in r.json()["tables"][0]["rows"] if x["point_id"] == a.point["id"]][0]
+        assert row["tx"] >= 1 and row["target_pct"] is None
+    assert admin.get("/v1/reports/bi/executive", params={"period": "today"}).status_code == 200
+    assert admin.get("/v1/reports/bi/expansion", params={"period": "month"}).status_code == 200
