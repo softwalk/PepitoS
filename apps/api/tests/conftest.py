@@ -149,6 +149,11 @@ def fresh_operator(client, admin):
         body = {"operator_id": user["id"], "point_id": point["id"], "cart_id": cart["id"], "shift_date": local_today().isoformat()}
         if planned_start:
             body["planned_start"] = planned_start
+        else:
+            from datetime import timedelta
+            from app.core.timeutil import utcnow
+
+            body["planned_start"] = (utcnow() + timedelta(hours=4)).isoformat()
         assignment = admin.post("/v1/admin/assignments", json=body).json()
         api = Api(client, user["username"], "op123")
         api.point = point
