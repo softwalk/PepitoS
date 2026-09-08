@@ -10,6 +10,7 @@ Fuente única de qué se cuenta, con qué denominador y dónde se calcula. Cualq
 | Precios por presentación | `price_versions` / `price_items` (versionado, con `valid_from`, `created_by`, audit) | 50 g $25 · 75 g $35 · 100 g $45 (Manual Maestro, "Precios APROBADO") |
 | Meta diaria por punto | `points.daily_target_cents` / `daily_target_tx`; `daily_targets` por fecha; default `daily_sales_target_default_cents` | $2,340 · 60 tx |
 | Umbrales de caja | `settings.cash_difference_threshold_cents` / `_severe_cents` (rules.params tiene precedencia) | $20 · $100 |
+| Fondo de caja estándar | `settings.cash_float_default_cents` (la app lo propone al abrir; `cash_sessions.opening_cents` guarda lo capturado) | $500 en denominaciones chicas ($5/$10/$20/$50) |
 | Distancia de apertura | `settings.open_max_distance_m` | 50 m (puntos verificados) |
 | Tolerancia de conteo | `settings.inventory_count_tolerance_units` | 3 u. |
 | Costos por punto | `point_costs` (renta, permiso, resguardo, otros/mes; inversión inicial; con vigencia) | Administración → Puntos → Ficha → Costos; sin costos capturados el margen aparece vacío |

@@ -68,7 +68,13 @@ usuario, auditado como `report.export`).
   fuera de `development` se crean con `must_change_password=true`, así el piloto cambia las claves al primer acceso.
   Antes de operar con dinero real: `SEED_MODE=prod` + `ADMIN_INITIAL_PASSWORD` y alta de usuarios reales.
 
-## 7. Mapa sin internet
+## 7. Fondo de caja
+
+`cash_float_default_cents` (Parámetros, $500) es el fondo que la app propone al abrir; el vendedor confirma o corrige y
+la diferencia con el estándar se muestra como aviso. Mezcla recomendada: 8×$5, 8×$10, 6×$20, 4×$50 (+1×$100 si se
+aceptan billetes de $500). Retiro parcial al supervisor cuando el efectivo pase de ~$1,500.
+
+## 8. Mapa sin internet
 
 La VM del piloto no tiene salida a internet: Control Tower muestra el **mapa esquemático** (cuadrícula con los puntos)
 cuando los tiles de OpenStreetMap no cargan. Para un mapa real en LAN, servir tiles propios (p. ej. `tileserver-gl`

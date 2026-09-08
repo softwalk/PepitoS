@@ -27,6 +27,7 @@ SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
     "open_max_distance_m": {"type": "int", "default": 50, "min": 10, "max": 1000, "description": "Distancia máxima (m) entre el operador y el punto asignado al abrir; si se excede se avisa al operador y se abre caso urgente para el supervisor. Sólo aplica a puntos con coordenadas verificadas; en los demás se usa la geocerca del punto"},
     "inventory_count_tolerance_units": {"type": "int", "default": 3, "min": 0, "description": "Diferencia (unidades) entre conteo y teórico a partir de la cual se abre caso de inventario"},
     "cash_out_max_cents": {"type": "int", "default": 20000, "min": 0, "description": "Retiro/gasto de efectivo (centavos) a partir del cual el movimiento abre un caso de revisión para el supervisor"},
+    "cash_float_default_cents": {"type": "int", "default": 50000, "min": 0, "description": "Fondo de caja estándar (centavos) que la app propone al abrir el puesto; el vendedor confirma o corrige lo que recibió"},
     "sla_urgent_minutes": {"type": "int", "default": 15, "min": 1, "description": "Minutos para que un caso URGENTE sea tomado (asignado o en progreso); al vencer se escala a Operaciones"},
     "sla_review_minutes": {"type": "int", "default": 240, "min": 1, "description": "Minutos para que un caso REVISAR sea tomado; al vencer se escala a Operaciones"},
     "route_sampling_normal_pct": {"type": "int", "default": 10, "min": 0, "max": 100, "description": "Porcentaje de puntos sin casos que se agregan a la ruta del supervisor como visita de muestreo (determinístico por día)"},

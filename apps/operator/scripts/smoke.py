@@ -85,8 +85,13 @@ with sync_playwright() as p:
         shot(page, "04-abrir-checklist")
         page.click("button:has-text('SIGUIENTE: FONDO DE CAJA')")
         page.wait_for_selector("[data-testid=opening-cash]")
+        # El fondo estándar ($500, Parámetros) viene propuesto; el vendedor lo corrige a $200 → aviso "distinto al estándar"
+        assert page.locator("[data-testid=opening-cash] .amount-display").inner_text().replace(",", "").startswith("$500"), "Debe proponer el fondo estándar"
+        for _ in range(3):
+            page.click("[data-testid=opening-cash] .numpad button[aria-label='Borrar']")
         for ch in "200":  # fondo $200
             page.click(f"[data-testid=opening-cash] .numpad button[aria-label='{ch}']")
+        page.wait_for_selector("[data-testid=float-diff]")
         shot(page, "04b-fondo-caja")
         page.click("button:has-text('LISTO'), button:has-text('SIGUIENTE: FOTO')")
         skip_photo_if_asked(page)

@@ -30,6 +30,7 @@ const STATUS_TONE: Record<string, string> = {
   reconciled: 'green',
   difference: 'red',
   ok: 'green',
+  warn: 'amber',
   low: 'amber',
   critical: 'red',
   present: 'green',

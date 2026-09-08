@@ -108,6 +108,7 @@ export const STATUS_LABEL: Record<string, string> = {
   difference: 'Diferencia',
   transferred: 'Transferido',
   ok: 'OK',
+  warn: 'Revisar',
   low: 'Bajo',
   critical: 'Crítico',
   present: 'Presente',

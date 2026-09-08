@@ -75,6 +75,7 @@ def operator_config(db: Session, assignment=None) -> dict:
         "require_open_photo": require_open_photo(assignment.id, sampling) if assignment is not None else False,
         "evidence_max_bytes": settings.EVIDENCE_MAX_BYTES,
         "open_max_distance_m": settings_svc.get_int(db, "open_max_distance_m"),
+        "cash_float_default_cents": settings_svc.get_int(db, "cash_float_default_cents"),
     }
 
 

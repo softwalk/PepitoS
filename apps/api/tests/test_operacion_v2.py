@@ -253,3 +253,16 @@ def test_inventory_kg_and_count_receipt_photos(fresh_operator, catalog, admin):
     # 8025 g → 8.03 (mitad hacia arriba, 2 decimales) en la misma función que usa toda la API
     from app.services.inventory import kg2
     assert kg2(8025) == 8.03 and kg2(75) == 0.08 and kg2(2000) == 2.0
+
+
+def test_cash_float_default_in_operator_config(fresh_operator, admin):
+    """El fondo de caja estándar (Parámetros) llega a la app en config; el administrador puede cambiarlo."""
+    a = fresh_operator()
+    cfg = a.get("/v1/me/assignment").json()["config"]
+    assert cfg["cash_float_default_cents"] == 50000
+    r = admin.put("/v1/admin/settings/cash_float_default_cents", json={"value": 30000})
+    assert r.status_code == 200, r.text
+    try:
+        assert a.get("/v1/me/assignment").json()["config"]["cash_float_default_cents"] == 30000
+    finally:
+        admin.put("/v1/admin/settings/cash_float_default_cents", json={"value": 50000})
