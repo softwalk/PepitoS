@@ -778,7 +778,7 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
         kpi("avg", "Promedio por punto", int(avg), "money", None, "neutral"),
         kpi("on_target", "Puntos en meta", on_target, "int", None, _tone_target(on_target * 100 / len(with_sales)) if with_sales else "neutral", f"{on_target * 100 // len(with_sales) if with_sales else 0} %"),
         kpi("red", "Puntos en rojo (< 75 %)", sum(1 for r in with_sales if r["target_pct"] is not None and r["target_pct"] < 75), "int", None, "neutral", invert=True),
-        kpi("waste_red", "Puntos con merma > 4 %", sum(1 for r in with_sales if r["waste_pct"] > 4), "int", None, "neutral", invert=True),
+        kpi("waste_red", "Puntos con merma > 4 %", sum(1 for r in with_sales if (r["waste_pct"] or 0) > 4), "int", None, "neutral", invert=True),
     ]
     out["charts"].append({"key": "top", "title": "Top 10 por ventas", "type": "bar", "x": "point", "layout": "vertical",
                           "data": [{"point": r["point"], "sales_cents": r["sales_cents"], "point_id": r["point_id"]} for r in with_sales[:10]],
@@ -796,7 +796,7 @@ def report_points(db: Session, p: Period, prev: Period, sc: Scope, current, filt
         drops = sorted([r for r in with_sales if r["delta_pct"] is not None and r["delta_pct"] <= -15], key=lambda r: r["delta_pct"])
         for r in drops[:3]:
             ins.append(insight("trend", f"{r['point']} cayó {abs(r['delta_pct']):.0f} % vs {prev.label}.", f"/reportes/points?point_id={r['point_id']}"))
-        red_waste = [r for r in with_sales if r["waste_pct"] > 4]
+        red_waste = [r for r in with_sales if (r["waste_pct"] or 0) > 4]
         for r in red_waste[:3]:
             ins.append(insight("alert", f"Merma de {r['point']} en rojo: {r['waste_pct']:.1f} %.", "/reportes/inventory"))
         high_score_low = [r for r in with_sales if (r["score"] or 0) >= 85 and r["target_pct"] is not None and r["target_pct"] < 50]

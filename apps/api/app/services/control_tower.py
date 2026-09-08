@@ -234,14 +234,14 @@ def summary(db: Session, day: date, now: datetime | None = None) -> dict:
     }
 
 
-def briefing(db: Session, day: date, now: datetime | None = None) -> dict:
+def briefing(db: Session, day: date, now: datetime | None = None, limit: int = 8) -> dict:
     now = now or utcnow()
     s = summary(db, day, now)
     t = s["totals"]
     open_cases = db.query(Case).filter(Case.status.in_(("open", "in_progress"))).all()
     open_cases.sort(key=lambda c: priority_score(c.severity, c.impact_score, c.opened_at, now), reverse=True)
     decisions = []
-    for c in open_cases[:8]:
+    for c in open_cases[:limit]:
         rec = RECOMMENDATIONS.get(c.rule_key or c.category, "Revisar con el supervisor de zona y registrar resolución")
         decisions.append({"title": c.title, "why": c.description or c.title, "recommendation": rec, "case_id": str(c.id), "severity": c.severity, "priority_score": priority_score(c.severity, c.impact_score, c.opened_at, now)})
     pct = int(t["sales_cents"] * 100 / t["target_cents"]) if t["target_cents"] else 0

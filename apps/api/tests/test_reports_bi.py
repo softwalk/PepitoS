@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-from tests.conftest import Api, open_payload, sale_payload
+from tests.conftest import Api, new_key, open_payload, sale_payload
 
 ALL = ["executive", "sales", "cash", "points", "people", "inventory", "quality", "maintenance", "compliance", "expansion"]
 
@@ -153,6 +153,29 @@ def test_cutoff_version_coverage_and_no_comparable(fresh_operator, catalog, admi
     # Un periodo pasado sin turnos abiertos queda "closed" y con corte = fin del periodo
     old = admin.get("/v1/reports/bi/executive", params={"period": "prev_month"}).json()
     assert old["partial"] is False and old["data_as_of"] == old["period"]["end"] and old["coverage"]["status"] == "closed"
+
+
+def test_point_with_zero_target_renders_cleanly(fresh_operator, catalog, admin, db_session):
+    """Punto con ventas pero meta 0/nula no debe romper ningún reporte por división o comparaciones NoneType."""
+    from app.models.org import Point
+    a = fresh_operator()
+    p = db_session.get(Point, uuid.UUID(a.point["id"]))
+    p.daily_target_cents = 0
+    db_session.commit()
+    sid = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
+    assert a.post("/v1/sales", json=sale_payload(sid, catalog, pres_index=0)).status_code == 201
+    try:
+        for rep in ("executive", "points", "expansion"):
+            r = admin.get(f"/v1/reports/bi/{rep}", params={"period": "today"})
+            assert r.status_code == 200, f"{rep} failed: {r.text}"
+            body = r.json()
+            assert body["key"] == rep
+    finally:
+        # Higiene: cerrar el turno y devolver la meta para no alterar el briefing/top-8 de pruebas posteriores
+        exp = a.get(f"/v1/shifts/{sid}/expected").json()
+        a.post(f"/v1/shifts/{sid}/close", json={"idempotency_key": new_key(), "cash_counted_cents": exp["cash_expected_cents"], "product_counts": exp["product_expected"]})
+        p.daily_target_cents = 234000
+        db_session.commit()
 
 
 def test_points_report_with_sales_but_no_target(fresh_operator, catalog, admin, db_session):
