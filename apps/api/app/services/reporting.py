@@ -28,7 +28,7 @@ from app.models.catalog import Presentation
 from app.models.inventory import InventoryCount, InventoryMovement, Lot, Waste
 from app.models.system import Evidence
 from app.services.inventory import kg2
-from app.models.ops import GpsPing, Shift
+from app.models.ops import CashSession, GpsPing, Shift
 from app.models.org import Asset, Assignment, Attendance, Cart, Point, User, Zone
 from app.models.sales import Payment, Sale, SaleCancellation, SaleLine
 from app.services.points_import import load_catalog
@@ -694,18 +694,26 @@ def report_cash(db: Session, p: Period, prev: Period, sc: Scope, current, filter
                           "series": [{"key": "shortage_cents", "label": "Faltante", "format": "money", "color": "bad"}, {"key": "surplus_cents", "label": "Sobrante", "format": "money", "color": "ok"}]})
     points = _names(db, Point, {s.point_id for s in shifts})
     users = _names(db, User, {s.operator_id for s in shifts})
+    # Fondo capturado al abrir vs fondo estándar (Parámetros): un fondo distinto se marca para que el supervisor lo revise
+    float_default = get_int(db, "cash_float_default_cents")
+    openings = {r[0]: int(r[1] or 0) for r in db.execute(select(CashSession.shift_id, CashSession.opening_cents).where(CashSession.shift_id.in_([s.id for s in closed]))).all()} if closed else {}
     rows = [{
         "shift_id": str(s.id), "date": s.opened_at.astimezone(settings.tz).strftime("%d/%m %H:%M"), "point_id": str(s.point_id), "point": points[s.point_id].display_name if s.point_id in points else "—",
         "operator_id": str(s.operator_id), "operator": users[s.operator_id].name if s.operator_id in users else "—",
+        "opening_cents": openings.get(s.id, 0), "float_ok": "ok" if openings.get(s.id, 0) == float_default else "warn",
         "expected_cents": s.cash_expected_cents, "counted_cents": s.cash_counted_cents, "difference_cents": s.difference_cents,
         "status": s.close_status or s.status, "severe": abs(s.difference_cents or 0) >= severe,
     } for s in sorted(closed, key=lambda x: abs(x.difference_cents or 0), reverse=True)]
     cols = [
         {"key": "date", "label": "Apertura", "format": "text"}, {"key": "point", "label": "Punto", "format": "text"}, {"key": "operator", "label": "Vendedor", "format": "text", "link": "/reportes/people?operator_id={operator_id}"},
+        {"key": "opening_cents", "label": "Fondo", "format": "money"}, {"key": "float_ok", "label": "Fondo estándar", "format": "status"},
         {"key": "expected_cents", "label": "Esperado", "format": "money"}, {"key": "counted_cents", "label": "Contado", "format": "money"},
         {"key": "difference_cents", "label": "Diferencia", "format": "money", "tone": "diff"}, {"key": "status", "label": "Estado", "format": "status"},
     ]
     out["tables"].append({"key": "shifts", "title": "Turnos cerrados (mayor diferencia primero)", "columns": cols, "rows": rows[:TABLE_LIMIT]})
+    odd = [r for r in rows if r["float_ok"] == "warn"]
+    if odd and float_default:
+        out["insights"].append(insight("alert", f"{len(odd)} turno(s) abrieron con un fondo distinto al estándar ({_money(float_default)}); el primero: {odd[0]['point']} · {odd[0]['operator']} ({_money(odd[0]['opening_cents'])})."))
     # Por vendedor
     byop: dict[uuid.UUID, dict] = {}
     for s in closed:

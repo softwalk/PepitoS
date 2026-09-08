@@ -27,6 +27,12 @@ export default function OpenShift() {
   const [values, setValues] = useState<Partial<Record<keyof OpenChecklist, boolean>>>({});
   const [step, setStep] = useState<'checklist' | 'cash' | 'photo'>('checklist');
   const [opening, setOpening] = useState('');
+  // Fondo estándar (Parámetros → cash_float_default_cents): se propone al entrar al paso; el vendedor confirma o corrige.
+  const floatDefault = config?.cash_float_default_cents ?? 0;
+  const enterCash = () => {
+    if (!opening && floatDefault > 0) setOpening(String(Math.round(floatDefault / 100)));
+    setStep('cash');
+  };
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     speak('Revisa el carrito y marca sí o no en cada punto.');
@@ -82,8 +88,8 @@ export default function OpenShift() {
   // Foto del puesto (muestreo determinístico decidido por el servidor: config.require_open_photo).
   const next = () => {
     if (!complete) return;
-    setStep('cash');
-    speak('¿Con cuánto efectivo empiezas? Escribe el fondo de caja o cero si no recibiste.');
+    enterCash();
+    speak(floatDefault > 0 ? `El fondo estándar es ${Math.round(floatDefault / 100)} pesos. Confirma o corrige lo que recibiste.` : '¿Con cuánto efectivo empiezas? Escribe el fondo de caja o cero si no recibiste.');
   };
   const afterCash = () => {
     if (config?.require_open_photo) setStep('photo');
@@ -144,7 +150,14 @@ export default function OpenShift() {
     return (
       <div className="stack" data-testid="opening-cash">
         <h1 className="h1 center">Fondo de caja</h1>
-        <p className="h2 center">¿Con cuánto efectivo empiezas? Si no recibiste fondo, deja $0.</p>
+        <p className="h2 center">
+          {floatDefault > 0 ? `El fondo estándar es ${money(floatDefault)}. Si te dieron otra cantidad, corrígela.` : '¿Con cuánto efectivo empiezas? Si no recibiste fondo, deja $0.'}
+        </p>
+        {floatDefault > 0 && cents !== floatDefault && (
+          <div className="cash-diff warn" data-testid="float-diff">
+            Distinto al fondo estándar ({money(floatDefault)}): el supervisor lo verá en el cierre.
+          </div>
+        )}
         <div className={`amount-display ${opening ? '' : 'empty'}`} aria-live="polite">
           {opening ? money(cents) : '$ 0'}
         </div>

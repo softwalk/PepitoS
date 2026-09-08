@@ -593,6 +593,12 @@ OPS_V2 = """
 <p>La ruta sugerida agrega puntos <b>sin casos</b> como «Visita de muestreo» (parámetro <code>route_sampling_normal_pct</code>, 10 %): el mismo punto sale sorteado el mismo día para todos, así no se repite ni se olvida.</p>
 <h3 id="v2-mfa">Verificación en dos pasos</h3>
 <p>Administradores y Finanzas activan MFA en <b>Seguridad y avisos</b>: agrega la clave a tu app autenticadora y confirma con el código. Al entrar se pedirá el código después de la contraseña. Si pierdes el teléfono, un administrador lo restablece.</p>
+<h3 id="v2-fondo">Fondo de caja estándar</h3>
+<p>El parámetro <b>cash_float_default_cents</b> (Administración → Parámetros; $500 por defecto) es el fondo que la app propone al vendedor al abrir. Entrégalo en sobre contado, siempre con la misma mezcla, para que el cambio no se acabe en la primera hora:</p>
+<table><thead><tr><th>Denominación</th><th>Piezas</th><th>Importe</th></tr></thead><tbody>
+<tr><td>$5 (moneda)</td><td>8</td><td>$40</td></tr><tr><td>$10 (moneda)</td><td>8</td><td>$80</td></tr><tr><td>$20</td><td>6</td><td>$120</td></tr><tr><td>$50</td><td>4</td><td>$200</td></tr><tr><td>$100</td><td>0–1</td><td>$0–100</td></tr>
+</tbody></table>
+<p>Un fondo capturado distinto al estándar aparece como aviso en la apertura y en el detalle del turno. Cuando el efectivo del carrito pase de ~$1,500, programa un <b>retiro parcial</b> (queda registrado como movimiento de caja y, si supera el máximo, abre revisión). El fondo regresa con el cierre: efectivo esperado = fondo + ventas en efectivo − salidas.</p>
 <h3 id="v2-inventario-kg">Inventario en kilogramos y fotos</h3>
 <p><b>Inventario</b> muestra, además de las piezas por presentación, el <b>total en kg</b> por punto y de toda la red (piezas × gramos nominales). Las tarjetas <b>Conteos físicos</b> y <b>Recepciones</b> listan lo capturado por los vendedores con kilogramos contados y esperados, diferencia y las <b>fotos del producto</b> (con fecha, hora y punto impresos). <span class="ui">Ver</span> abre el detalle por presentación y la galería; el reporte de Inventario enlaza cada conteo. En el detalle de un caso de AYUDA aparece la <b>ubicación del incidente</b> (GPS reportado y punto asignado) junto con la foto.</p>
 <h3 id="v2-apariencia">Tema oscuro y densidad</h3>
@@ -601,7 +607,7 @@ OPS_V2 = """
 
 OP_V2 = """
 <h3 id="op-v2-fondo">Fondo de caja al abrir</h3>
-<p>Después del checklist, la app pregunta <b>¿Con cuánto efectivo empiezas?</b> Escribe el fondo que te dieron (o deja $0). Al cerrar, «Debes tener» ya lo incluye.</p>
+<p>Después del checklist, la app muestra el <b>fondo estándar</b> ($500) ya escrito: si el supervisor te dio exactamente eso, toca LISTO; si te dio otra cantidad, bórrala y escribe la que recibiste (la app avisa que es distinta al estándar y el supervisor lo verá). Al cerrar, «Debes tener» ya incluye el fondo. Precios de $25/$35/$45 se pagan casi siempre con billetes de $50, $100 o $200: el fondo sirve para dar cambio en las primeras ventas. Si un cliente paga con $500 y no tienes cambio, pide que pague con otro billete o cobra por QR.</p>
 <h3 id="op-v2-devolucion">Devolución / caja</h3>
 <p>En VENDER, el botón <span class="ui">↩️ Devolución / caja</span> abre dos pestañas: <b>Devolución</b> (elige la venta que el cliente regresó; se registra y el supervisor la revisa) y <b>Caja</b> (gasto, retiro o entrada de efectivo con motivo: hielo, bolsas, entrega al supervisor…). No puedes retirar más efectivo del que hay en caja.</p>
 <h3 id="op-v2-producto">Recibir y contar producto</h3>

@@ -62,6 +62,8 @@ export interface OperatorConfig {
   evidence_max_bytes: number;
   /** Distancia máxima (m) al punto asignado para abrir sin aviso (sólo puntos con coordenadas verificadas). */
   open_max_distance_m?: number;
+  /** Fondo de caja estándar (centavos) propuesto al abrir; 0 = sin fondo. */
+  cash_float_default_cents?: number;
 }
 
 /** Foto de evidencia: base64 puro (sin prefijo data:) JPEG/PNG/WebP ≤ evidence_max_bytes. */
