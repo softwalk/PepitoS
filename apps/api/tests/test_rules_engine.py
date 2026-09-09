@@ -33,8 +33,11 @@ def test_no_open_creates_urgent_case(fresh_operator, ops):
     summ = ops.get("/v1/control-tower/summary").json()
     ps = next(p for p in summ["points"] if p["point"]["id"] == op.point["id"])
     assert ps["status"] == "late"
-    brief = ops.get("/v1/control-tower/briefing").json()
+    # El briefing muestra las N decisiones de mayor prioridad (8 por defecto); con `limit` alto la aserción no depende
+    # de cuántos casos urgentes dejaron otras pruebas.
+    brief = ops.get("/v1/control-tower/briefing", params={"limit": 100}).json()
     assert any(d["case_id"] == cases[0]["id"] for d in brief["decisions"])
+    assert len(ops.get("/v1/control-tower/briefing").json()["decisions"]) <= 8
     assert "urgentes" in brief["headline"]
 
 
