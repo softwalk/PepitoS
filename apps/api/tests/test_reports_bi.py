@@ -119,14 +119,14 @@ def test_executive_numbers_and_insights_from_data(fresh_operator, catalog, admin
     a = fresh_operator()
     sa = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
     for _ in range(4):
-        a.post("/v1/sales", json=sale_payload(sa, catalog, pres_index=2))  # 4 × $45
+        a.post("/v1/sales", json=sale_payload(sa, catalog, pres_index=2))  # 4 × $40
     body = admin.get("/v1/reports/bi/executive", params={"period": "today", "point_id": a.point["id"]}).json()
     k = {x["key"]: x for x in body["kpis"]}
-    assert k["sales"]["value"] == 18000 and k["tx"]["value"] == 4 and k["ticket"]["value"] == 4500 and k["ticket"]["tone"] == "ok"
-    assert k["target_pct"]["value"] == round(18000 * 100 / 234000, 1)
+    assert k["sales"]["value"] == 16000 and k["tx"]["value"] == 4 and k["ticket"]["value"] == 4000 and k["ticket"]["tone"] == "ok"
+    assert k["target_pct"]["value"] == round(16000 * 100 / 234000, 1)
     assert any(i["kind"] == "fact" and "Avance vs meta" in i["text"] for i in body["insights"])
     trend = next(c for c in body["charts"] if c["key"] == "trend")
-    assert len(trend["data"]) == 24 and sum(r["sales_cents"] for r in trend["data"]) == 18000
+    assert len(trend["data"]) == 24 and sum(r["sales_cents"] for r in trend["data"]) == 16000
     # Comparativo: ayer no hubo ventas en ese punto → delta None, tendencia plana
     assert k["sales"]["prev"] == 0 and k["sales"]["delta_pct"] is None
 

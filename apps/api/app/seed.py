@@ -43,7 +43,7 @@ POINTS = [
     ("Parque México", "Av. México s/n, Hipódromo, CDMX", 19.4120, -99.1700),
     ("Alameda Central", "Av. Juárez s/n, Centro Histórico, CDMX", 19.4355, -99.1435),
 ]
-PRESENTATIONS = [("Pepitas 50 g", 50, 2500, 1), ("Pepitas 75 g", 75, 3500, 2), ("Pepitas 100 g", 100, 4500, 3)]
+PRESENTATIONS = [("Pepitas 50 g", 50, 2500, 1), ("Pepitas 75 g", 75, 3500, 2), ("Pepitas 100 g", 100, 4000, 3)]
 FLAVORS = ["Natural", "Limón", "Chile", "Enchilado", "Salado"]
 RULES = [
     ("no_open", "Punto sin abrir", "urgent"),

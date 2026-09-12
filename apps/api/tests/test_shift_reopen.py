@@ -51,7 +51,7 @@ def test_admin_reopens_closed_shift_and_operator_continues(fresh_operator, catal
 
     # El esperado acumula TODAS las ventas del turno (antes y después de reabrir)
     exp = op.get(f"/v1/shifts/{shift_id}/expected").json()
-    assert exp["sales_count"] == 2 and exp["cash_expected_cents"] == 2500 + 4500
+    assert exp["sales_count"] == 2 and exp["cash_expected_cents"] == 2500 + 4000
 
     # Segundo cierre conciliado
     r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": exp["cash_expected_cents"], "product_counts": exp["product_expected"], "checklist": CHECKLIST})
@@ -81,10 +81,10 @@ def test_reopen_supersedes_cash_case_and_approval(fresh_operator, catalog, admin
     op = fresh_operator()
     shift_id = op.post("/v1/shifts/open", json=open_payload(op.assignment["id"])).json()["shift_id"]
     for _ in range(3):
-        op.post("/v1/sales", json=sale_payload(shift_id, catalog, qty=3, pres_index=2))  # 13500 c/u
+        op.post("/v1/sales", json=sale_payload(shift_id, catalog, qty=3, pres_index=2))  # 12000 c/u
     r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 0, "product_counts": {}})
     case_id = r.json()["case_id"]
-    assert case_id and r.json()["difference_cents"] == -40500
+    assert case_id and r.json()["difference_cents"] == -36000
     assert any(a["entity_id"] == shift_id for a in admin.get("/v1/approvals", params={"status": "pending"}).json())
 
     r = admin.post(f"/v1/shifts/{shift_id}/reopen", json={"reason": "El operador no había contado el efectivo del cajón"})
@@ -95,13 +95,13 @@ def test_reopen_supersedes_cash_case_and_approval(fresh_operator, catalog, admin
     assert any(a["entity_id"] == shift_id for a in admin.get("/v1/approvals", params={"status": "cancelled"}).json())
 
     exp = op.get(f"/v1/shifts/{shift_id}/expected").json()
-    assert exp["cash_expected_cents"] == 40500
-    r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 40500, "product_counts": exp["product_expected"], "checklist": CHECKLIST})
+    assert exp["cash_expected_cents"] == 36000
+    r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 36000, "product_counts": exp["product_expected"], "checklist": CHECKLIST})
     assert r.status_code == 200 and r.json()["status"] == "reconciled" and r.json()["case_id"] is None
     # El audit conserva el cierre anterior completo
     log = admin.get("/v1/audit-log", params={"entity": "shift", "entity_id": shift_id}).json()
     entry = next(e for e in log if e["action"] == "shift.reopen")
-    assert entry["before"]["difference_cents"] == -40500 and "product_diff" in entry["before"] and entry["after"]["superseded_cases"] == [case_id]
+    assert entry["before"]["difference_cents"] == -36000 and "product_diff" in entry["before"] and entry["after"]["superseded_cases"] == [case_id]
 
 
 def test_reopen_rejects_old_shift_and_transferred(fresh_operator, catalog, admin, db_session):

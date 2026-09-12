@@ -17,11 +17,11 @@ def _resolve(admin, *case_ids):
 def test_cash_opening_and_movements_change_expected(fresh_operator, catalog, admin):
     a = fresh_operator()
     sid = a.post("/v1/shifts/open", json={**open_payload(a.assignment["id"]), "opening_cents": 20000}).json()["shift_id"]
-    a.post("/v1/sales", json=sale_payload(sid, catalog, pres_index=2))  # $45 efectivo
+    a.post("/v1/sales", json=sale_payload(sid, catalog, pres_index=2))  # $40 efectivo
     exp = a.get(f"/v1/shifts/{sid}/expected").json()
-    assert exp["opening_cents"] == 20000 and exp["cash_sales_cents"] == 4500 and exp["cash_expected_cents"] == 24500
+    assert exp["opening_cents"] == 20000 and exp["cash_sales_cents"] == 4000 and exp["cash_expected_cents"] == 24000
     r = a.post(f"/v1/shifts/{sid}/cash-movements", json={"idempotency_key": new_key(), "kind": "expense", "amount_cents": 3000, "reason": "Hielo"})
-    assert r.status_code == 201 and r.json()["expected"]["cash_expected_cents"] == 21500
+    assert r.status_code == 201 and r.json()["expected"]["cash_expected_cents"] == 21000
     # Retiro grande → caso de revisión ligado al movimiento
     assert a.post(f"/v1/shifts/{sid}/cash-movements", json={"idempotency_key": new_key(), "kind": "withdrawal", "amount_cents": 99999, "reason": "más de lo que hay"}).status_code == 409
     r = a.post(f"/v1/shifts/{sid}/cash-movements", json={"idempotency_key": new_key(), "kind": "withdrawal", "amount_cents": 20000, "reason": "Entrega parcial al supervisor"})
@@ -31,7 +31,7 @@ def test_cash_opening_and_movements_change_expected(fresh_operator, catalog, adm
     assert len(rows) == 2 and rows[1]["signed_cents"] == -20000
     # Cierre: la diferencia se calcula contra el esperado con fondo y salidas
     exp = a.get(f"/v1/shifts/{sid}/expected").json()
-    assert exp["cash_expected_cents"] == 20000 + 4500 - 3000 - 20000
+    assert exp["cash_expected_cents"] == 20000 + 4000 - 3000 - 20000
     r = a.post(f"/v1/shifts/{sid}/close", json={"idempotency_key": new_key(), "cash_counted_cents": exp["cash_expected_cents"], "product_counts": exp["product_expected"]})
     assert r.status_code == 200 and r.json()["difference_cents"] == 0
     # Otro operador no puede registrar movimientos en ese turno
@@ -133,14 +133,14 @@ def test_point_costs_and_expansion_margin(fresh_operator, catalog, admin):
     a = fresh_operator()
     sid = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
     for _ in range(2):
-        a.post("/v1/sales", json=sale_payload(sid, catalog, pres_index=2))  # 2 × 100 g × $45 = $90, 200 g
+        a.post("/v1/sales", json=sale_payload(sid, catalog, pres_index=2))  # 2 × 100 g × $40 = $80, 200 g
     r = admin.post(f"/v1/admin/points/{a.point['id']}/costs", json={"valid_from": "2026-01-01", "rent_month_cents": 300000, "setup_cents": 1500000, "note": "renta local"})
     assert r.status_code == 201 and r.json()["monthly_cents"] == 300000
     assert len(admin.get(f"/v1/admin/points/{a.point['id']}/costs").json()) == 1
     body = admin.get("/v1/reports/bi/expansion", params={"period": "today"}).json()
     row = next(x for x in next(t for t in body["tables"] if t["key"] == "verdicts")["rows"] if x["point_id"] == a.point["id"])
-    # materia prima 0.2 kg × $70 = $14; fijo 300000/30 = $100/día; margen = 90 − 14 − 100 = −$24 → sin payback
-    assert row["raw_cost_cents"] == 1400 and row["fixed_cost_cents"] == 10000 and row["margin_cents"] == -2400
+    # materia prima 0.2 kg × $70 = $14; fijo 300000/30 = $100/día; margen = 80 − 14 − 100 = −$34 → sin payback
+    assert row["raw_cost_cents"] == 1400 and row["fixed_cost_cents"] == 10000 and row["margin_cents"] == -3400
     assert row["payback_months"] is None
     assert any(k["key"] == "with_costs" and k["value"] >= 1 for k in body["kpis"])
 

@@ -65,7 +65,7 @@ OP_DETAIL = """
 <h3 id="op-vender">Vender</h3>
 <p>Arriba: <b>Ventas del turno</b> y <b>Total</b>. Luego la forma de pago (<span class="ui g">💵 Efectivo</span> | <span class="ui b">📱 QR / Tarjeta</span>) y un botón grande por tamaño con su precio. La forma de pago digital vuelve sola a Efectivo después de cada venta, para que no se te quede pegada.</p>
 <div class="tbl"><table><tr><th>Acción</th><th>Cómo</th><th>Límite</th></tr>
-<tr><td>Venta</td><td>Toca el tamaño. Toast <i>"✓ Venta registrada · 100 g · $45"</i> y la voz lo repite si tienes audio.</td><td>—</td></tr>
+<tr><td>Venta</td><td>Toca el tamaño. Toast <i>"✓ Venta registrada · 100 g · $40"</i> y la voz lo repite si tienes audio.</td><td>—</td></tr>
 <tr><td>Sabor</td><td>Abre <i>"🌶️ Sabor (opcional)"</i> y elige un chip; se aplica a la siguiente venta.</td><td>Se limpia tras cada venta.</td></tr>
 <tr><td>Deshacer</td><td><span class="ui">↩ Deshacer</span> en el toast.</td><td>60 s. Si la venta ya se envió, te pide motivo: <i>Me equivoqué · Cliente se fue · Cambio de tamaño</i> (hasta 5 min después). Pasado ese tiempo sólo el supervisor puede cancelarla.</td></tr>
 <tr><td>Merma</td><td><span class="ui">🗑️ MERMA</span> → tamaño → cuántas (1, 2, 3 o +) → motivo (derrame, calidad, caducado, muestra, otro).</td><td>Cuenta para el indicador de merma del punto (más de 4 % abre un caso).</td></tr>
@@ -114,11 +114,11 @@ OP_STEPS = """
 <ol class="steps">
 <li><b>Entrar</b> Usuario <code>op1</code>, contraseña, <span class="ui p">ENTRAR</span>.<div class="ex">Pantalla verde: "Bienvenido · 📍 Metro Insurgentes · Carrito C-001". A los 2 segundos pasas a Inicio con "Puesto cerrado · Turno 8:00 a.m. – 6:00 p.m.".</div></li>
 <li><b>Abrir</b> <span class="ui g">ABRIR PUESTO</span>. Verifica la línea de distancia ("✅ A 12 m de Metro Insurgentes · dentro del punto") y contesta los 5 puntos; la barra de progreso llega a 5/5 "Listo".<div class="ex">Todo en Sí → <span class="ui g">LISTO</span> → "LISTO PARA VENDER" → <span class="ui">VENDER</span>. Si dijera "📍 Estás a 300 m…", camina hasta el punto antes de pulsar LISTO.</div></li>
-<li><b>Primera venta en efectivo</b> Con "💵 Efectivo" seleccionado toca <b>100 g · $45</b>.<div class="ex">Toast "✓ Venta registrada · 100 g · $45". Contador: 1 venta · $45. La barra sigue en "✓ Guardado".</div></li>
+<li><b>Primera venta en efectivo</b> Con "💵 Efectivo" seleccionado toca <b>100 g · $40</b>.<div class="ex">Toast "✓ Venta registrada · 100 g · $40". Contador: 1 venta · $40. La barra sigue en "✓ Guardado".</div></li>
 <li><b>Venta con QR</b> Toca <span class="ui b">📱 QR / Tarjeta</span>, luego <b>75 g · $35</b>.<div class="ex">El botón se ve azul y el toast también. Después de la venta la forma de pago regresa a Efectivo.</div></li>
 <li><b>Te equivocaste</b> Vendiste 50 g pero era 100 g. En el toast toca <span class="ui">↩ Deshacer</span> antes de 60 s.<div class="ex">Si ya decía "Última venta" y se había enviado, elige el motivo "🔁 Cambio de tamaño". Luego registra la venta correcta.</div></li>
 <li><b>Merma</b> Se cayó una bolsa de 50 g. <span class="ui">🗑️ MERMA</span> → 50 → 1 → "💧 Derrame".<div class="ex">"Merma registrada" → <span class="ui">Volver a vender</span>. No cuenta como venta ni suma al efectivo esperado.</div></li>
-<li><b>Cerrar</b> A las 6 p.m.: <span class="ui a">CERRAR PUESTO</span>.<div class="ex">"Debes tener $45" (sólo el efectivo; los $35 del QR no cuentan). Escribes 45 → CONTINUAR → producto: 50 g queda 37 (40 − 1 venta deshecha − 1 merma − … la app ya lo precarga) → CONTINUAR → checklist de salida todo Sí → CERRAR PUESTO → "✅ Cierre conciliado" → Terminar. Inicio muestra "Turno de hoy terminado".</div></li>
+<li><b>Cerrar</b> A las 6 p.m.: <span class="ui a">CERRAR PUESTO</span>.<div class="ex">"Debes tener $40" (sólo el efectivo; los $35 del QR no cuentan). Escribes 40 → CONTINUAR → producto: 50 g queda 37 (40 − 1 venta deshecha − 1 merma − … la app ya lo precarga) → CONTINUAR → checklist de salida todo Sí → CERRAR PUESTO → "✅ Cierre conciliado" → Terminar. Inicio muestra "Turno de hoy terminado".</div></li>
 </ol>
 
 <h3 id="op-ej2">Ejemplo 2 · Sin señal toda la mañana</h3>
@@ -494,7 +494,7 @@ ADM_DETAIL = """
 
 <h3 id="adm-precios">Presentaciones y versiones de precio</h3>
 <p><b>Presentaciones</b>: nombre, gramos, orden, activa; columna "Precio vigente". <b>Precios</b>: cada cambio es una <b>nueva versión</b> con vigencia; las ventas guardan la versión usada (nunca se reescriben). <span class="ui p">+ Nueva versión</span> pide nombre y un precio por presentación y queda vigente ahora. <span class="ui">Desactivar</span> advierte: los operadores sin señal seguirán vendiendo con esos precios hasta sincronizar; el servidor acepta esas ventas <b>72 h</b> y las marca "precio vencido" en el reporte. Asegúrate de tener otra versión activa.</p>
-""" + fig(flow([("v1 vigente", "$25 · $35 · $45", GRAY), ("+ Nueva versión v2", "$28 · $38 · $48 · vigente ahora", ORANGE), ("Desactivar v1", "confirmación", AMBER), ("72 h de gracia", "ventas offline con v1 aceptadas y marcadas", BLUE), ("Reporte", "columna 'Precio vencido'", GREEN)]), "Ciclo de un cambio de precio. Las ventas históricas conservan la versión con la que se hicieron.") + """
+""" + fig(flow([("v1 vigente", "$25 · $35 · $40", GRAY), ("+ Nueva versión v2", "$28 · $38 · $48 · vigente ahora", ORANGE), ("Desactivar v1", "confirmación", AMBER), ("72 h de gracia", "ventas offline con v1 aceptadas y marcadas", BLUE), ("Reporte", "columna 'Precio vencido'", GREEN)]), "Ciclo de un cambio de precio. Las ventas históricas conservan la versión con la que se hicieron.") + """
 <h3 id="adm-reopen">Continuar turno (reabrir un turno terminado)</h3>
 <p>Disponible en <b>Control Tower</b> (sólo con la fecha de hoy, en filas con turno Cerrado) y en <b>Asignaciones</b>. Modal <i>"Continuar turno terminado"</i>: explica el efecto, pide <b>motivo</b> (5–280 caracteres) y confirma con <span class="ui p">Reabrir turno</span>.</p>
 """ + fig(states({"c": (120, 60, "Cerrado", BLUE), "o": (420, 60, "Abierto", GREEN), "c2": (760, 60, "Cerrado (2º cierre)", BLUE), "x": (420, 190, "Rechazado 409", RED)}, [("c", "o", "Reabrir turno + motivo"), ("o", "c2", "operador cierra de nuevo"), ("c", "x", "no es de hoy · > ventana · otro turno abierto · transferido")], h=240), "Reglas de la reapertura. El sistema conserva íntegro el cierre anterior en el audit log.") + """
@@ -607,7 +607,7 @@ OPS_V2 = """
 
 OP_V2 = """
 <h3 id="op-v2-fondo">Fondo de caja al abrir</h3>
-<p>Después del checklist, la app muestra el <b>fondo estándar</b> ($500) ya escrito: si el supervisor te dio exactamente eso, toca LISTO; si te dio otra cantidad, bórrala y escribe la que recibiste (la app avisa que es distinta al estándar y el supervisor lo verá). Al cerrar, «Debes tener» ya incluye el fondo. Precios de $25/$35/$45 se pagan casi siempre con billetes de $50, $100 o $200: el fondo sirve para dar cambio en las primeras ventas. Si un cliente paga con $500 y no tienes cambio, pide que pague con otro billete o cobra por QR.</p>
+<p>Después del checklist, la app muestra el <b>fondo estándar</b> ($500) ya escrito: si el supervisor te dio exactamente eso, toca LISTO; si te dio otra cantidad, bórrala y escribe la que recibiste (la app avisa que es distinta al estándar y el supervisor lo verá). Al cerrar, «Debes tener» ya incluye el fondo. Precios de $25/$35/$40 se pagan casi siempre con billetes de $50, $100 o $200: el fondo sirve para dar cambio en las primeras ventas. Si un cliente paga con $500 y no tienes cambio, pide que pague con otro billete o cobra por QR.</p>
 <h3 id="op-v2-devolucion">Devolución / caja</h3>
 <p>En VENDER, el botón <span class="ui">↩️ Devolución / caja</span> abre dos pestañas: <b>Devolución</b> (elige la venta que el cliente regresó; se registra y el supervisor la revisa) y <b>Caja</b> (gasto, retiro o entrada de efectivo con motivo: hielo, bolsas, entrega al supervisor…). No puedes retirar más efectivo del que hay en caja.</p>
 <h3 id="op-v2-producto">Recibir y contar producto</h3>

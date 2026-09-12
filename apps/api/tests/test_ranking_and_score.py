@@ -22,21 +22,21 @@ def test_sales_ranking_day_month_year(fresh_operator, catalog, admin, ops):
     sa = a.post("/v1/shifts/open", json=open_payload(a.assignment["id"])).json()["shift_id"]
     sb = b.post("/v1/shifts/open", json=open_payload(b.assignment["id"])).json()["shift_id"]
     for _ in range(3):
-        assert a.post("/v1/sales", json=sale_payload(sa, catalog, pres_index=2)).status_code == 201  # 3 × 4500
+        assert a.post("/v1/sales", json=sale_payload(sa, catalog, pres_index=2)).status_code == 201  # 3 × 4000
     assert b.post("/v1/sales", json=sale_payload(sb, catalog, pres_index=0)).status_code == 201  # 2500
     r = ops.post("/v1/rules/run")
     assert r.status_code == 200 and "ranking" in r.json()
     lb = ops.get("/v1/people/ranking", params={"period": "day"}).json()["rows"]
     ra = next(x for x in lb if x["operator"]["id"] == a.user["id"])
     rb = next(x for x in lb if x["operator"]["id"] == b.user["id"])
-    assert ra["total_cents"] == 13500 and rb["total_cents"] == 2500 and ra["rank"] < rb["rank"]
+    assert ra["total_cents"] == 12000 and rb["total_cents"] == 2500 and ra["rank"] < rb["rank"]
     assert ra["rank"] == 1  # nadie vende más hoy en la base de pruebas limpia
     # Guardado en el usuario (admin) y visible para el operador en /me/assignment
     ua = next(u for u in admin.get("/v1/admin/users").json() if u["id"] == a.user["id"])
-    assert ua["ranking"]["day"] == 1 and ua["ranking"]["day_cents"] == 13500
+    assert ua["ranking"]["day"] == 1 and ua["ranking"]["day_cents"] == 12000
     assert ua["ranking"]["month"] == 1 and ua["ranking"]["year"] == 1
     me = a.get("/v1/me/assignment").json()["ranking"]
-    assert me["day"]["rank"] == 1 and me["month"]["total_cents"] >= 13500 and me["of"] >= 2
+    assert me["day"]["rank"] == 1 and me["month"]["total_cents"] >= 12000 and me["of"] >= 2
     # El cierre también recalcula: b vende más y cierra → pasa a #1
     for _ in range(5):
         b.post("/v1/sales", json=sale_payload(sb, catalog, pres_index=2))

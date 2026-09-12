@@ -23,7 +23,7 @@ def test_full_flow_reconciled(fresh_operator, catalog, ops):
         body = r.json()
         assert body["status"] == "recorded" and body["duplicate"] is False and body["folio"].startswith("F-")
         totals[method] += body["total_cents"]
-    assert totals["cash"] == 2500 + 4500 and totals["qr"] == 3500
+    assert totals["cash"] == 2500 + 4000 and totals["qr"] == 3500
 
     # merma
     r = op.post("/v1/waste", json={"idempotency_key": new_key(), "shift_id": shift_id, "presentation_id": catalog["presentations"][0]["id"], "qty": 2, "reason_code": "spill"})
@@ -34,8 +34,8 @@ def test_full_flow_reconciled(fresh_operator, catalog, ops):
     assert r.status_code == 200
     exp = r.json()
     assert exp["sales_count"] == 3
-    assert exp["sales_total_cents"] == 10500
-    assert exp["cash_expected_cents"] == 7000
+    assert exp["sales_total_cents"] == 10000
+    assert exp["cash_expected_cents"] == 6500
     assert exp["digital_total_cents"] == 3500
     assert exp["waste_units"] == 2
     # Inventario: el punto nuevo empezó en 0 → -1 venta -2 merma = -3 en la presentación 0
@@ -43,7 +43,7 @@ def test_full_flow_reconciled(fresh_operator, catalog, ops):
 
     # cierre conciliado con conteo igual al teórico
     counts = {k: v for k, v in exp["product_expected"].items()}
-    r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 7000, "product_counts": counts, "checklist": {"off_ok": True, "clean_ok": True, "secured_ok": True, "stored_ok": True, "charging_ok": True}})
+    r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 6500, "product_counts": counts, "checklist": {"off_ok": True, "clean_ok": True, "secured_ok": True, "stored_ok": True, "charging_ok": True}})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "reconciled"
@@ -58,7 +58,7 @@ def test_full_flow_reconciled(fresh_operator, catalog, ops):
     # reporte diario refleja el turno
     rows = ops.get("/v1/reports/daily").json()["rows"]
     row = next(x for x in rows if x["shift_id"] == shift_id)
-    assert row["sales_cents"] == 10500 and row["tx"] == 3 and row["status"] == "reconciled" and row["waste_units"] == 2
+    assert row["sales_cents"] == 10000 and row["tx"] == 3 and row["status"] == "reconciled" and row["waste_units"] == 2
 
 
 def test_close_with_difference_creates_case(fresh_operator, catalog, sup1, ops):
@@ -66,12 +66,12 @@ def test_close_with_difference_creates_case(fresh_operator, catalog, sup1, ops):
     shift_id = op.post("/v1/shifts/open", json=open_payload(op.assignment["id"])).json()["shift_id"]
     for _ in range(2):
         assert op.post("/v1/sales", json=sale_payload(shift_id, catalog, method="cash", pres_index=2)).status_code == 201
-    # esperado 9000, contado 4000 → diferencia -5000 (> umbral 2000, < grave 10000) → review
+    # esperado 8000, contado 4000 → diferencia -4000 (> umbral 2000, < grave 10000) → review
     r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 4000, "product_counts": {}})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "difference"
-    assert body["cash_expected_cents"] == 9000 and body["difference_cents"] == -5000
+    assert body["cash_expected_cents"] == 8000 and body["difference_cents"] == -4000
     assert body["case_id"]
     case = sup1.get(f"/v1/cases/{body['case_id']}").json()
     assert case["rule_key"] == "cash_difference" and case["severity"] == "review" and case["status"] == "open"
@@ -92,9 +92,9 @@ def test_severe_difference_is_urgent_and_requests_approval(fresh_operator, catal
     op = fresh_operator()
     shift_id = op.post("/v1/shifts/open", json=open_payload(op.assignment["id"])).json()["shift_id"]
     for _ in range(3):
-        op.post("/v1/sales", json=sale_payload(shift_id, catalog, qty=3, pres_index=2))  # 13500 c/u
+        op.post("/v1/sales", json=sale_payload(shift_id, catalog, qty=3, pres_index=2))  # 12000 c/u
     r = op.post(f"/v1/shifts/{shift_id}/close", json={"idempotency_key": new_key(), "cash_counted_cents": 0})
-    assert r.json()["difference_cents"] == -40500
+    assert r.json()["difference_cents"] == -36000
     case = admin.get(f"/v1/cases/{r.json()['case_id']}").json()
     assert case["severity"] == "urgent"
     approvals = admin.get("/v1/approvals", params={"status": "pending"}).json()

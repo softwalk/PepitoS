@@ -126,7 +126,7 @@ with sync_playwright() as p:
     shot(page, "07-vender")
     st, exp1 = api("GET", f"/v1/shifts/{shift_id}/expected", token=token)
     assert exp1["sales_count"] == base_count + 2, f"Deben existir 2 ventas nuevas en la API: {exp1}"
-    assert exp1["cash_expected_cents"] == base_cash + 2500 + 4500, f"Efectivo esperado incorrecto: {exp1}"
+    assert exp1["cash_expected_cents"] == base_cash + 2500 + 4000, f"Efectivo esperado incorrecto: {exp1}"
     print("Ventas confirmadas en API:", exp1["sales_count"], "efectivo", exp1["cash_expected_cents"])
 
     # DEVOLUCIÓN / CAJA: gasto de $30 (hielo) y devolución de la última venta (100 g) → caso de revisión
